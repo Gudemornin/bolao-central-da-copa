@@ -1,7 +1,7 @@
 import { TEAMS } from './data/teams.js';
 import { showToast, openModal, closeModal } from './ui.js';
 import { filterPlayers, getPlayer, getPlayersByTeams } from './exportplayer.js';
-import { loadBets, saveBets, loadGames } from './storage.js';
+import { loadBets, saveBets, loadGames, saveGames } from './storage.js';
 import { formatDate, sign, playerDisplayName, teamFlagImg } from './utils.js';
 import {
   GAMES_STATE,
@@ -349,29 +349,35 @@ export function clearEditPlayer() {
 export async function cleanOldGames() {
   console.log('🧹 Limpando jogos antigos...');
   
-  const games = await loadGames();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  // Manter apenas jogos futuros OU já finalizados com resultado
-  const filteredGames = games.filter(game => {
-    const gameDate = new Date(game.date);
-    gameDate.setHours(0, 0, 0, 0);
+  try {
+    const games = await loadGames();
+    if (!games || !games.length) return;
     
-    // Manter jogos futuros
-    if (gameDate >= today) return true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    // Manter jogos passados que já foram finalizados (para histórico)
-    if (game.status === 'completed' && game.result) return true;
+    // Manter apenas jogos futuros OU já finalizados com resultado
+    const filteredGames = games.filter(game => {
+      const gameDate = new Date(game.date);
+      gameDate.setHours(0, 0, 0, 0);
+      
+      // Manter jogos futuros
+      if (gameDate >= today) return true;
+      
+      // Manter jogos passados que já foram finalizados (para histórico)
+      if (game.status === 'completed' && game.result) return true;
+      
+      // Remover jogos passados sem resultado
+      return false;
+    });
     
-    // Remover jogos passados sem resultado (nunca aconteceram)
-    return false;
-  });
-  
-  if (filteredGames.length !== games.length) {
-    await saveGames(filteredGames);
-    setGamesState(filteredGames);
-    console.log(`🧹 Removidos ${games.length - filteredGames.length} jogos antigos`);
+    if (filteredGames.length !== games.length) {
+      await saveGames(filteredGames);
+      setGamesState(filteredGames);
+      console.log(`🧹 Removidos ${games.length - filteredGames.length} jogos antigos`);
+    }
+  } catch (error) {
+    console.error('Erro ao limpar jogos antigos:', error);
   }
 }
 
