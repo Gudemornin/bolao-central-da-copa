@@ -39,8 +39,9 @@ async function init() {
   // Carregar jogos
   try {
     const games = await loadGames();
+    console.log('🎮 loadGames() retornou:', games?.length || 0, 'jogos');
     setGamesState(games || []);
-    console.log('✅ Jogos carregados:', games?.length || 0);
+    console.log('✅ Jogos carregados e setados:', games?.length || 0);
   } catch (error) {
     console.error('❌ Erro ao carregar jogos:', error);
     setGamesState([]);
@@ -52,10 +53,10 @@ async function init() {
   if (sid) {
     try {
       const users = await loadUsers();
-      console.log('👥 Usuários carregados:', users);
+      console.log('👥 Usuários carregados:', users?.length || 0);
       
       const user = users.find(u => u.id === sid);
-      console.log('👤 Usuário encontrado:', user);
+      console.log('👤 Usuário encontrado:', user?.profileName || 'nenhum');
       
       if (user) {
         loginUser(user);

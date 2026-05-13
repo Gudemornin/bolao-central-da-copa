@@ -44,16 +44,25 @@ export async function loadUsers() {
   
   if (USE_API) {
     const result = await apiRequest('/users');
-    if (result && result.users) {
+    if (result && result.users && result.users.length > 0) {
+      console.log('✅ Usuários carregados da API:', result.users.length);
       users = result.users;
+      localStorage.setItem('bc26_users', JSON.stringify(users));
     }
   }
   
   // Se não conseguiu via API, tenta localStorage
   if (users.length === 0) {
     try {
-      users = JSON.parse(localStorage.getItem('bc26_users') || '[]');
-    } catch(e) { users = []; }
+      const stored = localStorage.getItem('bc26_users');
+      if (stored) {
+        users = JSON.parse(stored);
+        console.log('✅ Usuários carregados do localStorage:', users.length);
+      }
+    } catch(e) { 
+      console.error('❌ Erro ao parsear localStorage:', e);
+      users = []; 
+    }
   }
   
   // Garantir admin padrão (apenas se não houver admin)
