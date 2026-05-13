@@ -108,6 +108,14 @@ app.get('/api/admin/info', (req, res) => {
   });
 });
 
+app.get('/css/:file', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'css', req.params.file));
+});
+
+app.get('/js/:file', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'js', req.params.file));
+});
+
 // 3️⃣ POR ÚLTIMO: Fallback para SPA
 app.get('*', (req, res) => {
   // Verificar se não é uma requisição de arquivo
