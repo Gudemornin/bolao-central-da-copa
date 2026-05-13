@@ -305,24 +305,13 @@ async function handleLogin() {
     const matchNormal = u.profileName.toLowerCase() === name.toLowerCase() &&
                         u.passwordPlayerId === player.id;
     const matchTemp = u.profileName.toLowerCase() === name.toLowerCase() &&
-                      u.tempPassword && u.tempPassword.id === player.id &&
-                      u.passwordResetPending === true;
+                      u.tempPassword && u.tempPassword.id === player.id;
     return matchNormal || matchTemp;
   });
 
   if (!user) {
     errEl.textContent = 'Credenciais inválidas.';
     errEl.classList.add('show');
-    return;
-  }
-
-  // Se está usando senha temporária, mostra modal para trocar a senha
-  if (user.passwordResetPending && user.tempPassword && user.tempPassword.id === player.id) {
-    // Salva o usuário pendente na sessão temporária para depois trocar a senha
-    sessionStorage.setItem('tempUserId', user.id);
-    sessionStorage.setItem('tempPlayerId', player.id);
-    showToast('⚠️ Você está usando uma senha temporária. Escolha uma nova senha agora.', 'blue');
-    openModal('modalChangeTempPassword');
     return;
   }
 
@@ -418,7 +407,6 @@ async function requestPasswordReset() {
   // Guardar backup da senha antiga
   user.passwordBackup = user.passwordPlayerId;
   user.passwordPlayerId = newPasswordPlayer.id;
-  user.passwordResetPending = true;
   user.tempPassword = newPasswordPlayer;
   
   await saveUsers(users);
@@ -721,12 +709,135 @@ window.adminRemoveUser = adminRemoveUser;
 
 
 // =============================================
+// TROCAR SENHA VOLUNTÁRIA
+// =============================================
+async function changePassword() {
+  if (!currentUser) {
+    showToast('Você precisa estar logado', 'red');
+    return;
+  }
+
+  const newPlayer = selProfilePlayer;
+  if (!newPlayer) {
+    showToast('Selecione um novo jogador como senha', 'red');
+    return;
+  }
+
+  const users = await loadUsers();
+  const user = users.find(u => u.id === currentUser.id);
+  if (!user) {
+    showToast('Usuário não encontrado', 'red');
+    return;
+  }
+
+  // Atualizar senha
+  user.passwordPlayerId = newPlayer.id;
+  // Limpar senha temporária se existir
+  delete user.tempPassword;
+  delete user.passwordResetPending;
+  delete user.passwordBackup;
+
+  await saveUsers(users);
+
+  // Atualizar currentUser
+  setCurrentUser(user);
+
+  showToast('Senha alterada com sucesso! 🔒', 'green');
+  clearProfilePlayerSel();
+}
+
+// =============================================
+// SELEÇÃO DE JOGADOR PARA PERFIL
+// =============================================
+let selProfilePlayer = null;
+
+function selectProfilePlayer(playerId) {
+  const p = getPlayer(playerId);
+  if (!p) return;
+
+  selProfilePlayer = p;
+
+  document.getElementById('profilePlayerSearch').value = '';
+  document.getElementById('profileResults').classList.remove('open');
+  document.getElementById('profileResults').innerHTML = '';
+
+  const team = TEAMS[p.team];
+  const flagImg = team ? `<img src="${team.flag}" style="width:24px;height:18px;vertical-align:middle;margin-right:8px;">` : '';
+
+  document.getElementById('profileSelFlag').innerHTML = flagImg;
+  document.getElementById('profileSelName').textContent = p.name + ' (' + (team?.name || p.team) + ')';
+  document.getElementById('profileSelectedPlayer').classList.add('show');
+}
+
+function clearProfilePlayerSel() {
+  selProfilePlayer = null;
+  document.getElementById('profileSelectedPlayer').classList.remove('show');
+  document.getElementById('profilePlayerSearch').value = '';
+}
+
+// =============================================
+// INICIALIZAÇÃO DA BUSCA PARA PERFIL
+// =============================================
+function initProfilePlayerSearch() {
+  const inp = document.getElementById('profilePlayerSearch');
+  const res = document.getElementById('profileResults');
+
+  if (!inp || !res) return;
+
+  console.log('✅ Busca de jogador para perfil inicializada');
+
+  inp.addEventListener('input', () => {
+    const query = inp.value.trim().toLowerCase();
+    if (query.length < 2) {
+      res.classList.remove('open');
+      return;
+    }
+
+    const matches = PLAYERS.filter(p =>
+      p.name.toLowerCase().includes(query) ||
+      TEAMS[p.team]?.name.toLowerCase().includes(query)
+    ).slice(0, 10);
+
+    if (matches.length === 0) {
+      res.classList.remove('open');
+      return;
+    }
+
+    res.innerHTML = matches.map(p => {
+      const team = TEAMS[p.team];
+      const flag = team ? `<img src="${team.flag}" style="width:20px;height:15px;vertical-align:middle;margin-right:6px;">` : '';
+      return `<div class="presult-item" onclick="selectProfilePlayer('${p.id}')">${flag}${p.name} (${team?.name || p.team})</div>`;
+    }).join('');
+
+    res.classList.add('open');
+  });
+
+  inp.addEventListener('focus', () => {
+    if (inp.value.trim().length >= 2) res.classList.add('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!inp.contains(e.target) && !res.contains(e.target)) {
+      res.classList.remove('open');
+    }
+  });
+}
+
+// =============================================
+// REGISTRO NO WINDOW (para onclick do HTML)
+// =============================================
+window.changePassword = changePassword;
+window.clearProfilePlayerSel = clearProfilePlayerSel;
+window.selectProfilePlayer = selectProfilePlayer;
+
+// =============================================
 // INICIALIZAÇÃO
 // =============================================
 function initAuth() {
   console.log('🚀 Inicializando autenticação...');
   initPlayerSearch('loginPlayerSearch', 'loginPlayerResults');
   initPlayerSearch('regPlayerSearch', 'regPlayerResults');
+  initProfilePlayerSearch();
 }
 
 initAuth();

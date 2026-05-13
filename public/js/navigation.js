@@ -173,6 +173,17 @@ export async function switchTab(tab) {
   if (tab === 'worldcup') await renderWorldCupGames();
   if (tab === 'standings') await renderStandings();
   if (tab === 'topscorers') await renderTopScorers();
+  if (tab === 'profile') renderProfile();
 }
 
+import { getPlayer } from './exportplayer.js';
+
 window.switchTab = switchTab;
+
+// Função para renderizar perfil
+function renderProfile() {
+  // Já está no HTML, apenas garantir que está limpo
+  console.log('👤 Renderizando perfil');
+}
+
+window.renderProfile = renderProfile;
