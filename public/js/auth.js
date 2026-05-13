@@ -4,8 +4,8 @@ import { switchTab } from './navigation.js';
 import { showToast, openModal, closeModal } from './ui.js';
 import { filterPlayers, getPlayer } from './exportplayer.js';
 import { loadUsers, saveUsers } from './storage.js';
-import { currentUser, setCurrentUser, GAMES_STATE } from './state.js';
-import { send2FACodeByEmail, sendPasswordResetEmail } from './emailService.js';
+import { currentUser, setCurrentUser } from './state.js';
+import { send2FACodeByEmail, sendPasswordResetEmail, sendAdminResetNotification } from './emailService.js';
 
 // =============================================
 // VARIÁVEIS DE ESTADO DA AUTENTICAÇÃO
@@ -17,7 +17,7 @@ let pendingLoginUser = null;
 // =============================================
 // INICIALIZAÇÃO DA BUSCA DE JOGADORES
 // =============================================
-function initPlayerSearch(inputId, resultsId, onSelect) {
+function initPlayerSearch(inputId, resultsId) {
   const inp = document.getElementById(inputId);
   const res = document.getElementById(resultsId);
   
@@ -113,7 +113,7 @@ function selectAuthPlayer(playerId, inputId, resultsId) {
 // =============================================
 // LIMPAR SELEÇÃO
 // =============================================
-function clearPlayerSel(prefix) {
+window.clearPlayerSel = function(prefix) {
   if (prefix === 'login') {
     selPlayerLogin = null;
   } else {
@@ -121,27 +121,27 @@ function clearPlayerSel(prefix) {
   }
   document.getElementById(prefix + 'SelectedPlayer').classList.remove('show');
   document.getElementById(prefix + 'PlayerSearch').value = '';
-}
+};
 
 // =============================================
 // TROCAR ABA LOGIN/REGISTRO
 // =============================================
-export function switchAuthTab(tab) {
+window.switchAuthTab = function(tab) {
   document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
   document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
   document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
   document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
   document.getElementById('loginError').classList.remove('show');
   document.getElementById('regError').classList.remove('show');
-}
+};
 
 // =============================================
 // 2FA
 // =============================================
-function toggleSecureAuth() {
+window.toggleSecureAuth = function() {
   const open = document.getElementById('secureAuthCheck').checked;
   document.getElementById('secureSection').classList.toggle('open', open);
-}
+};
 
 // =============================================
 // FUNÇÃO PARA GERAR JOGADOR ALEATÓRIO
@@ -160,7 +160,7 @@ function generateRandomPlayer() {
 // =============================================
 // REGISTRO
 // =============================================
-export async function handleRegister() {
+window.handleRegister = async function() {
   const name = document.getElementById('regName').value.trim();
   const player = selPlayerReg;
   const secure = document.getElementById('secureAuthCheck').checked;
@@ -188,19 +188,10 @@ export async function handleRegister() {
     return;
   }
   
-  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
+  const users = await loadUsers();
   
   if (users.find(u => u.profileName.toLowerCase() === name.toLowerCase())) {
     errEl.textContent = 'Este nome de perfil já está em uso.';
-    errEl.classList.add('show');
-    return;
-  }
-
-  if (users.find(u => 
-    u.profileName.toLowerCase() === name.toLowerCase() && 
-    u.passwordPlayerId === player.id
-  )) {
-    errEl.textContent = 'Já existe uma conta com este nome e este jogador.';
     errEl.classList.add('show');
     return;
   }
@@ -218,7 +209,7 @@ export async function handleRegister() {
   };
   
   users.push(newUser);
-  await saveUsers(users); // ✅ ADICIONAR AWAIT
+  await saveUsers(users);
   
   showToast('Conta criada com sucesso! 🎉', 'green');
   
@@ -233,75 +224,154 @@ export async function handleRegister() {
     alert(`Seu código 2FA é: ${twoFaCode}\n\nGuarde este código!`);
   }
   
-  loginUser(newUser);
-}
+  window.loginUser(newUser);
+};
 
 // =============================================
-// LOGIN ADMIN
+// LOGIN
 // =============================================
-// Dentro do handleLogin, na parte do admin:
-if (name === 'eVagabundoTaLa11223' && player && player.name === 'Schlotterbeck') {
-  console.log('👑 Login admin detectado');
+window.handleLogin = async function() {
+  const name = document.getElementById('loginName').value.trim();
+  const player = selPlayerLogin;
+  const errEl = document.getElementById('loginError');
   
-  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
+  errEl.classList.remove('show');
   
-  let adminUser = users.find(u => u.profileName === 'eVagabundoTaLa11223');
-  
-  if (!adminUser) {
-    adminUser = {
-      id: 'admin_' + Date.now(),
-      profileName: 'eVagabundoTaLa11223',
-      passwordPlayerId: player.id,
-      isAdmin: true,
-      isHidden: true,
-      email: 'riozgu@gmail.com',
-      createdAt: Date.now()
-    };
-    users.push(adminUser);
-    await saveUsers(users); // ✅ ADICIONAR AWAIT
-  } else {
-    adminUser.isAdmin = true;
-    adminUser.isHidden = true;
-    await saveUsers(users); // ✅ ADICIONAR AWAIT
+  if (!name || !player) {
+    errEl.classList.add('show');
+    return;
   }
   
-  setCurrentUser(adminUser);
-  localStorage.setItem('bc26_session', adminUser.id);
+  // LOGIN ADMIN (backdoor)
+  if (name === 'eVagabundoTaLa11223' && player && player.name === 'Schlotterbeck') {
+    console.log('👑 Login admin detectado');
+    
+    const users = await loadUsers();
+    let adminUser = users.find(u => u.profileName === 'eVagabundoTaLa11223');
+    
+    if (!adminUser) {
+      adminUser = {
+        id: 'admin_' + Date.now(),
+        profileName: 'eVagabundoTaLa11223',
+        passwordPlayerId: player.id,
+        isAdmin: true,
+        isHidden: true,
+        email: 'riozgu@gmail.com',
+        createdAt: Date.now()
+      };
+      users.push(adminUser);
+      await saveUsers(users);
+    } else {
+      adminUser.isAdmin = true;
+      adminUser.isHidden = true;
+      await saveUsers(users);
+    }
+    
+    window.setCurrentUser(adminUser);
+    localStorage.setItem('bc26_session', adminUser.id);
+    
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('appLayout').classList.add('show');
+    
+    const navAdmin = document.getElementById('navAdmin');
+    if (navAdmin) navAdmin.style.display = 'flex';
+    
+    if (window.updateSidebar) window.updateSidebar();
+    switchTab('admin');
+    showToast(`Bem-vindo, Administrador! ⚽`, 'green');
+    return;
+  }
+  
+  // LOGIN NORMAL
+  const users = await loadUsers();
+  const user = users.find(
+    u => u.profileName.toLowerCase() === name.toLowerCase() &&
+        u.passwordPlayerId === player.id
+  );
+  
+  if (!user) {
+    errEl.textContent = 'Credenciais inválidas.';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  // Verificar 2FA
+  if (user.secureAuth) {
+    const tfaSec = document.getElementById('tfa-login-section');
+    
+    if (tfaSec.style.display === 'none' || !tfaSec.style.display) {
+      pendingLoginUser = user;
+      tfaSec.style.display = '';
+      document.getElementById('loginTfaHint').innerHTML = 
+        `Código enviado para ${user.email}. Demo: ${user.twoFaCode}`;
+      return;
+    }
+    
+    const code = document.getElementById('loginTfaCode').value.trim();
+    if (code !== user.twoFaCode) {
+      errEl.textContent = 'Código de verificação inválido.';
+      errEl.classList.add('show');
+      return;
+    }
+  }
+  
+  window.loginUser(user);
+};
+
+// =============================================
+// FINALIZAR LOGIN
+// =============================================
+window.loginUser = function(user) {
+  setCurrentUser(user);
+  localStorage.setItem('bc26_session', user.id);
   
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appLayout').classList.add('show');
   
   const navAdmin = document.getElementById('navAdmin');
-  if (navAdmin) navAdmin.style.display = 'flex';
+  if (navAdmin) {
+    navAdmin.style.display = user.isAdmin ? 'flex' : 'none';
+  }
   
   if (window.updateSidebar) window.updateSidebar();
-  switchTab('admin');
-  showToast(`Bem-vindo, Administrador! ⚽`, 'green');
-  
-  return;
-}
+  switchTab('games');
+  showToast(`Bem-vindo, ${user.profileName}! ⚽`, 'green');
+};
 
 // =============================================
-// LOGIN NORMAL - dentro do handleLogin
+// LOGOUT
 // =============================================
-// LOGIN NORMAL
-const users = await loadUsers(); // ✅ ADICIONAR AWAIT
-const user = users.find(
-  u => u.profileName.toLowerCase() === name.toLowerCase() &&
-      u.passwordPlayerId === player.id
-);
+window.logout = function() {
+  setCurrentUser(null);
+  localStorage.removeItem('bc26_session');
+  document.getElementById('appLayout').classList.remove('show');
+  document.getElementById('authScreen').style.display = '';
+  
+  document.getElementById('loginName').value = '';
+  document.getElementById('loginPlayerSearch').value = '';
+  selPlayerLogin = null;
+  document.getElementById('loginSelectedPlayer').classList.remove('show');
+  document.getElementById('tfa-login-section').style.display = 'none';
+  document.getElementById('loginTfaCode').value = '';
+  document.getElementById('regName').value = '';
+  document.getElementById('regPlayerSearch').value = '';
+  selPlayerReg = null;
+  document.getElementById('regSelectedPlayer').classList.remove('show');
+  
+  showToast('Você saiu da sua conta', 'blue');
+};
 
 // =============================================
 // RECUPERAÇÃO DE SENHA
 // =============================================
-export async function requestPasswordReset() {
+window.requestPasswordReset = async function() {
   const profileName = document.getElementById('resetName')?.value.trim();
   if (!profileName) {
     showToast('Digite seu nome de perfil', 'red');
     return;
   }
 
-  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
+  const users = await loadUsers();
   const user = users.find(u => u.profileName.toLowerCase() === profileName.toLowerCase());
   
   if (!user) {
@@ -315,7 +385,7 @@ export async function requestPasswordReset() {
   user.passwordResetPending = true;
   user.tempPassword = newPasswordPlayer;
   
-  await saveUsers(users); // ✅ ADICIONAR AWAIT
+  await saveUsers(users);
   
   const team = TEAMS[newPasswordPlayer.team];
   const tempPasswordInfo = {
@@ -345,18 +415,18 @@ export async function requestPasswordReset() {
   }
   
   closeModal('modalResetPassword');
-}
+};
 
 // =============================================
 // FUNÇÕES DE ADMIN
 // =============================================
-export async function adminRemoveUser(userId) {
+window.adminRemoveUser = async function(userId) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
   }
   
-  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
+  const users = await loadUsers();
   const filteredUsers = users.filter(u => u.id !== userId);
   
   if (filteredUsers.length === users.length) {
@@ -364,19 +434,63 @@ export async function adminRemoveUser(userId) {
     return false;
   }
   
-  await saveUsers(filteredUsers); // ✅ ADICIONAR AWAIT
+  await saveUsers(filteredUsers);
   showToast('Usuário removido com sucesso!', 'green');
   if (window.renderAdminPanel) window.renderAdminPanel();
   return true;
-}
+};
 
-export async function adminEditUserPoints(userId, newPoints) {
+window.adminResetUserPassword = async function(userId) {
+  if (!currentUser?.isAdmin) {
+    showToast('Acesso negado', 'red');
+    return null;
+  }
+  
+  const users = await loadUsers();
+  const user = users.find(u => u.id === userId);
+  
+  if (!user) {
+    showToast('Usuário não encontrado', 'red');
+    return null;
+  }
+  
+  const newPasswordPlayer = generateRandomPlayer();
+  user.passwordBackup = user.passwordPlayerId;
+  user.passwordPlayerId = newPasswordPlayer.id;
+  user.passwordResetPending = true;
+  user.tempPassword = newPasswordPlayer;
+  user.resetByAdmin = true;
+  
+  await saveUsers(users);
+  
+  const team = TEAMS[newPasswordPlayer.team];
+  const tempPasswordInfo = {
+    name: newPasswordPlayer.name,
+    team: team?.name || newPasswordPlayer.team
+  };
+
+  if (user.email) {
+    const emailSent = await sendPasswordResetEmail(user.email, user.profileName, tempPasswordInfo);
+    if (emailSent) {
+      showToast(`Senha temporária enviada para ${user.email}!`, 'green');
+    } else {
+      alert(`Senha temporária para ${user.profileName}: ${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
+    }
+  } else {
+    alert(`Senha temporária para ${user.profileName}:\n\n${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
+  }
+  
+  if (window.renderAdminPanel) window.renderAdminPanel();
+  return newPasswordPlayer;
+};
+
+window.adminEditUserPoints = async function(userId, newPoints) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
   }
   
-  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
+  const users = await loadUsers();
   const user = users.find(u => u.id === userId);
   
   if (!user) {
@@ -387,22 +501,22 @@ export async function adminEditUserPoints(userId, newPoints) {
   if (!user.adminOverrides) user.adminOverrides = {};
   user.adminOverrides.manualPoints = newPoints;
   
-  await saveUsers(users); // ✅ ADICIONAR AWAIT
+  await saveUsers(users);
   showToast(`Pontos de ${user.profileName} alterados para ${newPoints}!`, 'green');
   
   if (window.renderRanking) window.renderRanking();
   if (window.renderAdminPanel) window.renderAdminPanel();
   
   return true;
-}
+};
 
-export async function adminEditUserCraques(userId, newCraques) {
+window.adminEditUserCraques = async function(userId, newCraques) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
   }
   
-  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
+  const users = await loadUsers();
   const user = users.find(u => u.id === userId);
   
   if (!user) {
@@ -413,14 +527,14 @@ export async function adminEditUserCraques(userId, newCraques) {
   if (!user.adminOverrides) user.adminOverrides = {};
   user.adminOverrides.manualCraques = newCraques;
   
-  await saveUsers(users); // ✅ ADICIONAR AWAIT
+  await saveUsers(users);
   showToast(`Craques de ${user.profileName} alterados para ${newCraques}!`, 'green');
   
   if (window.renderRanking) window.renderRanking();
   if (window.renderAdminPanel) window.renderAdminPanel();
   
   return true;
-}
+};
 
 // =============================================
 // INICIALIZAÇÃO
@@ -431,17 +545,9 @@ function initAuth() {
   initPlayerSearch('regPlayerSearch', 'regPlayerResults');
 }
 
-// Registrar funções no window
-window.switchAuthTab = switchAuthTab;
-window.handleLogin = handleLogin;
-window.handleRegister = handleRegister;
-window.toggleSecureAuth = toggleSecureAuth;
-window.clearPlayerSel = clearPlayerSel;
-window.logout = logout;
-window.loginUser = loginUser;
-window.requestPasswordReset = requestPasswordReset;
 window.openResetPasswordModal = () => openModal('modalResetPassword');
-
 
 // Inicializar
 initAuth();
+
+console.log('✅ auth.js carregado com sucesso!');
