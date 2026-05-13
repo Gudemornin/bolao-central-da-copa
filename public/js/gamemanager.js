@@ -15,6 +15,7 @@ import {
   setGamesState
 } from './state.js';
 import { renderBets } from './bets.js';
+import { syncGamesWithAPI } from './sync.js';
 
 // Função para garantir que GAMES_STATE é um array
 async function ensureGamesState() {
