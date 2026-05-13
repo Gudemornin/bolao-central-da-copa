@@ -92,9 +92,7 @@ export async function getUserPoints(userId) {
 // renderRanking também precisa ser assíncrona
 export async function renderRanking() {
   const users = await loadUsers(); // ← AWAIT
-  console.log('📊 renderRanking: Usuários carregados:', users.length);
   const visibleUsers = users.filter(u => u.profileName !== 'eVagabundoTaLa11223');
-  console.log('👥 Usuários visíveis no ranking:', visibleUsers.length);
 
   // Mapear stats para cada usuário (Promise.all para aguardar todos)
   const rows = await Promise.all(
@@ -138,5 +136,3 @@ export async function renderRanking() {
   
   updateSidebar();
 }
-
-window.renderRanking = renderRanking;

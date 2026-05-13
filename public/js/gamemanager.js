@@ -20,13 +20,12 @@ import { syncGamesWithAPI } from './sync.js';
 // Função para garantir que GAMES_STATE é um array
 async function ensureGamesState() {
   let games = GAMES_STATE;
-  console.log('🎮 ensureGamesState: GAMES_STATE =', games?.length || 0);
-  if (!games || !Array.isArray(games) || games.length === 0) {
+  if (!games || !Array.isArray(games)) {
     games = await loadGames();
-    console.log('📥 Jogos carregados via loadGames:', games?.length || 0);
-    setGamesState(games || []);
+    setGamesState(games);
   }
-  return games || [];
+  return games;
+
 }
 
 export function getBadge(bet, game) {
@@ -76,8 +75,6 @@ export async function renderGames() {
   
   await renderGameList();
 }
-
-window.renderGames = renderGames;
 
 export async function selectDate(d) {
   setCurrentDate(d);
