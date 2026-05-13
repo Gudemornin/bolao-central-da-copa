@@ -438,3 +438,40 @@
     white-space: nowrap;
   }
 }
+
+.mobile-bottom-nav {
+  display: flex !important;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--navy-2);
+  border-top: 2px solid var(--border);
+  padding: 8px 8px;
+  gap: 4px;
+  overflow-x: auto;  /* Permite rolagem horizontal */
+  overflow-y: hidden;
+  z-index: 100;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start; /* Muda de space-around para flex-start */
+  scrollbar-width: thin;
+}
+
+.mobile-bottom-nav .nav-item {
+  flex-shrink: 0;  /* Evita que os itens encolham */
+  min-width: 65px;
+}
+
+/* Esconder scrollbar mas manter funcionalidade */
+.mobile-bottom-nav::-webkit-scrollbar {
+  height: 3px;
+}
+
+.mobile-bottom-nav::-webkit-scrollbar-track {
+  background: var(--navy-3);
+}
+
+.mobile-bottom-nav::-webkit-scrollbar-thumb {
+  background: var(--blue);
+  border-radius: 3px;
+}

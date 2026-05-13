@@ -139,8 +139,6 @@
   <button type="button" onclick="openResetPasswordModal()" style="background:none;border:none;color:var(--blue-l);cursor:pointer;font-size:12px;">
     🔑 Esqueci minha senha
   </button>
-</div>
-    </div>
 
     <!-- REGISTER FORM -->
     <div id="registerForm" style="display:none;">
@@ -179,7 +177,7 @@
 </div>
 
 
-<<!-- MENU INFERIOR (SOMENTE MOBILE) -->
+<!-- MENU INFERIOR (SOMENTE MOBILE) -->
 <div class="mobile-bottom-nav" id="mobileBottomNav">
   <div class="nav-item" data-tab="games" onclick="switchTab('games')">
     <span class="nav-tab-logo">🏟️</span>
@@ -209,6 +207,11 @@
     <span class="nav-tab-logo">ℹ️</span>
     <span>Info</span>
   </div>
+  <!-- ADICIONAR PERFIL AQUI -->
+  <div class="nav-item" data-tab="profile" onclick="switchTab('profile')">
+    <span class="nav-tab-logo">👤</span>
+    <span>Perfil</span>
+  </div>
   <div class="nav-item" data-tab="admin" id="mobileNavAdmin" style="display:none;" onclick="switchTab('admin')">
     <span class="nav-tab-logo">⚙️</span>
     <span>Admin</span>
@@ -218,6 +221,7 @@
     <span>Sair</span>
   </div>
 </div>
+
 
 <!-- ═══════════════════════════════════════════════
      APP LAYOUT
