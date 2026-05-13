@@ -24,11 +24,32 @@ async function ensureGamesState() {
     setGamesState(games);
   }
   return games;
+
 }
 
-function getUniqueDates(games) {
-  if (!games || !Array.isArray(games)) return [];
-  return [...new Set(games.map(g => g.date))].sort();
+export function getBadge(bet, game) {
+  if (!game.result) return { cls: 'rb-loss', txt: 'Aguardando' };
+  const r = game.result;
+  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) {
+    return { cls: 'rb-exact', txt: 'Placar Exato' };
+  }
+  const betRes = sign(bet.homeScore - bet.awayScore);
+  const realRes = sign(r.homeScore - r.awayScore);
+  if (betRes === realRes) {
+    return { cls: 'rb-win', txt: 'Resultado Certo' };
+  }
+  return { cls: 'rb-loss', txt: 'Errou' };
+}
+
+export function isGameLocked(game) {
+  const now = new Date();
+  const gameStart = new Date(game.date + 'T' + game.time + ':00');
+  return now >= gameStart || game.status === 'completed';
+}
+
+function getUniqueDates() {
+  if (!GAMES_STATE || !Array.isArray(GAMES_STATE)) return [];
+  return [...new Set(GAMES_STATE.map(g => g.date))].sort();
 }
 
 export async function renderGames() {
