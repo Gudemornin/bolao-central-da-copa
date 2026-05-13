@@ -1,12 +1,12 @@
 /* =============================================
-   MOBILE.CSS - COMPLETO
+   MOBILE.CSS - SEM TOP BAR
    Bolão da Central 2026
    ============================================= */
 
 /* BREAKPOINT PRINCIPAL: 768px */
 @media (max-width: 768px) {
   
-  /* ========== SIDEBAR (MENU LATERAL) ========== */
+  /* ========== SIDEBAR (MENU LATERAL) - OCULTO ========== */
   .sidebar {
     transform: translateX(-100%);
     transition: transform 0.3s ease;
@@ -20,125 +20,64 @@
     transform: translateX(0);
   }
   
-  .sidebar-overlay {
-    display: none;
+  /* ========== MENU INFERIOR (NAVEGAÇÃO MOBILE) ========== */
+  .mobile-bottom-nav {
+    display: flex !important;
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
     bottom: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 999;
-  }
-  
-  .sidebar-overlay.show {
-    display: block;
-  }
-  
-  /* ========== TOP BAR (MENU HAMBÚRGUER) ========== */
-  .mobile-top-bar {
-    display: flex;
-    position: fixed;
-    top: 0;
     left: 0;
     right: 0;
-    height: 56px;
     background: var(--navy-2);
-    border-bottom: 1px solid var(--border);
-    align-items: center;
-    padding: 0 16px;
-    gap: 12px;
+    border-top: 2px solid var(--border);
+    padding: 8px 8px;
+    gap: 4px;
+    overflow-x: auto;
     z-index: 100;
+    -webkit-overflow-scrolling: touch;
+    justify-content: space-around;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
   }
   
-  .hamburger {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text);
-    font-size: 24px;
-    padding: 8px;
+  .mobile-bottom-nav .nav-item {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    min-width: 65px;
+    padding: 8px 4px;
+    margin: 0;
+    border-radius: 8px;
+    font-size: 11px;
+    text-align: center;
+    color: var(--text-d);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
   }
   
-  .mobile-logo-text {
-    font-family: 'Anton', sans-serif;
-    font-size: 16px;
-    color: var(--gold);
+  .mobile-bottom-nav .nav-item .nav-tab-logo {
+    font-size: 22px;
+    margin-bottom: 4px;
   }
   
-  /* ========== MENU INFERIOR (NAVEGAÇÃO MOBILE) ========== */
-.mobile-bottom-nav {
-  display: flex !important;  /* FORÇAR EXIBIÇÃO */
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: var(--navy-2);
-  border-top: 2px solid var(--border);
-  padding: 8px 8px;
-  gap: 4px;
-  overflow-x: auto;
-  z-index: 100;
-  -webkit-overflow-scrolling: touch;
-  justify-content: space-around;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
-}
-
-.mobile-bottom-nav .nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 65px;
-  padding: 8px 4px;
-  margin: 0;
-  border-radius: 8px;
-  font-size: 11px;
-  text-align: center;
-  color: var(--text-d);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: transparent;
-}
-
-.mobile-bottom-nav .nav-item .nav-tab-logo {
-  font-size: 22px;
-  margin-bottom: 4px;
-}
-
-.mobile-bottom-nav .nav-item span:last-child {
-  font-size: 10px;
-  font-weight: 500;
-}
-
-.mobile-bottom-nav .nav-item.active {
-  background: rgba(27, 79, 216, 0.2);
-  color: var(--blue-l);
-}
-
-.mobile-bottom-nav .nav-item:active {
-  transform: scale(0.95);
-}
-
-  /* Esconder menu inferior no desktop */
-  @media (min-width: 769px) {
-  .mobile-top-bar {
-    display: none !important;
+  .mobile-bottom-nav .nav-item span:last-child {
+    font-size: 10px;
+    font-weight: 500;
   }
   
-  /* Só esconde o menu inferior em desktop se quiser */
-  .mobile-bottom-nav {
-    display: flex !important; /* Mantém visível ou troque para none */
+  .mobile-bottom-nav .nav-item.active {
+    background: rgba(27, 79, 216, 0.2);
+    color: var(--blue-l);
   }
-}
+  
+  .mobile-bottom-nav .nav-item:active {
+    transform: scale(0.95);
+  }
   
   /* ========== CONTEÚDO PRINCIPAL ========== */
   .main-content {
     margin-left: 0 !important;
-    padding: 72px 12px 70px 12px !important;
+    padding: 16px 12px 70px 12px !important;
     width: 100%;
     overflow-x: hidden;
   }
@@ -446,19 +385,15 @@
 }
 
 /* =============================================
-   DESKTOP (esconder elementos mobile)
+   DESKTOP (esconder menu inferior)
    ============================================= */
 @media (min-width: 769px) {
-  .mobile-top-bar {
-    display: none !important;
-  }
-  
   .mobile-bottom-nav {
     display: none !important;
   }
   
-  .sidebar-overlay {
-    display: none !important;
+  .sidebar {
+    transform: translateX(0) !important;
   }
 }
 
