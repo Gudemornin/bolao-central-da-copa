@@ -1,12 +1,10 @@
-import { loadGames } from './storage.js'
-
 export let currentUser = null
 export let currentTab = 'games'
 export let currentDate = null
 export let editingGameId = null
 export let editingPlayerSel = null
 
-export let GAMES_STATE = loadGames()
+export let GAMES_STATE = []
 
 // setters
 export function setCurrentUser(user) {

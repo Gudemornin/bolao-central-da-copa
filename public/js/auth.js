@@ -267,7 +267,7 @@ export async function handleLogin () {
       await saveUsers(users);
     }
     
-    window.setCurrentUser(adminUser);
+    setCurrentUser(adminUser);
     localStorage.setItem('bc26_session', adminUser.id);
     
     document.getElementById('authScreen').style.display = 'none';
@@ -693,6 +693,7 @@ window.toggleSecureAuth = toggleSecureAuth;
 window.clearPlayerSel = clearPlayerSel;
 window.logout = logout;
 window.loginUser = loginUser;
+window.setCurrentUser = setCurrentUser;
 window.requestPasswordReset = requestPasswordReset;
 window.openResetPasswordModal = () => openModal('modalResetPassword');
 window.handleSetNewPassword = handleSetNewPassword;

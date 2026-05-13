@@ -1,4 +1,7 @@
 // sync.js – substitua a função syncGamesWithAPI
+import { TEAMS } from './data/teams.js';
+import { loadGames, saveGames } from './storage.js';
+import { setGamesState } from './state.js';
 
 export async function syncGamesWithAPI() {
 console.log('🔄 Sincronizando jogos com a API...');

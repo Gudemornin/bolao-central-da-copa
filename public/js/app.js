@@ -1,7 +1,7 @@
 // app.js
 import { loginUser } from './auth.js';  // ← agora funciona porque exportamos
-import { loadUsers } from './storage.js';
-import { currentUser, setCurrentUser } from './state.js';
+import { loadUsers, loadGames } from './storage.js';
+import { currentUser, setCurrentUser, setGamesState } from './state.js';
 import './admin.js';
 import './gamemanager.js';
 import './ranking.js';
@@ -35,6 +35,17 @@ function updateMobileMenu() {
 
 async function init() {
   initModalClosers();
+  
+  // Carregar jogos
+  try {
+    const games = await loadGames();
+    setGamesState(games || []);
+    console.log('✅ Jogos carregados:', games?.length || 0);
+  } catch (error) {
+    console.error('❌ Erro ao carregar jogos:', error);
+    setGamesState([]);
+  }
+  
   const sid = localStorage.getItem('bc26_session');
   console.log('🔍 Sessão encontrada:', sid);
   
