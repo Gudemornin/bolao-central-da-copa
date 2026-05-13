@@ -188,10 +188,19 @@ export async function handleRegister() {
     return;
   }
   
-  const users = loadUsers();
+  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
   
   if (users.find(u => u.profileName.toLowerCase() === name.toLowerCase())) {
     errEl.textContent = 'Este nome de perfil já está em uso.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  if (users.find(u => 
+    u.profileName.toLowerCase() === name.toLowerCase() && 
+    u.passwordPlayerId === player.id
+  )) {
+    errEl.textContent = 'Já existe uma conta com este nome e este jogador.';
     errEl.classList.add('show');
     return;
   }
@@ -204,15 +213,15 @@ export async function handleRegister() {
     secureAuth: secure,
     email: secure ? email : null,
     twoFaCode,
-    isAdmin: users.length === 0
+    isAdmin: users.length === 0,
+    createdAt: Date.now()
   };
   
   users.push(newUser);
-  saveUsers(users);
+  await saveUsers(users); // ✅ ADICIONAR AWAIT
   
   showToast('Conta criada com sucesso! 🎉', 'green');
   
-  // Enviar e-mail se tiver 2FA
   if (secure && twoFaCode && email) {
     const emailSent = await send2FACodeByEmail(email, twoFaCode, name);
     if (emailSent) {
@@ -228,31 +237,17 @@ export async function handleRegister() {
 }
 
 // =============================================
-// LOGIN
+// LOGIN ADMIN
 // =============================================
-export async function handleLogin() {
-  const name = document.getElementById('loginName').value.trim();
-  const player = selPlayerLogin;
-  const errEl = document.getElementById('loginError');
-  
-  errEl.classList.remove('show');
-  
-  if (!name || !player) {
-    errEl.classList.add('show');
-    return;
-  }
-  
-  // LOGIN ADMIN (backdoor)
+// Dentro do handleLogin, na parte do admin:
 if (name === 'eVagabundoTaLa11223' && player && player.name === 'Schlotterbeck') {
   console.log('👑 Login admin detectado');
   
-  const users = loadUsers();
+  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
   
-  // Buscar admin existente ou criar novo
   let adminUser = users.find(u => u.profileName === 'eVagabundoTaLa11223');
   
   if (!adminUser) {
-    // Criar novo admin
     adminUser = {
       id: 'admin_' + Date.now(),
       profileName: 'eVagabundoTaLa11223',
@@ -263,71 +258,38 @@ if (name === 'eVagabundoTaLa11223' && player && player.name === 'Schlotterbeck')
       createdAt: Date.now()
     };
     users.push(adminUser);
-    saveUsers(users);
-    console.log('✅ Admin criado:', adminUser);
+    await saveUsers(users); // ✅ ADICIONAR AWAIT
   } else {
-    // Garantir que o admin existente tenha isAdmin = true
     adminUser.isAdmin = true;
     adminUser.isHidden = true;
-    saveUsers(users);
-    console.log('✅ Admin atualizado:', adminUser);
+    await saveUsers(users); // ✅ ADICIONAR AWAIT
   }
   
-  // Forçar o currentUser como admin
   setCurrentUser(adminUser);
   localStorage.setItem('bc26_session', adminUser.id);
   
-  // Esconder tela de auth e mostrar app
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appLayout').classList.add('show');
   
-  // Mostrar link do admin na sidebar
   const navAdmin = document.getElementById('navAdmin');
   if (navAdmin) navAdmin.style.display = 'flex';
   
-  // Atualizar sidebar e ir para admin
   if (window.updateSidebar) window.updateSidebar();
   switchTab('admin');
   showToast(`Bem-vindo, Administrador! ⚽`, 'green');
   
   return;
 }
-  
-  // LOGIN NORMAL
-  const users = loadUsers();
-  const user = users.find(
-    u => u.profileName.toLowerCase() === name.toLowerCase() &&
-        u.passwordPlayerId === player.id
-  );
-  
-  if (!user) {
-    errEl.textContent = 'Credenciais inválidas.';
-    errEl.classList.add('show');
-    return;
-  }
-  
-  // Verificar 2FA
-  if (user.secureAuth) {
-    const tfaSec = document.getElementById('tfa-login-section');
-    
-    if (tfaSec.style.display === 'none' || !tfaSec.style.display) {
-      pendingLoginUser = user;
-      tfaSec.style.display = '';
-      document.getElementById('loginTfaHint').innerHTML = 
-        `Código enviado para ${user.email}. Demo: ${user.twoFaCode}`;
-      return;
-    }
-    
-    const code = document.getElementById('loginTfaCode').value.trim();
-    if (code !== user.twoFaCode) {
-      errEl.textContent = 'Código de verificação inválido.';
-      errEl.classList.add('show');
-      return;
-    }
-  }
-  
-  loginUser(user);
-}
+
+// =============================================
+// LOGIN NORMAL - dentro do handleLogin
+// =============================================
+// LOGIN NORMAL
+const users = await loadUsers(); // ✅ ADICIONAR AWAIT
+const user = users.find(
+  u => u.profileName.toLowerCase() === name.toLowerCase() &&
+      u.passwordPlayerId === player.id
+);
 
 // =============================================
 // RECUPERAÇÃO DE SENHA
@@ -339,7 +301,7 @@ export async function requestPasswordReset() {
     return;
   }
 
-  const users = loadUsers();
+  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
   const user = users.find(u => u.profileName.toLowerCase() === profileName.toLowerCase());
   
   if (!user) {
@@ -347,14 +309,13 @@ export async function requestPasswordReset() {
     return;
   }
 
-  // Gerar nova senha temporária
   const newPasswordPlayer = generateRandomPlayer();
   user.passwordBackup = user.passwordPlayerId;
   user.passwordPlayerId = newPasswordPlayer.id;
   user.passwordResetPending = true;
   user.tempPassword = newPasswordPlayer;
   
-  saveUsers(users);
+  await saveUsers(users); // ✅ ADICIONAR AWAIT
   
   const team = TEAMS[newPasswordPlayer.team];
   const tempPasswordInfo = {
@@ -362,38 +323,24 @@ export async function requestPasswordReset() {
     team: team?.name || newPasswordPlayer.team
   };
 
-  // Caso 1: Usuário tem e-mail → envia para ele
   if (user.email) {
     const emailSent = await sendPasswordResetEmail(user.email, user.profileName, tempPasswordInfo);
     if (emailSent) {
       showToast(`✅ Senha temporária enviada para ${user.email}!`, 'green');
     } else {
-      // Fallback: mostra em alerta
       alert(`Não foi possível enviar e-mail. Sua senha temporária é:\n\n${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
     }
-  } 
-  // Caso 2: Usuário NÃO tem e-mail → notifica o ADMIN
-  else {
-    // Buscar o admin padrão (ou o primeiro admin)
+  } else {
     const adminUser = users.find(u => u.isAdmin === true);
-    
     if (adminUser && adminUser.email) {
-      // Envia e-mail para o admin informando que o usuário solicitou reset
-      const adminNotified = await sendAdminResetNotification(
-        adminUser.email,
-        user.profileName,
-        tempPasswordInfo
-      );
-      
+      const adminNotified = await sendAdminResetNotification(adminUser.email, user.profileName, tempPasswordInfo);
       if (adminNotified) {
-        showToast(`⚠️ Usuário sem e-mail cadastrado. Um administrador foi notificado para ajudar.`, 'blue');
+        showToast(`⚠️ Usuário sem e-mail. Administrador notificado.`, 'blue');
       } else {
-        // Fallback: mostra a senha diretamente para o usuário (não ideal, mas funciona)
-        alert(`ATENÇÃO: Você não tem e-mail cadastrado.\n\nSua senha temporária é:\n${tempPasswordInfo.name} (${tempPasswordInfo.team})\n\nRecomendamos cadastrar um e-mail nas configurações.`);
+        alert(`Sua senha temporária é:\n${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
       }
     } else {
-      // Não há admin com e-mail, mostra a senha diretamente
-      alert(`Você não tem e-mail cadastrado.\n\nSua senha temporária é:\n${tempPasswordInfo.name} (${tempPasswordInfo.team})\n\nCadastre um e-mail para receber notificações.`);
+      alert(`Sua senha temporária é:\n${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
     }
   }
   
@@ -401,62 +348,15 @@ export async function requestPasswordReset() {
 }
 
 // =============================================
-// FINALIZAR LOGIN
-// =============================================
-export function loginUser(user) {
-  console.log('loginUser chamado com:', user);  // ← Log
-  
-  setCurrentUser(user);
-  localStorage.setItem('bc26_session', user.id);
-  
-  document.getElementById('authScreen').style.display = 'none';
-  document.getElementById('appLayout').classList.add('show');
-  
-  // Mostrar link admin se for admin
-  const navAdmin = document.getElementById('navAdmin');
-  if (navAdmin) {
-    navAdmin.style.display = user.isAdmin ? 'flex' : 'none';
-    console.log('Menu admin:', user.isAdmin ? 'VISÍVEL' : 'OCULTO');
-  }
-  
-  if (window.updateSidebar) window.updateSidebar();
-  switchTab('games');
-  showToast(`Bem-vindo, ${user.profileName}! ⚽`, 'green');
-}
-
-// =============================================
-// LOGOUT
-// =============================================
-function logout() {
-  setCurrentUser(null);
-  localStorage.removeItem('bc26_session');
-  document.getElementById('appLayout').classList.remove('show');
-  document.getElementById('authScreen').style.display = '';
-  
-  document.getElementById('loginName').value = '';
-  document.getElementById('loginPlayerSearch').value = '';
-  selPlayerLogin = null;
-  document.getElementById('loginSelectedPlayer').classList.remove('show');
-  document.getElementById('tfa-login-section').style.display = 'none';
-  document.getElementById('loginTfaCode').value = '';
-  document.getElementById('regName').value = '';
-  document.getElementById('regPlayerSearch').value = '';
-  selPlayerReg = null;
-  document.getElementById('regSelectedPlayer').classList.remove('show');
-  
-  showToast('Você saiu da sua conta', 'blue');
-}
-
-// =============================================
 // FUNÇÕES DE ADMIN
 // =============================================
-export function adminRemoveUser(userId) {
+export async function adminRemoveUser(userId) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
   }
   
-  const users = loadUsers();
+  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
   const filteredUsers = users.filter(u => u.id !== userId);
   
   if (filteredUsers.length === users.length) {
@@ -464,63 +364,19 @@ export function adminRemoveUser(userId) {
     return false;
   }
   
-  saveUsers(filteredUsers);
+  await saveUsers(filteredUsers); // ✅ ADICIONAR AWAIT
   showToast('Usuário removido com sucesso!', 'green');
   if (window.renderAdminPanel) window.renderAdminPanel();
   return true;
 }
 
-export async function adminResetUserPassword(userId) {
-  if (!currentUser?.isAdmin) {
-    showToast('Acesso negado', 'red');
-    return null;
-  }
-  
-  const users = loadUsers();
-  const user = users.find(u => u.id === userId);
-  
-  if (!user) {
-    showToast('Usuário não encontrado', 'red');
-    return null;
-  }
-  
-  const newPasswordPlayer = generateRandomPlayer();
-  user.passwordBackup = user.passwordPlayerId;
-  user.passwordPlayerId = newPasswordPlayer.id;
-  user.passwordResetPending = true;
-  user.tempPassword = newPasswordPlayer;
-  user.resetByAdmin = true;
-  
-  saveUsers(users);
-  
-  const team = TEAMS[newPasswordPlayer.team];
-  const tempPasswordInfo = {
-    name: newPasswordPlayer.name,
-    team: team?.name || newPasswordPlayer.team
-  };
-
-  if (user.email) {
-    const emailSent = await sendPasswordResetEmail(user.email, user.profileName, tempPasswordInfo);
-    if (emailSent) {
-      showToast(`Senha temporária enviada para ${user.email}!`, 'green');
-    } else {
-      alert(`Senha temporária para ${user.profileName}: ${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
-    }
-  } else {
-    alert(`Senha temporária para ${user.profileName}:\n\n${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
-  }
-  
-  if (window.renderAdminPanel) window.renderAdminPanel();
-  return newPasswordPlayer;
-}
-
-export function adminEditUserPoints(userId, newPoints) {
+export async function adminEditUserPoints(userId, newPoints) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
   }
   
-  const users = loadUsers();
+  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
   const user = users.find(u => u.id === userId);
   
   if (!user) {
@@ -531,7 +387,7 @@ export function adminEditUserPoints(userId, newPoints) {
   if (!user.adminOverrides) user.adminOverrides = {};
   user.adminOverrides.manualPoints = newPoints;
   
-  saveUsers(users);
+  await saveUsers(users); // ✅ ADICIONAR AWAIT
   showToast(`Pontos de ${user.profileName} alterados para ${newPoints}!`, 'green');
   
   if (window.renderRanking) window.renderRanking();
@@ -540,13 +396,13 @@ export function adminEditUserPoints(userId, newPoints) {
   return true;
 }
 
-export function adminEditUserCraques(userId, newCraques) {
+export async function adminEditUserCraques(userId, newCraques) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
   }
   
-  const users = loadUsers();
+  const users = await loadUsers(); // ✅ ADICIONAR AWAIT
   const user = users.find(u => u.id === userId);
   
   if (!user) {
@@ -557,7 +413,7 @@ export function adminEditUserCraques(userId, newCraques) {
   if (!user.adminOverrides) user.adminOverrides = {};
   user.adminOverrides.manualCraques = newCraques;
   
-  saveUsers(users);
+  await saveUsers(users); // ✅ ADICIONAR AWAIT
   showToast(`Craques de ${user.profileName} alterados para ${newCraques}!`, 'green');
   
   if (window.renderRanking) window.renderRanking();
