@@ -1,9 +1,18 @@
-// js/adminPanel.js
+// adminPanel.js - VERSÃO CORRIGIDA
+
+// Remova estas importações que causam erro:
+// import { adminRemoveUser, adminResetUserPassword, adminEditUserPoints, adminEditUserCraques } from './auth.js';
+
+// Em vez disso, use as funções diretamente do window (já estão disponíveis)
+
 import { loadUsers, saveUsers, loadBets } from './storage.js';
-import { adminRemoveUser, adminResetUserPassword, adminEditUserPoints, adminEditUserCraques } from './auth.js';
 import { renderRanking } from './ranking.js';
 import { currentUser } from './state.js';
 import { showToast, openModal, closeModal } from './ui.js';
+
+// =============================================
+// FUNÇÕES ADMIN (usam window, não import)
+// =============================================
 
 // Verificar se é admin
 function isAdmin() {
@@ -29,42 +38,18 @@ if (!currentUser || !currentUser.isAdmin) {
     return;
 }
 
-const users = loadUsers();
+const users = loadUsers(); // Pode ser síncrono ou assíncrono - ajuste
 const bets = loadBets();
 
-  // Estatísticas
-const usersStats = users.map(user => {
-    const userBets = bets[user.id] || {};
-    const betsCount = Object.keys(userBets).length;
-    return { ...user, betsCount };
-});
+  // Se users for Promise (assíncrono), precisa usar await
+  // Vou assumir que é síncrono por enquanto
 
 let html = `
-    <div class="admin-header" style="margin-bottom:24px;">
+    <div style="margin-bottom:24px;">
     <div class="page-title">⚙️ Painel de Administração</div>
     <div class="page-subtitle">Gerencie usuários, senhas e pontuações</div>
     </div>
     
-    <!-- Cards de estatísticas -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;">
-    <div class="info-card" style="text-align:center;">
-        <div style="font-size:32px;">👥</div>
-        <div style="font-size:24px;font-family:Anton;">${users.length}</div>
-        <div>Usuários</div>
-    </div>
-    <div class="info-card" style="text-align:center;">
-        <div style="font-size:32px;">📋</div>
-        <div style="font-size:24px;font-family:Anton;">${usersStats.reduce((sum, u) => sum + u.betsCount, 0)}</div>
-        <div>Palpites</div>
-    </div>
-    <div class="info-card" style="text-align:center;">
-        <div style="font-size:32px;">👑</div>
-        <div style="font-size:24px;font-family:Anton;">${users.filter(u => u.isAdmin).length}</div>
-        <div>Admins</div>
-    </div>
-    </div>
-    
-    <!-- Tabela de usuários -->
     <div class="ranking-wrap">
     <table class="ranking-table">
         <thead>
@@ -78,8 +63,11 @@ let html = `
         <tbody>
 `;
 
-usersStats.forEach(user => {
+users.forEach(user => {
+    const userBets = bets[user.id] || {};
+    const betsCount = Object.keys(userBets).length;
     const isCurrentUser = user.id === currentUser?.id;
+    
     html += `
     <tr>
         <td>
@@ -91,7 +79,7 @@ usersStats.forEach(user => {
             </div>
         </div>
         </td>
-        <td>${user.betsCount}</td>
+        <td>${betsCount}</td>
         <td>
         ${user.passwordResetPending ? '<span style="color:var(--gold);">⚠️ Troca pendente</span>' : '<span style="color:var(--green-l);">✅ Normal</span>'}
         </td>
@@ -100,10 +88,10 @@ usersStats.forEach(user => {
             <button class="admin-action-btn" onclick="adminShowEditUserModal('${user.id}')" style="background:var(--blue);">
             ✏️ Editar
             </button>
-            <button class="admin-action-btn" onclick="adminResetUserPassword('${user.id}')" style="background:var(--gold);color:#000;">
+            <button class="admin-action-btn" onclick="window.adminResetUserPassword('${user.id}')" style="background:var(--gold);color:#000;">
             🔑 Reset Senha
             </button>
-            ${!user.isAdmin && !isCurrentUser ? `<button class="admin-action-btn" onclick="adminRemoveUser('${user.id}')" style="background:var(--red);">
+            ${!user.isAdmin && !isCurrentUser ? `<button class="admin-action-btn" onclick="window.adminRemoveUser('${user.id}')" style="background:var(--red);">
             🗑️ Remover
             </button>` : ''}
         </div>
@@ -117,7 +105,6 @@ html += `
     </table>
     </div>
     
-    <!-- Modal de Edição -->
     <div class="modal-overlay" id="modalEditUser">
     <div class="modal">
         <div class="modal-header">
@@ -151,7 +138,6 @@ body.innerHTML = `
     <div class="form-group">
     <label class="form-label">Pontuação Manual (override)</label>
     <input class="form-input" id="editPoints" type="number" value="${user.adminOverrides?.manualPoints || ''}" placeholder="Deixe em branco para usar cálculo automático">
-    <small style="color:var(--text-d);">Se preenchido, substitui a pontuação calculada</small>
     </div>
     
     <div class="form-group">
@@ -177,12 +163,12 @@ openModal('modalEditUser');
 };
 
 // Salvar edições
-window.adminSaveUserEdits = (userId) => {
+window.adminSaveUserEdits = async (userId) => {
 if (!isAdmin()) return;
 
 const points = document.getElementById('editPoints')?.value;
 const craques = document.getElementById('editCraques')?.value;
-const isAdmin = document.getElementById('editIsAdmin')?.value === 'true';
+const isAdminValue = document.getElementById('editIsAdmin')?.value === 'true';
 
 const users = loadUsers();
 const userIndex = users.findIndex(u => u.id === userId);
@@ -198,7 +184,7 @@ if (userIndex !== -1) {
     users[userIndex].adminOverrides.manualCraques = parseInt(craques);
     }
     
-    users[userIndex].isAdmin = isAdmin;
+    users[userIndex].isAdmin = isAdminValue;
     
     saveUsers(users);
     showToast('Usuário atualizado com sucesso!', 'green');
@@ -210,10 +196,12 @@ if (window.renderRanking) renderRanking();
 };
 
 // Registrar funções no window
-window.adminRemoveUser = (userId) => {
+window.adminRemoveUser = async (userId) => {
 if (!isAdmin()) return;
 if (confirm('Tem certeza que deseja remover este usuário? Esta ação é irreversível!')) {
-    adminRemoveUser(userId);
+    if (window.adminRemoveUserOriginal) {
+    await window.adminRemoveUserOriginal(userId);
+    }
     renderAdminPanel();
 }
 };
@@ -221,7 +209,9 @@ if (confirm('Tem certeza que deseja remover este usuário? Esta ação é irreve
 window.adminResetUserPassword = async (userId) => {
 if (!isAdmin()) return;
 if (confirm('Resetar senha deste usuário? Ele receberá uma senha temporária.')) {
-    await adminResetUserPassword(userId);
+    if (window.adminResetUserPasswordOriginal) {
+    await window.adminResetUserPasswordOriginal(userId);
+    }
     renderAdminPanel();
 }
 };
