@@ -536,6 +536,34 @@ window.adminEditUserCraques = async function(userId, newCraques) {
   return true;
 };
 
+export { 
+  loginUser,
+  switchAuthTab,
+  handleLogin,
+  handleRegister,
+  logout,
+  adminRemoveUser,
+  adminResetUserPassword,
+  adminEditUserPoints,
+  adminEditUserCraques,
+  requestPasswordReset
+};
+
+// Registrar funções no window (para onclick do HTML)
+window.switchAuthTab = switchAuthTab;
+window.handleLogin = handleLogin;
+window.handleRegister = handleRegister;
+window.toggleSecureAuth = toggleSecureAuth;
+window.clearPlayerSel = clearPlayerSel;
+window.logout = logout;
+window.loginUser = loginUser;
+window.requestPasswordReset = requestPasswordReset;
+window.openResetPasswordModal = () => openModal('modalResetPassword');
+window.adminRemoveUser = adminRemoveUser;
+window.adminResetUserPassword = adminResetUserPassword;
+window.adminEditUserPoints = adminEditUserPoints;
+window.adminEditUserCraques = adminEditUserCraques;
+
 // =============================================
 // INICIALIZAÇÃO
 // =============================================
@@ -551,3 +579,4 @@ window.openResetPasswordModal = () => openModal('modalResetPassword');
 initAuth();
 
 console.log('✅ auth.js carregado com sucesso!');
+
