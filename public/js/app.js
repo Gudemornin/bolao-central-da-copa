@@ -119,5 +119,3 @@ export function updateMobileActiveTab(tab) {
 
 window.updateMobileMenu = updateMobileMenu;
 window.updateMobileActiveTab = updateMobileActiveTab;
-
-export { updateMobileMenu };
