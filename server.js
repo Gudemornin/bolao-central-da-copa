@@ -11,22 +11,28 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static('public', {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.css')) {
+// Middleware para parsear JSON
+app.use(express.json());
+
+// 1️⃣ PRIMEIRO: Servir arquivos estáticos (CSS, JS, imagens)
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.css')) {
       res.setHeader('Content-Type', 'text/css');
     }
-    if (path.endsWith('.js')) {
+    if (filePath.endsWith('.js')) {
       res.setHeader('Content-Type', 'application/javascript');
     }
   }
 }));
 
-
-
-
+// 2️⃣ SEGUNDO: Rotas da API
 app.get('/api/football', async (req, res) => {
   const { endpoint, team } = req.query;
+  
+  if (!endpoint) {
+    return res.status(400).json({ error: 'Endpoint obrigatório' });
+  }
   
   let url = '';
   switch (endpoint) {
@@ -40,12 +46,10 @@ app.get('/api/football', async (req, res) => {
     case 'topscorers':
       url = 'https://api.football-data.org/v4/competitions/WC/scorers';
       break;
-    // ⭐ NOVO: Buscar jogos da Ligue 1
     case 'ligue1_fixtures':
       url = 'https://api.football-data.org/v4/competitions/FL1/matches';
       if (team) url += `?team=${team}`;
       break;
-    // ⭐ NOVO: Buscar classificação da Ligue 1
     case 'ligue1_standings':
       url = 'https://api.football-data.org/v4/competitions/FL1/standings';
       break;
@@ -65,124 +69,11 @@ app.get('/api/football', async (req, res) => {
   }
 });
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-
-import { Resend } from 'resend';
-
-app.post('/api/send-email', async (req, res) => {
-  const { type, to, name, code, tempPassword, userName } = req.body;
-  
-  if (!to) {
-    return res.status(400).json({ success: false, error: 'Destinatário obrigatório' });
-  }
-  
-  try {
-    // Inicializar Resend com a chave da API
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    
-    let subject = '';
-    let html = '';
-    
-    // Definir o conteúdo do e-mail baseado no tipo
-    if (type === '2fa') {
-      subject = '🔐 Seu código de verificação - Bolão da Central';
-      html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1B4FD8;">Bolão da Central - Copa 2026</h2>
-          <p>Olá <strong>${name}</strong>,</p>
-          <p>Seu código de verificação de dois fatores é:</p>
-          <div style="background: #0E1F3D; padding: 20px; text-align: center; font-size: 32px; font-family: monospace; letter-spacing: 5px; border-radius: 8px;">
-            <strong style="color: #FFD700;">${code}</strong>
-          </div>
-          <p>Este código expira em 10 minutos.</p>
-          <p>Se você não solicitou este código, ignore este e-mail.</p>
-          <hr style="margin: 20px 0;">
-          <p style="color: #666; font-size: 12px;">Bolão da Central - Copa do Mundo 2026</p>
-        </div>
-      `;
-    } 
-    else if (type === 'reset') {
-      subject = '🔑 Redefinição de senha - Bolão da Central';
-      html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1B4FD8;">Bolão da Central - Copa 2026</h2>
-          <p>Olá <strong>${name}</strong>,</p>
-          <p>Foi solicitada a redefinição da sua senha.</p>
-          <p>Sua nova senha temporária é:</p>
-          <div style="background: #0E1F3D; padding: 20px; text-align: center; font-size: 20px; border-radius: 8px;">
-            <strong style="color: #FFD700;">${tempPassword.name} (${tempPassword.team})</strong>
-          </div>
-          <p>Use esta senha para fazer login. Após o login, você deverá escolher uma nova senha.</p>
-          <p>Se você não solicitou esta redefinição, ignore este e-mail ou contate o administrador.</p>
-          <hr style="margin: 20px 0;">
-          <p style="color: #666; font-size: 12px;">Bolão da Central - Copa do Mundo 2026</p>
-        </div>
-      `;
-    }
-    else if (type === 'admin_notification') {
-      subject = '🔔 Solicitação de redefinição de senha - Bolão da Central';
-      html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1B4FD8;">Bolão da Central - Copa 2026</h2>
-          <p>Olá Administrador,</p>
-          <p>O usuário <strong>${userName}</strong> solicitou redefinição de senha, mas <strong>não possui e-mail cadastrado</strong>.</p>
-          <p>A senha temporária gerada foi:</p>
-          <div style="background: #0E1F3D; padding: 20px; text-align: center; font-size: 20px; border-radius: 8px;">
-            <strong style="color: #FFD700;">${tempPassword.name} (${tempPassword.team})</strong>
-          </div>
-          <p>Por favor, entre em contato com o usuário para fornecer esta senha ou solicite que cadastre um e-mail.</p>
-          <p><strong>ID do usuário:</strong> ${userName}</p>
-          <hr style="margin: 20px 0;">
-          <p style="color: #666; font-size: 12px;">Bolão da Central - Copa do Mundo 2026</p>
-        </div>
-      `;
-    }
-    else {
-      // Tipo desconhecido
-      return res.status(400).json({ success: false, error: 'Tipo de e-mail inválido' });
-    }
-    
-    // Enviar o e-mail
-    const { data, error } = await resend.emails.send({
-      from: 'Bolão da Central <noreply@seudominio.com>',
-      to: [to],
-      subject: subject,
-      html: html
-    });
-    
-    if (error) {
-      console.error('Erro Resend:', error);
-      return res.status(500).json({ success: false, error: error.message });
-    }
-    
-    console.log(`✅ E-mail enviado para ${to} (${type})`);
-    res.json({ success: true, data });
-    
-  } catch (error) {
-    console.error('Erro ao enviar e-mail:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get('/api/admin/info', (req, res) => {
-  res.json({
-    username: process.env.ADMIN_USERNAME || 'eVagabundoTaLa11223',
-    playerId: process.env.ADMIN_PASSWORD_PLAYER_ID || 'de04'
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-});
-
+// API para sincronizar jogos
 app.get('/api/sync-games', async (req, res) => {
   const { competition = 'WC' } = req.query;
   
   try {
-    // Buscar todos os jogos da competição
     const response = await fetch(`https://api.football-data.org/v4/competitions/${competition}/matches`, {
       headers: { 'X-Auth-Token': process.env.API_KEY }
     });
@@ -192,7 +83,6 @@ app.get('/api/sync-games', async (req, res) => {
       return res.status(404).json({ error: 'Nenhum jogo encontrado' });
     }
     
-    // Mapear e retornar jogos formatados
     const games = data.matches.map(match => ({
       id: match.id,
       date: match.utcDate.split('T')[0],
@@ -208,4 +98,26 @@ app.get('/api/sync-games', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// API para informações do admin
+app.get('/api/admin/info', (req, res) => {
+  res.json({
+    username: process.env.ADMIN_USERNAME || 'eVagabundoTaLa11223',
+    playerId: process.env.ADMIN_PASSWORD_PLAYER_ID || 'de04'
+  });
+});
+
+// 3️⃣ POR ÚLTIMO: Fallback para SPA
+app.get('*', (req, res) => {
+  // Verificar se não é uma requisição de arquivo
+  if (!req.path.includes('.')) {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    res.status(404).send('Arquivo não encontrado');
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
