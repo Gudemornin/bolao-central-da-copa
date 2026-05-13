@@ -13,7 +13,7 @@ function isAdmin() {
 }
 
 export async function renderAdminPanel() {
-  const container = document.getElementById('adminPanelContent');
+  const container = document.getElementById('adminTabContent');
   if (!container) return;
 
   if (!currentUser || !currentUser.isAdmin) {
