@@ -76,12 +76,25 @@ export function getBadge(bet, game) {
 }
 
 async function renderGameList(gamesState) {
-  const games = gamesState.filter(g => g.date === currentDate);
+  // Filtrar apenas jogos que NÃO estão finalizados E são futuros
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const games = gamesState.filter(g => {
+    // Se já está completo, não mostra
+    if (g.status === 'completed') return false;
+    
+    // Se a data é passada, não mostra (não dá mais para palpitar)
+    const gameDate = new Date(g.date);
+    gameDate.setHours(0, 0, 0, 0);
+    return gameDate >= today;
+  });
+  
   const list = document.getElementById('gamesList');
   if (!list) return;
   
   if (!games.length) {
-    list.innerHTML = '<div class="no-games-msg"><div class="icon">📅</div><p>Sem jogos para esta data.</p></div>';
+    list.innerHTML = '<div class="no-games-msg"><div class="icon">📅</div><p>Sem jogos disponíveis para palpitar.</p><p style="font-size:12px;margin-top:8px;">Os próximos jogos aparecerão aqui quando estiverem próximos.</p></div>';
     return;
   }
   
@@ -97,7 +110,7 @@ async function renderGameList(gamesState) {
     return `<div class="game-card${locked ? ' locked' : ''}" id="gc_${game.id}">
       <div class="game-card-header">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span class="game-badge">Grupo ${game.group}</span>
+          <span class="game-badge">${game.group || 'Ligue 1'}</span>
           <span>⏰ ${game.time} | 📍 ${game.venue}</span>
         </div>
         <div>
@@ -332,6 +345,38 @@ export function clearEditPlayer() {
   setEditingPlayerSel(null);
   document.getElementById('edit_selp').classList.remove('show');
 }
+
+export async function cleanOldGames() {
+  console.log('🧹 Limpando jogos antigos...');
+  
+  const games = await loadGames();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Manter apenas jogos futuros OU já finalizados com resultado
+  const filteredGames = games.filter(game => {
+    const gameDate = new Date(game.date);
+    gameDate.setHours(0, 0, 0, 0);
+    
+    // Manter jogos futuros
+    if (gameDate >= today) return true;
+    
+    // Manter jogos passados que já foram finalizados (para histórico)
+    if (game.status === 'completed' && game.result) return true;
+    
+    // Remover jogos passados sem resultado (nunca aconteceram)
+    return false;
+  });
+  
+  if (filteredGames.length !== games.length) {
+    await saveGames(filteredGames);
+    setGamesState(filteredGames);
+    console.log(`🧹 Removidos ${games.length - filteredGames.length} jogos antigos`);
+  }
+}
+
+// Chamar limpeza ao iniciar
+cleanOldGames();
 
 // Tornar funções globais (necessário para onclick)
 window.saveBet = saveBet;

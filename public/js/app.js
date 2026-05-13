@@ -1,4 +1,5 @@
-import { loginUser } from './auth.js';
+// app.js
+import { loginUser } from './auth.js';  // ← agora funciona porque exportamos
 import { loadUsers } from './storage.js';
 import { currentUser, setCurrentUser } from './state.js';
 import './admin.js';
@@ -19,28 +20,49 @@ export function updateSidebar() {
 
 window.updateSidebar = updateSidebar;
 
+// Função para controlar menu mobile
+function updateMobileMenu() {
+  const mobileAdmin = document.getElementById('mobileNavAdmin');
+  if (mobileAdmin) {
+    mobileAdmin.style.display = currentUser?.isAdmin ? 'flex' : 'none';
+  }
+}
+
 async function init() {
   initModalClosers();
   const sid = localStorage.getItem('bc26_session');
   console.log('🔍 Sessão encontrada:', sid);
   
   if (sid) {
-    const users = await loadUsers();  // ← AWAIT aqui
-    console.log('👥 Usuários carregados:', users);
-    
-    const user = users.find(u => u.id === sid);
-    console.log('👤 Usuário encontrado:', user);
-    
-    if (user) {
-      loginUser(user);
-      return;
+    try {
+      const users = await loadUsers();
+      console.log('👥 Usuários carregados:', users);
+      
+      const user = users.find(u => u.id === sid);
+      console.log('👤 Usuário encontrado:', user);
+      
+      if (user) {
+        loginUser(user);
+        updateMobileMenu();
+        return;
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar usuários:', error);
     }
   }
   document.getElementById('authScreen').style.display = '';
 }
 
-init();
+// Aguardar DOM carregar
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
 window.toggleSidebar = () => {
   document.getElementById('sidebar')?.classList.toggle('open');
   document.getElementById('sidebarOverlay')?.classList.toggle('show');
 };
+
+export { updateMobileMenu };

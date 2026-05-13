@@ -1,4 +1,3 @@
-// js/sync.js - Adicione ao seu projeto
 let lastSyncTime = null;
 
 export async function syncGamesWithAPI() {

@@ -187,6 +187,37 @@
   <span class="mobile-logo-text">⚽ BOLÃO DA CENTRAL</span>
 </div>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<!-- Mobile Bottom Navigation -->
+<div class="mobile-bottom-nav" id="mobileBottomNav">
+  <div class="nav-item" data-tab="games" onclick="switchTab('games')">
+    <span class="nav-tab-logo">🏟️</span>
+    <span>Jogos</span>
+  </div>
+  <div class="nav-item" data-tab="bets" onclick="switchTab('bets')">
+    <span class="nav-tab-logo">📋</span>
+    <span>Palpites</span>
+  </div>
+  <div class="nav-item" data-tab="ranking" onclick="switchTab('ranking')">
+    <span class="nav-tab-logo">🏆</span>
+    <span>Ranking</span>
+  </div>
+  <div class="nav-item" data-tab="worldcup" onclick="switchTab('worldcup')">
+    <span class="nav-tab-logo">🌍</span>
+    <span>Jogos</span>
+  </div>
+  <div class="nav-item" data-tab="standings" onclick="switchTab('standings')">
+    <span class="nav-tab-logo">📊</span>
+    <span>Grupos</span>
+  </div>
+  <div class="nav-item" data-tab="info" onclick="switchTab('info')">
+    <span class="nav-tab-logo">ℹ️</span>
+    <span>Info</span>
+  </div>
+  <div class="nav-item" data-tab="admin" id="mobileNavAdmin" style="display:none;" onclick="switchTab('admin')">
+    <span class="nav-tab-logo">⚙️</span>
+    <span>Admin</span>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════
      APP LAYOUT
