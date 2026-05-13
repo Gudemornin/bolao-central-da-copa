@@ -19,15 +19,17 @@ export function updateSidebar() {
 
 window.updateSidebar = updateSidebar;
 
-function init() {
+async function init() {
   initModalClosers();
   const sid = localStorage.getItem('bc26_session');
-  console.log('Sessão encontrada:', sid);  // ← Adicione este log
+  console.log('🔍 Sessão encontrada:', sid);
   
   if (sid) {
-    const users = loadUsers();
+    const users = await loadUsers();  // ← AWAIT aqui
+    console.log('👥 Usuários carregados:', users);
+    
     const user = users.find(u => u.id === sid);
-    console.log('Usuário encontrado:', user);  // ← Adicione este log
+    console.log('👤 Usuário encontrado:', user);
     
     if (user) {
       loginUser(user);
