@@ -29,13 +29,18 @@ export async function saveUsers(users) {
   
   const validUsers = users.map(u => ({
     id: u.id,
-    profileName: u.profileName || u.email?.split('@')[0] || `user_${u.id.substring(0, 6)}`,
+    profileName: u.profileName || u.profile_name || u.email?.split('@')[0] || `user_${u.id.substring(0, 6)}`,
     passwordPlayerId: u.passwordPlayerId,
     email: u.email || null,
     isAdmin: u.isAdmin || false,
     isHidden: u.isHidden || false,
     secureAuth: u.secureAuth || false,
     twoFaCode: u.twoFaCode || null,
+    passwordBackup: u.passwordBackup || null,
+    passwordResetPending: u.passwordResetPending || false,
+    tempPassword: u.tempPassword || null,
+    resetByAdmin: u.resetByAdmin || false,
+    adminOverrides: u.adminOverrides || null,
     createdAt: u.createdAt || Date.now()
   }))
   
