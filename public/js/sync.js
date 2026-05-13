@@ -1,7 +1,4 @@
-// js/sync.js
-import { TEAMS } from './data/teams.js';
-import { loadGames, saveGames } from './storage.js';
-import { setGamesState } from './state.js';
+// sync.js – substitua a função syncGamesWithAPI
 
 export async function syncGamesWithAPI() {
 console.log('🔄 Sincronizando jogos com a API...');
@@ -19,11 +16,9 @@ try {
     const existingGames = await loadGames();
     const existingGamesMap = new Map(existingGames.map(g => [g.id, g]));
     
-    // Filtrar e mapear jogos da API
-    const newGames = [];
+    const apiGames = [];
     
     for (const match of data.matches) {
-      // Verificar se os dois times existem no TEAMS
     const homeKey = match.homeTeam.name.toLowerCase().replace(/\s/g, '_');
     const awayKey = match.awayTeam.name.toLowerCase().replace(/\s/g, '_');
     const homeExists = TEAMS[homeKey];
@@ -31,19 +26,6 @@ try {
     
     if (!homeExists || !awayExists) {
         console.log(`⚠️ Jogo ignorado (time não cadastrado): ${match.homeTeam.name} vs ${match.awayTeam.name}`);
-        continue;
-    }
-    
-      // Verificar se é futuro (opcional - pode manter passados para histórico)
-    const matchDate = new Date(match.utcDate);
-    matchDate.setHours(0, 0, 0, 0);
-    
-      // Só adicionar se for futuro OU se já existir no banco (preservar)
-    const isFuture = matchDate >= today;
-    const alreadyExists = existingGamesMap.has(match.id.toString());
-    
-    if (!isFuture && !alreadyExists) {
-        console.log(`📅 Jogo passado ignorado (não existia): ${match.homeTeam.name} vs ${match.awayTeam.name}`);
         continue;
     }
     
@@ -59,31 +41,32 @@ try {
         result: null
     };
     
-      // Preservar resultado se já existia
     const existing = existingGamesMap.get(gameObj.id);
     if (existing && existing.result) {
         gameObj.result = existing.result;
         gameObj.status = existing.status;
     }
     
-    newGames.push(gameObj);
+    apiGames.push(gameObj);
     }
     
-    // Mesclar com jogos manuais que não vieram da API (ex: jogo de 13/05)
+    // Mesclar: manter TODOS os jogos existentes (mesmo os manuais e passados)
+    const mergedGames = [...apiGames];
+    
     for (const existing of existingGames) {
-    if (!newGames.some(g => g.id === existing.id)) {
-        // Jogo manual, manter
-        newGames.push(existing);
+    const alreadyInApi = apiGames.some(g => g.id === existing.id);
+    if (!alreadyInApi) {
+        // Jogo manual – mantém independente da data
+        mergedGames.push(existing);
         console.log(`✅ Jogo manual preservado: ${existing.home} vs ${existing.away} (${existing.date})`);
     }
     }
     
-    // Salvar
-    await saveGames(newGames);
-    setGamesState(newGames);
+    await saveGames(mergedGames);
+    setGamesState(mergedGames);
     
-    console.log(`✅ Sincronizado ${newGames.length} jogos (futuros + manuais)`);
-    return newGames;
+    console.log(`✅ Sincronizado ${mergedGames.length} jogos (${apiGames.length} da API + ${mergedGames.length - apiGames.length} manuais)`);
+    return mergedGames;
     
 } catch (error) {
     console.error('Erro na sincronização:', error);

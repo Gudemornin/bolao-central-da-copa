@@ -12,10 +12,15 @@ import { switchTab } from './navigation.js';
 
 export function updateSidebar() {
   if (!currentUser) return;
-  const pts = getUserPoints(currentUser.id);
-  document.getElementById('sidebarName').textContent = currentUser.profileName;
-  document.getElementById('sidebarPts').textContent = pts + ' pts';
-  document.getElementById('sidebarAvatar').textContent = currentUser.profileName.charAt(0).toUpperCase();
+  // Resolver a Promise corretamente
+  getUserPoints(currentUser.id).then(pts => {
+    document.getElementById('sidebarName').textContent = currentUser.profileName;
+    document.getElementById('sidebarPts').textContent = pts + ' pts';
+    document.getElementById('sidebarAvatar').textContent = currentUser.profileName.charAt(0).toUpperCase();
+  }).catch(err => {
+    console.error('Erro ao obter pontos:', err);
+    document.getElementById('sidebarPts').textContent = '0 pts';
+  });
 }
 
 window.updateSidebar = updateSidebar;

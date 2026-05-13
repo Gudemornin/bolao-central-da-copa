@@ -32,69 +32,41 @@ function getUniqueDates(games) {
 }
 
 export async function renderGames() {
-  const games = await ensureGamesState();
-  
-  const dates = getUniqueDates(games);
-  if (!currentDate && dates.length > 0) setCurrentDate(dates[0]);
+  await syncGamesWithAPI();               // Atualiza GAMES_STATE
+  const dates = getUniqueDates();
+  if (!currentDate && dates.length) setCurrentDate(dates[0]);
   
   const sel = document.getElementById('dateSelector');
-  if (!sel) return;
+  if (sel) {
+    sel.innerHTML = dates.map(d => {
+      const dt = new Date(d + 'T12:00:00');
+      const day = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+      const num = dt.getDate();
+      const mon = dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+      return `<div class="date-btn${d === currentDate ? ' active' : ''}" onclick="selectDate('${d}')">
+        <span class="dnum">${num}</span>
+        <span class="dname">${day}</span>
+        <span class="dmonth">${mon}</span>
+      </div>`;
+    }).join('');
+  }
   
-  sel.innerHTML = dates.map(d => {
-    const dt = new Date(d + 'T12:00:00');
-    const day = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-    const num = dt.getDate();
-    const mon = dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-    return `<div class="date-btn${d === currentDate ? ' active' : ''}" onclick="selectDate('${d}')">
-      <span class="dnum">${num}</span>
-      <span class="dname">${day}</span>
-      <span class="dmonth">${mon}</span>
-    </div>`;
-  }).join('');
-
-  await renderGameList(games);
+  await renderGameList();
 }
 
 export async function selectDate(d) {
   setCurrentDate(d);
-  await renderGames();
+  await renderGameList();
 }
 
-export function isGameLocked(game) {
-  const now = new Date();
-  const gameStart = new Date(game.date + 'T' + game.time + ':00');
-  return now >= gameStart || game.status === 'completed';
-}
-
-export function getBadge(bet, game) {
-  if (!game.result) return { cls: 'rb-loss', txt: 'Aguardando' };
-  const r = game.result;
-  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) return { cls: 'rb-exact', txt: 'Placar Exato' };
-  const betRes = sign(bet.homeScore - bet.awayScore), realRes = sign(r.homeScore - r.awayScore);
-  if (betRes === realRes) return { cls: 'rb-win', txt: 'Resultado Certo' };
-  return { cls: 'rb-loss', txt: 'Errou' };
-}
-
-async function renderGameList(gamesState) {
-  // Filtrar apenas jogos que NÃO estão finalizados E são futuros
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const games = gamesState.filter(g => {
-    // Se já está completo, não mostra
-    if (g.status === 'completed') return false;
-    
-    // Se a data é passada, não mostra (não dá mais para palpitar)
-    const gameDate = new Date(g.date);
-    gameDate.setHours(0, 0, 0, 0);
-    return gameDate >= today;
-  });
-  
+async function renderGameList() {
+  // Filtra usando a data atual
+  const games = GAMES_STATE.filter(g => g.date === currentDate);
   const list = document.getElementById('gamesList');
   if (!list) return;
   
   if (!games.length) {
-    list.innerHTML = '<div class="no-games-msg"><div class="icon">📅</div><p>Sem jogos disponíveis para palpitar.</p><p style="font-size:12px;margin-top:8px;">Os próximos jogos aparecerão aqui quando estiverem próximos.</p></div>';
+    list.innerHTML = '<div class="no-games-msg">📅 Nenhum jogo nesta data.</div>';
     return;
   }
   
