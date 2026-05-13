@@ -176,8 +176,6 @@ export async function switchTab(tab) {
   if (tab === 'profile') renderProfile();
 }
 
-import { getPlayer } from './exportplayer.js';
-
 window.switchTab = switchTab;
 
 // Função para renderizar perfil
