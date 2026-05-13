@@ -536,32 +536,6 @@ export async function adminEditUserCraques(userId, newCraques) {
   return true;
 }
 
-export async function adminEditUserCraques (userId, newCraques) {
-  if (!currentUser?.isAdmin) {
-    showToast('Acesso negado', 'red');
-    return false;
-  }
-  
-  const users = await loadUsers();
-  const user = users.find(u => u.id === userId);
-  
-  if (!user) {
-    showToast('Usuário não encontrado', 'red');
-    return false;
-  }
-  
-  if (!user.adminOverrides) user.adminOverrides = {};
-  user.adminOverrides.manualCraques = newCraques;
-  
-  await saveUsers(users);
-  showToast(`Craques de ${user.profileName} alterados para ${newCraques}!`, 'green');
-  
-  if (window.renderRanking) window.renderRanking();
-  if (window.renderAdminPanel) window.renderAdminPanel();
-  
-  return true;
-};
-
 export { 
   loginUser,
   switchAuthTab,
