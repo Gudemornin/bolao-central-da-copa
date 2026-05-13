@@ -2,25 +2,243 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import pkg from 'pg';
+
+const { Pool } = pkg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware para parsear JSON
+// Configurar conexão com PostgreSQL (se DATABASE_URL existir)
+let pool = null;
+if (process.env.DATABASE_URL) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+  });
+  console.log('✅ PostgreSQL conectado');
+} else {
+  console.log('⚠️ DATABASE_URL não encontrada - usando apenas localStorage');
+}
+
+// Função para criar tabelas (apenas se tiver banco)
+async function initDatabase() {
+  if (!pool) return;
+  
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        profile_name TEXT UNIQUE,
+        password_player_id TEXT,
+        is_admin BOOLEAN DEFAULT FALSE,
+        is_hidden BOOLEAN DEFAULT FALSE,
+        email TEXT,
+        secure_auth BOOLEAN DEFAULT FALSE,
+        two_fa_code TEXT,
+        created_at BIGINT
+      );
+      
+      CREATE TABLE IF NOT EXISTS bets (
+        user_id TEXT,
+        game_id TEXT,
+        home_score INT,
+        away_score INT,
+        player_id TEXT,
+        saved_at BIGINT,
+        PRIMARY KEY (user_id, game_id)
+      );
+      
+      CREATE TABLE IF NOT EXISTS games (
+        id TEXT PRIMARY KEY,
+        data JSONB
+      );
+    `);
+    console.log('✅ Tabelas criadas/verificadas');
+  } catch (error) {
+    console.error('❌ Erro ao criar tabelas:', error.message);
+  }
+}
+
+// Inicializar banco
+await initDatabase();
+
+// Middleware
 app.use(express.json());
 
-// ⚠️ IMPORTANTE: Servir arquivos estáticos PRIMEIRO
+// ⚠️ Servir arquivos estáticos (ORDEM IMPORTANTE)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Também servir arquivos estáticos da raiz (se houver)
-app.use(express.static(path.join(__dirname)));
+// =============================================
+// ENDPOINTS DA API
+// =============================================
 
-// Rotas da API
+// USERS
+app.get('/api/users', async (req, res) => {
+  if (!pool) {
+    return res.json({ users: [], localOnly: true });
+  }
+  
+  try {
+    const result = await pool.query('SELECT * FROM users ORDER BY created_at DESC');
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('Erro ao buscar users:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  const { users } = req.body;
+  
+  if (!pool || !users) {
+    return res.json({ success: true, localOnly: true });
+  }
+  
+  try {
+    for (const user of users) {
+      await pool.query(
+        `INSERT INTO users (id, profile_name, password_player_id, is_admin, is_hidden, email, secure_auth, two_fa_code, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (id) DO UPDATE SET
+           profile_name = EXCLUDED.profile_name,
+           password_player_id = EXCLUDED.password_player_id,
+           is_admin = EXCLUDED.is_admin,
+           is_hidden = EXCLUDED.is_hidden,
+           email = EXCLUDED.email,
+           secure_auth = EXCLUDED.secure_auth,
+           two_fa_code = EXCLUDED.two_fa_code,
+           created_at = EXCLUDED.created_at`,
+        [user.id, user.profileName, user.passwordPlayerId, user.isAdmin || false, user.isHidden || false, user.email || null, user.secureAuth || false, user.twoFaCode || null, user.createdAt || Date.now()]
+      );
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao salvar users:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// BETS
+app.get('/api/bets', async (req, res) => {
+  if (!pool) {
+    return res.json({ bets: {}, localOnly: true });
+  }
+  
+  try {
+    const result = await pool.query('SELECT * FROM bets');
+    const bets = {};
+    for (const row of result.rows) {
+      if (!bets[row.user_id]) bets[row.user_id] = {};
+      bets[row.user_id][row.game_id] = {
+        homeScore: row.home_score,
+        awayScore: row.away_score,
+        playerId: row.player_id,
+        savedAt: row.saved_at
+      };
+    }
+    res.json({ bets });
+  } catch (error) {
+    console.error('Erro ao buscar bets:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/bets', async (req, res) => {
+  const { bets } = req.body;
+  
+  if (!pool || !bets) {
+    return res.json({ success: true, localOnly: true });
+  }
+  
+  try {
+    // Limpar bets antigas do usuário (opcional)
+    for (const [userId, userBets] of Object.entries(bets)) {
+      for (const [gameId, bet] of Object.entries(userBets)) {
+        await pool.query(
+          `INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (user_id, game_id) DO UPDATE SET
+             home_score = EXCLUDED.home_score,
+             away_score = EXCLUDED.away_score,
+             player_id = EXCLUDED.player_id,
+             saved_at = EXCLUDED.saved_at`,
+          [userId, gameId, bet.homeScore, bet.awayScore, bet.playerId, bet.savedAt || Date.now()]
+        );
+      }
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao salvar bets:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GAMES
+app.get('/api/games', async (req, res) => {
+  if (!pool) {
+    return res.json({ games: null, localOnly: true });
+  }
+  
+  try {
+    const result = await pool.query('SELECT * FROM games');
+    if (result.rows.length > 0) {
+      res.json({ games: result.rows[0].data });
+    } else {
+      res.json({ games: null });
+    }
+  } catch (error) {
+    console.error('Erro ao buscar games:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/games', async (req, res) => {
+  const { games } = req.body;
+  
+  if (!pool || !games) {
+    return res.json({ success: true, localOnly: true });
+  }
+  
+  try {
+    await pool.query(
+      `INSERT INTO games (id, data) VALUES ($1, $2)
+       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+      ['games_data', { games }]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao salvar games:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// CLEAR ALL DATA
+app.delete('/api/clear', async (req, res) => {
+  if (!pool) {
+    return res.json({ success: true, localOnly: true });
+  }
+  
+  try {
+    await pool.query('DELETE FROM users');
+    await pool.query('DELETE FROM bets');
+    await pool.query('DELETE FROM games');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao limpar dados:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// FOOTBALL API
+// =============================================
+
 app.get('/api/football', async (req, res) => {
   const { endpoint, team } = req.query;
   
@@ -100,18 +318,29 @@ app.get('/api/admin/info', (req, res) => {
   });
 });
 
-// ⚠️ Fallback para SPA - APENAS para rotas que NÃO são arquivos
+// =============================================
+// FALLBACK (SEMPRE POR ÚLTIMO)
+// =============================================
+
 app.get('*', (req, res) => {
-  // Se a requisição é para um arquivo com extensão (css, js, png, etc.), retorna 404
+  // Se for requisição de arquivo com extensão, retorna 404
   if (req.path.match(/\.\w+$/)) {
     return res.status(404).send('Arquivo não encontrado');
   }
-  
   // Senão, retorna o index.html
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// =============================================
+// INICIAR SERVIDOR
+// =============================================
+
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-  console.log(`Servindo arquivos estáticos de: ${path.join(__dirname, 'public')}`);
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`📂 Servindo arquivos estáticos de: ${path.join(__dirname, 'public')}`);
+  if (pool) {
+    console.log(`🗄️ Banco de dados conectado`);
+  } else {
+    console.log(`💾 Usando apenas localStorage (sem banco)`);
+  }
 });
