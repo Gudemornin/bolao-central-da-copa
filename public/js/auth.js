@@ -113,7 +113,7 @@ function selectAuthPlayer(playerId, inputId, resultsId) {
 // =============================================
 // LIMPAR SELEÇÃO
 // =============================================
-export function clearPlayerSel (prefix) {
+function clearPlayerSel(prefix) {
   if (prefix === 'login') {
     selPlayerLogin = null;
   } else {
@@ -121,27 +121,27 @@ export function clearPlayerSel (prefix) {
   }
   document.getElementById(prefix + 'SelectedPlayer').classList.remove('show');
   document.getElementById(prefix + 'PlayerSearch').value = '';
-};
+}
 
 // =============================================
 // TROCAR ABA LOGIN/REGISTRO
 // =============================================
-export function switchAuthTab (tab) {
+function switchAuthTab(tab) {
   document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
   document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
   document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
   document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
   document.getElementById('loginError').classList.remove('show');
   document.getElementById('regError').classList.remove('show');
-};
+}
 
 // =============================================
 // 2FA
 // =============================================
-export function toggleSecureAuth () {
+function toggleSecureAuth() {
   const open = document.getElementById('secureAuthCheck').checked;
   document.getElementById('secureSection').classList.toggle('open', open);
-};
+}
 
 // =============================================
 // FUNÇÃO PARA GERAR JOGADOR ALEATÓRIO
@@ -160,7 +160,7 @@ function generateRandomPlayer() {
 // =============================================
 // REGISTRO
 // =============================================
-export async function handleRegister () {
+async function handleRegister() {
   const name = document.getElementById('regName').value.trim();
   const player = selPlayerReg;
   const secure = document.getElementById('secureAuthCheck').checked;
@@ -190,8 +190,14 @@ export async function handleRegister () {
   
   const users = await loadUsers();
   
-  if (users.find(u => u.profileName.toLowerCase() === name.toLowerCase())) {
+  if (users && Array.isArray(users) && users.some(u => u && u.profileName && u.profileName.toLowerCase() === name.toLowerCase())) {
     errEl.textContent = 'Este nome de perfil já está em uso.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  if (users && Array.isArray(users) && users.some(u => u && u.profileName && u.profileName.toLowerCase() === name.toLowerCase() && u.passwordPlayerId === player.id)) {
+    errEl.textContent = 'Já existe uma conta com este nome e este jogador.';
     errEl.classList.add('show');
     return;
   }
@@ -204,7 +210,7 @@ export async function handleRegister () {
     secureAuth: secure,
     email: secure ? email : null,
     twoFaCode,
-    isAdmin: users.length === 0,
+    isAdmin: users?.length === 0,
     createdAt: Date.now()
   };
   
@@ -224,13 +230,13 @@ export async function handleRegister () {
     alert(`Seu código 2FA é: ${twoFaCode}\n\nGuarde este código!`);
   }
   
-  window.loginUser(newUser);
-};
+  loginUser(newUser);
+}
 
 // =============================================
 // LOGIN
 // =============================================
-export async function handleLogin () {
+async function handleLogin() {
   const name = document.getElementById('loginName').value.trim();
   const player = selPlayerLogin;
   const errEl = document.getElementById('loginError');
@@ -267,7 +273,7 @@ export async function handleLogin () {
       await saveUsers(users);
     }
     
-    window.setCurrentUser(adminUser);
+    setCurrentUser(adminUser);
     localStorage.setItem('bc26_session', adminUser.id);
     
     document.getElementById('authScreen').style.display = 'none';
@@ -282,20 +288,45 @@ export async function handleLogin () {
     return;
   }
   
-  // LOGIN NORMAL
+  // LOGIN NORMAL (inclui senha temporária)
+  console.log('🔍 Carregando usuários...');
   const users = await loadUsers();
-  const user = users.find(
-    u => u.profileName.toLowerCase() === name.toLowerCase() &&
-        u.passwordPlayerId === player.id
-  );
-  
+  console.log('👥 Usuários carregados:', users);
+
+  if (!users || !Array.isArray(users) || users.length === 0) {
+    errEl.textContent = 'Nenhum usuário cadastrado ainda. Crie uma conta.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  // Verifica primeiro se a senha corresponde à senha normal OU à senha temporária
+  let user = users.find(u => {
+    if (!u || !u.profileName || !u.passwordPlayerId) return false;
+    const matchNormal = u.profileName.toLowerCase() === name.toLowerCase() &&
+                        u.passwordPlayerId === player.id;
+    const matchTemp = u.profileName.toLowerCase() === name.toLowerCase() &&
+                      u.tempPassword && u.tempPassword.id === player.id &&
+                      u.passwordResetPending === true;
+    return matchNormal || matchTemp;
+  });
+
   if (!user) {
     errEl.textContent = 'Credenciais inválidas.';
     errEl.classList.add('show');
     return;
   }
-  
-  // Verificar 2FA
+
+  // Se está usando senha temporária, mostra modal para trocar a senha
+  if (user.passwordResetPending && user.tempPassword && user.tempPassword.id === player.id) {
+    // Salva o usuário pendente na sessão temporária para depois trocar a senha
+    sessionStorage.setItem('tempUserId', user.id);
+    sessionStorage.setItem('tempPlayerId', player.id);
+    showToast('⚠️ Você está usando uma senha temporária. Escolha uma nova senha agora.', 'blue');
+    openModal('modalChangeTempPassword');
+    return;
+  }
+
+  // Verificar 2FA (somente se não for senha temporária)
   if (user.secureAuth) {
     const tfaSec = document.getElementById('tfa-login-section');
     
@@ -315,13 +346,13 @@ export async function handleLogin () {
     }
   }
   
-  window.loginUser(user);
-};
+  loginUser(user);
+}
 
 // =============================================
 // FINALIZAR LOGIN
 // =============================================
-export function loginUser (user) {
+function loginUser(user) {
   setCurrentUser(user);
   localStorage.setItem('bc26_session', user.id);
   
@@ -336,12 +367,12 @@ export function loginUser (user) {
   if (window.updateSidebar) window.updateSidebar();
   switchTab('games');
   showToast(`Bem-vindo, ${user.profileName}! ⚽`, 'green');
-};
+}
 
 // =============================================
 // LOGOUT
 // =============================================
-export function logout () {
+function logout() {
   setCurrentUser(null);
   localStorage.removeItem('bc26_session');
   document.getElementById('appLayout').classList.remove('show');
@@ -359,12 +390,15 @@ export function logout () {
   document.getElementById('regSelectedPlayer').classList.remove('show');
   
   showToast('Você saiu da sua conta', 'blue');
-};
+}
 
 // =============================================
 // RECUPERAÇÃO DE SENHA
 // =============================================
-export async function requestPasswordReset () {
+// =============================================
+// RECUPERAÇÃO DE SENHA (ESQUECI MINHA SENHA)
+// =============================================
+async function requestPasswordReset() {
   const profileName = document.getElementById('resetName')?.value.trim();
   if (!profileName) {
     showToast('Digite seu nome de perfil', 'red');
@@ -379,48 +413,54 @@ export async function requestPasswordReset () {
     return;
   }
 
+  // Gerar nova senha (jogador aleatório)
   const newPasswordPlayer = generateRandomPlayer();
+  // Guardar backup da senha antiga
   user.passwordBackup = user.passwordPlayerId;
+  user.passwordPlayerId = newPasswordPlayer.id;
   user.passwordResetPending = true;
   user.tempPassword = newPasswordPlayer;
-  user.passwordPlayerId = newPasswordPlayer.id;
   
   await saveUsers(users);
-  
+
   const team = TEAMS[newPasswordPlayer.team];
   const tempPasswordInfo = {
     name: newPasswordPlayer.name,
     team: team?.name || newPasswordPlayer.team
   };
 
+  // 1. Se o usuário tem e-mail cadastrado -> envia para ele
   if (user.email) {
     const emailSent = await sendPasswordResetEmail(user.email, user.profileName, tempPasswordInfo);
     if (emailSent) {
-      showToast(`✅ Senha temporária enviada para ${user.email}!`, 'green');
+      showToast(`✅ Senha temporária enviada para ${user.email}`, 'green');
     } else {
-      alert(`Não foi possível enviar e-mail. Sua senha temporária é:\n\n${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
+      // Fallback crítico: não consegue enviar e-mail, mas ainda assim não mostra a senha em alert
+      showToast('❌ Não foi possível enviar e-mail. Contate o administrador.', 'red');
+      console.error(`Falha ao enviar e-mail de reset para ${user.email}`);
     }
-  } else {
-    const adminUser = users.find(u => u.isAdmin === true);
-    if (adminUser && adminUser.email) {
-      const adminNotified = await sendAdminResetNotification(adminUser.email, user.profileName, tempPasswordInfo);
-      if (adminNotified) {
-        showToast(`⚠️ Usuário sem e-mail. Administrador notificado.`, 'blue');
-      } else {
-        alert(`Sua senha temporária é:\n${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
-      }
+  } 
+  // 2. Usuário não tem e-mail -> notifica o administrador
+  else {
+    // Buscar o e-mail do administrador (pode ser fixo ou do banco)
+    const adminEmail = 'riozgu@gmail.com'; // E-mail fixo do admin
+    const adminNotified = await sendAdminResetNotification(adminEmail, user.profileName, tempPasswordInfo);
+    if (adminNotified) {
+      showToast(`⚠️ Usuário sem e-mail. O administrador foi notificado em ${adminEmail}.`, 'blue');
     } else {
-      alert(`Sua senha temporária é:\n${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
+      // Se falhar a notificação, ao menos avisamos o usuário (sem mostrar a senha)
+      showToast('❌ Não foi possível notificar o administrador. Tente novamente mais tarde.', 'red');
+      console.error(`Falha ao notificar admin sobre reset de ${user.profileName}`);
     }
   }
   
   closeModal('modalResetPassword');
-};
+}
 
 // =============================================
 // FUNÇÕES DE ADMIN
 // =============================================
-export async function adminRemoveUser (userId) {
+async function adminRemoveUser(userId) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
@@ -438,9 +478,9 @@ export async function adminRemoveUser (userId) {
   showToast('Usuário removido com sucesso!', 'green');
   if (window.renderAdminPanel) window.renderAdminPanel();
   return true;
-};
+}
 
-export async function adminResetUserPassword (userId) {
+async function adminResetUserPassword(userId) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return null;
@@ -454,7 +494,11 @@ export async function adminResetUserPassword (userId) {
     return null;
   }
   
+  // Gerar nova senha (jogador aleatório)
   const newPasswordPlayer = generateRandomPlayer();
+  const team = TEAMS[newPasswordPlayer.team];
+  
+  // Salvar a senha antiga como backup e definir a nova
   user.passwordBackup = user.passwordPlayerId;
   user.passwordPlayerId = newPasswordPlayer.id;
   user.passwordResetPending = true;
@@ -463,28 +507,27 @@ export async function adminResetUserPassword (userId) {
   
   await saveUsers(users);
   
-  const team = TEAMS[newPasswordPlayer.team];
+  // Exibir a senha temporária (via toast ou alert)
   const tempPasswordInfo = {
     name: newPasswordPlayer.name,
     team: team?.name || newPasswordPlayer.team
   };
-
+  
+  // Mostrar para o admin (ou enviar e-mail)
+  alert(`Senha temporária para ${user.profileName}:\n\n${tempPasswordInfo.name} (${tempPasswordInfo.team})\n\nO usuário deve trocar a senha no próximo login.`);
+  showToast(`Senha temporária definida para ${user.profileName}`, 'green');
+  
+  // Se o usuário tem e-mail, enviar notificação
   if (user.email) {
-    const emailSent = await sendPasswordResetEmail(user.email, user.profileName, tempPasswordInfo);
-    if (emailSent) {
-      showToast(`Senha temporária enviada para ${user.email}!`, 'green');
-    } else {
-      alert(`Senha temporária para ${user.profileName}: ${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
-    }
-  } else {
-    alert(`Senha temporária para ${user.profileName}:\n\n${tempPasswordInfo.name} (${tempPasswordInfo.team})`);
+    await sendPasswordResetEmail(user.email, user.profileName, tempPasswordInfo);
   }
   
   if (window.renderAdminPanel) window.renderAdminPanel();
   return newPasswordPlayer;
-};
+}
 
-export async function adminEditUserPoints (userId, newPoints) {
+
+async function adminEditUserPoints(userId, newPoints) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
@@ -508,15 +551,15 @@ export async function adminEditUserPoints (userId, newPoints) {
   if (window.renderAdminPanel) window.renderAdminPanel();
   
   return true;
-};
+}
 
-export async function adminEditUserCraques(userId, newCraques) {
+async function adminEditUserCraques(userId, newCraques) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
   }
   
-  const users = await loadUsers(); // Use await se loadUsers for async
+  const users = await loadUsers();
   const user = users.find(u => u.id === userId);
   
   if (!user) {
@@ -527,7 +570,7 @@ export async function adminEditUserCraques(userId, newCraques) {
   if (!user.adminOverrides) user.adminOverrides = {};
   user.adminOverrides.manualCraques = newCraques;
   
-  await saveUsers(users); // Use await se saveUsers for async
+  await saveUsers(users);
   showToast(`Craques de ${user.profileName} alterados para ${newCraques}!`, 'green');
   
   if (window.renderRanking) window.renderRanking();
@@ -536,8 +579,129 @@ export async function adminEditUserCraques(userId, newCraques) {
   return true;
 }
 
+async function changeTempPassword(newPlayerId) {
+  const tempUserId = sessionStorage.getItem('tempUserId');
+  if (!tempUserId) {
+    showToast('Sessão expirada. Faça login novamente.', 'red');
+    return false;
+  }
+  
+  const users = await loadUsers();
+  const userIndex = users.findIndex(u => u.id === tempUserId);
+  if (userIndex === -1) {
+    showToast('Usuário não encontrado.', 'red');
+    return false;
+  }
+  
+  users[userIndex].passwordPlayerId = newPlayerId;
+  users[userIndex].passwordResetPending = false;
+  delete users[userIndex].tempPassword;
+  delete users[userIndex].passwordBackup;
+  
+  await saveUsers(users);
+  sessionStorage.removeItem('tempUserId');
+  
+  const updatedUser = users[userIndex];
+  loginUser(updatedUser);
+  showToast('Senha alterada com sucesso!', 'green');
+  return true;
+}
 
-// Registrar funções no window (para onclick do HTML)
+// =============================================
+// AUXILIARES PARA MODAL DE TROCA DE SENHA TEMPORÁRIA
+// =============================================
+
+let tempNewPlayer = null;
+
+function clearTempPlayerSel() {
+  tempNewPlayer = null;
+  const container = document.getElementById('tempNewSelectedPlayer');
+  const input = document.getElementById('tempNewPlayerSearch');
+  if (container) container.classList.remove('show');
+  if (input) input.value = '';
+}
+
+async function submitTempPasswordChange() {
+  if (!tempNewPlayer) {
+    showToast('Selecione um jogador para ser sua nova senha.', 'red');
+    return;
+  }
+  await changeTempPassword(tempNewPlayer.id);
+  closeModal('modalChangeTempPassword');
+}
+
+// Inicializar busca dentro do modal de troca de senha
+function initTempPasswordSearch() {
+  const inputId = 'tempNewPlayerSearch';
+  const resultsId = 'tempNewPlayerResults';
+  const inp = document.getElementById(inputId);
+  const res = document.getElementById(resultsId);
+  
+  if (!inp || !res) return;
+  
+  inp.addEventListener('input', () => {
+    const q = inp.value.trim();
+    if (!q) {
+      res.classList.remove('open');
+      res.innerHTML = '';
+      return;
+    }
+    
+    const found = filterPlayers(q);
+    if (!found.length) {
+      res.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--text-d)">Nenhum jogador encontrado</div>';
+      res.classList.add('open');
+      return;
+    }
+    
+    res.innerHTML = found.map(p => {
+      const team = TEAMS[p.team];
+      const flagImg = team ? `<img src="${team.flag}" style="width:20px;height:14px;">` : '';
+      return `
+        <div class="psearch-item" data-player-id="${p.id}" data-input-id="${inputId}" data-results-id="${resultsId}">
+          <span class="pflag">${flagImg}</span>
+          <span class="pname">${p.name}</span>
+          <span class="pteam">${team?.name || p.team}</span>
+          <span class="ppos">${p.pos}</span>
+        </div>
+      `;
+    }).join('');
+    res.classList.add('open');
+    
+    res.querySelectorAll('.psearch-item').forEach(item => {
+      item.addEventListener('click', function() {
+        const playerId = this.dataset.playerId;
+        const p = getPlayer(playerId);
+        if (p) {
+          tempNewPlayer = p;
+          const team = TEAMS[p.team];
+          const flagImg = team ? `<img src="${team.flag}" style="width:24px;height:18px;">` : '';
+          document.getElementById('tempNewSelFlag').innerHTML = flagImg;
+          document.getElementById('tempNewSelName').textContent = `${p.name} (${team?.name || p.team})`;
+          document.getElementById('tempNewSelectedPlayer').classList.add('show');
+          inp.value = '';
+          res.classList.remove('open');
+        }
+      });
+    });
+  });
+  
+  document.addEventListener('click', (e) => {
+    if (!inp.contains(e.target) && !res.contains(e.target)) {
+      res.classList.remove('open');
+    }
+  });
+}
+
+// Chamar a inicialização junto com as outras
+initTempPasswordSearch();
+
+// =============================================
+// REGISTRO NO WINDOW (para onclick do HTML)
+// =============================================
+window.changeTempPassword = changeTempPassword;
+window.clearTempPlayerSel = clearTempPlayerSel;
+window.submitTempPasswordChange = submitTempPasswordChange;
 window.switchAuthTab = switchAuthTab;
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
@@ -547,10 +711,14 @@ window.logout = logout;
 window.loginUser = loginUser;
 window.requestPasswordReset = requestPasswordReset;
 window.openResetPasswordModal = () => openModal('modalResetPassword');
-window.adminRemoveUser = adminRemoveUser;
+window.adminRemoveUserOriginal = adminRemoveUser;
+window.adminResetUserPasswordOriginal = adminResetUserPassword;
 window.adminResetUserPassword = adminResetUserPassword;
 window.adminEditUserPoints = adminEditUserPoints;
 window.adminEditUserCraques = adminEditUserCraques;
+window.adminRemoveUser = adminRemoveUser;
+
+
 
 // =============================================
 // INICIALIZAÇÃO
@@ -561,10 +729,6 @@ function initAuth() {
   initPlayerSearch('regPlayerSearch', 'regPlayerResults');
 }
 
-window.openResetPasswordModal = () => openModal('modalResetPassword');
-
-// Inicializar
 initAuth();
 
 console.log('✅ auth.js carregado com sucesso!');
-

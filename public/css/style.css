@@ -181,3 +181,26 @@ img[src*="flagcdn"] {
   transform: translateY(-1px);
   opacity: 0.9;
 }
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+/* Exibir menu inferior apenas no mobile */
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-top-bar {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-top-bar {
+    display: none !important;
+  }
+}

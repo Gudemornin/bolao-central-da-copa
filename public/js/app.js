@@ -1,22 +1,27 @@
-// app.js
-import { loginUser } from './auth.js';  // ← agora funciona porque exportamos
-import { loadUsers, loadGames } from './storage.js';
-import { currentUser, setCurrentUser, setGamesState } from './state.js';
+import { loadUsers } from './storage.js';
+import { currentUser, setCurrentUser } from './state.js';
 import './admin.js';
 import './gamemanager.js';
 import './ranking.js';
 import './bets.js';
 import { getUserPoints } from './ranking.js';
-import { initModalClosers, showToast } from './ui.js';
+import { initModalClosers } from './ui.js';
 import { switchTab } from './navigation.js';
+import './auth.js';
 
 export function updateSidebar() {
-  if (!currentUser) return;
-  // Resolver a Promise corretamente
+  if (!currentUser) {
+    console.warn('⚠️ updateSidebar: currentUser é undefined');
+    document.getElementById('sidebarName').textContent = '?';
+    document.getElementById('sidebarPts').textContent = '0 pts';
+    document.getElementById('sidebarAvatar').textContent = '?';
+    return;
+  }
+  
   getUserPoints(currentUser.id).then(pts => {
-    document.getElementById('sidebarName').textContent = currentUser.profileName;
+    document.getElementById('sidebarName').textContent = currentUser.profileName || currentUser.profile_name || 'Usuário';
     document.getElementById('sidebarPts').textContent = pts + ' pts';
-    document.getElementById('sidebarAvatar').textContent = currentUser.profileName.charAt(0).toUpperCase();
+    document.getElementById('sidebarAvatar').textContent = (currentUser.profileName || currentUser.profile_name || 'U').charAt(0).toUpperCase();
   }).catch(err => {
     console.error('Erro ao obter pontos:', err);
     document.getElementById('sidebarPts').textContent = '0 pts';
@@ -25,7 +30,6 @@ export function updateSidebar() {
 
 window.updateSidebar = updateSidebar;
 
-// Função para controlar menu mobile
 function updateMobileMenu() {
   const mobileAdmin = document.getElementById('mobileNavAdmin');
   if (mobileAdmin) {
@@ -36,16 +40,6 @@ function updateMobileMenu() {
 async function init() {
   initModalClosers();
   
-  // Carregar jogos
-  try {
-    const games = await loadGames();
-    setGamesState(games || []);
-    console.log('✅ Jogos carregados:', games?.length || 0);
-  } catch (error) {
-    console.error('❌ Erro ao carregar jogos:', error);
-    setGamesState([]);
-  }
-  
   const sid = localStorage.getItem('bc26_session');
   console.log('🔍 Sessão encontrada:', sid);
   
@@ -54,12 +48,34 @@ async function init() {
       const users = await loadUsers();
       console.log('👥 Usuários carregados:', users);
       
-      const user = users.find(u => u.id === sid);
+      // Buscar por id OU por profileName (fallback)
+      let user = users.find(u => u.id === sid);
+      
+      // Se não encontrar pelo id, tentar pelo profileName (para admin)
+      if (!user && sid === 'admin_default') {
+        user = users.find(u => u.profileName === 'eVagabundoTaLa11223' || u.profile_name === 'eVagabundoTaLa11223');
+      }
+      
       console.log('👤 Usuário encontrado:', user);
       
       if (user) {
-        loginUser(user);
+        // Atualizar diretamente o state
+        setCurrentUser(user);
+        localStorage.setItem('bc26_session', user.id);
+        
+        // Esconder tela de auth e mostrar app
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('appLayout').classList.add('show');
+        
+        // Mostrar admin se for admin
+        const navAdmin = document.getElementById('navAdmin');
+        if (navAdmin) {
+          navAdmin.style.display = user.isAdmin ? 'flex' : 'none';
+        }
+        
+        updateSidebar();
         updateMobileMenu();
+        switchTab('games');
         return;
       }
     } catch (error) {

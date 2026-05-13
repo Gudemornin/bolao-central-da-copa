@@ -17,16 +17,7 @@ import {
 import { renderBets } from './bets.js';
 import { syncGamesWithAPI } from './sync.js';
 
-// Função para garantir que GAMES_STATE é um array
-async function ensureGamesState() {
-  let games = GAMES_STATE;
-  if (!games || !Array.isArray(games)) {
-    games = await loadGames();
-    setGamesState(games);
-  }
-  return games;
-
-}
+const gamePlayerSelections = {};
 
 export function getBadge(bet, game) {
   if (!game.result) return { cls: 'rb-loss', txt: 'Aguardando' };
@@ -49,12 +40,30 @@ export function isGameLocked(game) {
 }
 
 function getUniqueDates() {
-  if (!GAMES_STATE || !Array.isArray(GAMES_STATE)) return [];
-  return [...new Set(GAMES_STATE.map(g => g.date))].sort();
+  let games = GAMES_STATE;
+  if (!Array.isArray(games)) {
+    console.warn('⚠️ getUniqueDates: GAMES_STATE não é array');
+    return [];
+  }
+  
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  
+  const validDates = games
+    .filter(g => {
+      if (!g || !g.date) return false;
+      const gameDate = new Date(g.date);
+      gameDate.setHours(0, 0, 0, 0);
+      return gameDate >= yesterday;
+    })
+    .map(g => g.date);
+  
+  return [...new Set(validDates)].sort();
 }
 
 export async function renderGames() {
-  await syncGamesWithAPI();               // Atualiza GAMES_STATE
+  await syncGamesWithAPI();
   const dates = getUniqueDates();
   if (!currentDate && dates.length) setCurrentDate(dates[0]);
   
@@ -82,13 +91,35 @@ export async function selectDate(d) {
 }
 
 async function renderGameList() {
-  // Filtra usando a data atual
-  const games = GAMES_STATE.filter(g => g.date === currentDate);
+  let gamesState = GAMES_STATE;
+  
+  if (!Array.isArray(gamesState)) {
+    console.warn('⚠️ GAMES_STATE não é array, recarregando...', gamesState);
+    gamesState = await loadGames();
+    setGamesState(gamesState);
+  }
+  
+  if (!Array.isArray(gamesState)) {
+    console.error('❌ gamesState ainda não é array');
+    return;
+  }
+  
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  
+  const games = gamesState.filter(g => {
+    if (!g || !g.date) return false;
+    const gameDate = new Date(g.date);
+    gameDate.setHours(0, 0, 0, 0);
+    return gameDate >= yesterday && g.date === currentDate;
+  });
+  
   const list = document.getElementById('gamesList');
   if (!list) return;
   
   if (!games.length) {
-    list.innerHTML = '<div class="no-games-msg">📅 Nenhum jogo nesta data.</div>';
+    list.innerHTML = '<div class="no-games-msg">📅 Nenhum jogo disponível para palpites nesta data.</div>';
     return;
   }
   
@@ -120,9 +151,9 @@ async function renderGameList() {
           <div class="vs-area">
             <div class="vs-lbl">VS</div>
             <div class="score-inputs">
-              <input class="score-input" type="number" min="0" max="99" id="s1_${game.id}" value="${bet.homeScore!==undefined?bet.homeScore:''}" placeholder="0" ${locked?'disabled':''} oninput="this.value=Math.max(0,Math.min(99,parseInt(this.value)||0))">
+              <input class="score-input" type="number" min="0" max="99" id="s1_${game.id}" value="${bet.homeScore!==undefined?bet.homeScore:''}" placeholder="0" ${locked?'disabled':''}>
               <span class="score-sep">:</span>
-              <input class="score-input" type="number" min="0" max="99" id="s2_${game.id}" value="${bet.awayScore!==undefined?bet.awayScore:''}" placeholder="0" ${locked?'disabled':''} oninput="this.value=Math.max(0,Math.min(99,parseInt(this.value)||0))">
+              <input class="score-input" type="number" min="0" max="99" id="s2_${game.id}" value="${bet.awayScore!==undefined?bet.awayScore:''}" placeholder="0" ${locked?'disabled':''}>
             </div>
           </div>
           <div class="team-side">
@@ -132,7 +163,7 @@ async function renderGameList() {
         </div>
         <div class="player-select-area">
           <div class="ps-lbl">⭐ Selecionar Jogador Representante</div>
-          ${locked ? `<div style="font-size:13px;color:var(--text-d)">${selP?playerDisplayName(selP):'Nenhum jogador selecionado'}</div>` :
+          ${locked ? `<div style="font-size:13px;color:var(--text-d);padding:8px;background:var(--navy-3);border-radius:6px;">${selP?playerDisplayName(selP):'Nenhum jogador selecionado'}</div>` :
             `<div class="game-psearch" id="gps_${game.id}">
               <input class="game-psearch-input" placeholder="Buscar jogador das duas seleções..." id="gpinp_${game.id}"
                 oninput="filterGamePlayers('${game.id}')"
@@ -154,7 +185,6 @@ async function renderGameList() {
     </div>`;
   }).join('');
 
-  // Inicializar seleções anteriores
   for (const game of games) {
     if (!isGameLocked(game)) {
       const bets = await loadBets();
@@ -166,8 +196,6 @@ async function renderGameList() {
     }
   }
 }
-
-const gamePlayerSelections = {};
 
 function setGamePlayerDisplay(gameId, p) {
   const badge = document.getElementById('spb_' + gameId);
@@ -208,7 +236,6 @@ export function selectGamePlayer(gameId, playerId) {
   
   const res = document.getElementById('gpr_' + gameId);
   if (res) res.classList.remove('open');
-  
   const inp = document.getElementById('gpinp_' + gameId);
   if (inp) inp.value = '';
   
@@ -342,29 +369,18 @@ export function clearEditPlayer() {
 
 export async function cleanOldGames() {
   console.log('🧹 Limpando jogos antigos...');
-  
   try {
     const games = await loadGames();
     if (!games || !games.length) return;
-    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    // Manter apenas jogos futuros OU já finalizados com resultado
     const filteredGames = games.filter(game => {
       const gameDate = new Date(game.date);
       gameDate.setHours(0, 0, 0, 0);
-      
-      // Manter jogos futuros
       if (gameDate >= today) return true;
-      
-      // Manter jogos passados que já foram finalizados (para histórico)
       if (game.status === 'completed' && game.result) return true;
-      
-      // Remover jogos passados sem resultado
       return false;
     });
-    
     if (filteredGames.length !== games.length) {
       await saveGames(filteredGames);
       setGamesState(filteredGames);
@@ -375,19 +391,18 @@ export async function cleanOldGames() {
   }
 }
 
-// Chamar limpeza ao iniciar
 cleanOldGames();
 
-// Tornar funções globais (necessário para onclick)
-window.saveBet = saveBet;
-window.filterGamePlayers = filterGamePlayers;
-window.selectGamePlayer = selectGamePlayer;
-window.clearGamePlayer = clearGamePlayer;
-window.openEditBet = openEditBet;
-window.selectEditPlayer = selectEditPlayer;
-window.clearEditPlayer = clearEditPlayer;
-window.saveEditBet = saveEditBet;
-window.selectDate = selectDate;
-window.showGameResults = showGameResults;
-window.openModal = openModal;
-window.closeModal = closeModal;
+// Tornar funções globais (para onclick no HTML)
+window.saveBet = saveBet
+window.filterGamePlayers = filterGamePlayers
+window.selectGamePlayer = selectGamePlayer
+window.clearGamePlayer = clearGamePlayer
+window.openEditBet = openEditBet
+window.selectEditPlayer = selectEditPlayer
+window.clearEditPlayer = clearEditPlayer
+window.saveEditBet = saveEditBet
+window.selectDate = selectDate
+window.showGameResults = showGameResults
+window.openModal = openModal
+window.closeModal = closeModal

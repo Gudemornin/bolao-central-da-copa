@@ -271,3 +271,73 @@
     font-size: 11px;
   }
 }
+
+/* Correção do layout dos cards de jogo no mobile - mantendo horizontal */
+@media (max-width: 768px) {
+  /* Mantém os times lado a lado, mas com espaçamento adequado */
+  .game-teams {
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px !important;
+  }
+
+  /* Cada time ocupa espaço proporcional */
+  .team-side {
+    flex: 1;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  /* Bandeiras menores */
+  .team-flag img {
+    width: 32px !important;
+    height: auto;
+  }
+
+  /* Nome do time em uma linha, menor */
+  .team-name-lbl {
+    font-size: 10px !important;
+    white-space: nowrap;
+  }
+
+  /* Área do placar */
+  .vs-area {
+    min-width: 90px;
+  }
+
+  /* Inputs do placar */
+  .score-input {
+    width: 45px !important;
+    height: 45px !important;
+    font-size: 18px !important;
+  }
+
+  .score-sep {
+    font-size: 18px !important;
+  }
+
+  /* VS menor */
+  .vs-lbl {
+    font-size: 10px !important;
+  }
+
+  /* Cabeçalho do card */
+  .game-card-header {
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 9px;
+  }
+
+  .game-badge, .locked-badge {
+    font-size: 8px;
+    padding: 2px 5px;
+  }
+
+  /* Botão salvar */
+  .save-bet-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+}

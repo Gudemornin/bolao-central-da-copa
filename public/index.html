@@ -6,16 +6,14 @@
   <title>Bolão da Central 2026</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Outfit:wght@300;400;500;600;700;800&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/games.css">
   <link rel="stylesheet" href="css/auth.css">
   <link rel="stylesheet" href="css/ranking.css">
   <link rel="stylesheet" href="css/mobile.css">
   <style>
-
-    
-
+    /* --- ESTILOS GLOBAIS --- */
     .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
     .info-card{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--r);padding:22px;}
     .info-card-full{grid-column:1/-1;}
@@ -35,8 +33,6 @@
     .rule-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text-d);}
     .rule-item:last-child{border-bottom:none;}
     .rule-item strong{color:var(--text);}
-
-
     .admin-game-row{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:10px;}
     .admin-game-row h4{font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text-d);}
     .admin-row-inner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -49,8 +45,6 @@
     .status-badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;}
     .status-upcoming{background:rgba(59,130,246,.15);color:var(--blue-l);}
     .status-completed{background:rgba(16,185,129,.15);color:var(--green-l);}
-
-
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
     .modal-overlay.open{display:flex;}
     .modal{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--r-lg);width:100%;max-width:540px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.6);}
@@ -69,32 +63,22 @@
     .rb-win{background:rgba(0,166,81,.15);color:var(--green-l);}
     .rb-loss{background:rgba(200,16,46,.15);color:var(--red-l);}
     .fin-bet-pts{font-family:'Anton',sans-serif;font-size:17px;color:var(--blue-l);min-width:36px;text-align:right;}
-
-    /* Edit bet modal */
     .edit-modal-game{font-size:14px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
-
-
     #toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;z-index:500;transform:translateY(60px);opacity:0;transition:all .3s;pointer-events:none;}
     #toast.show{transform:translateY(0);opacity:1;}
     #toast.green{background:var(--green);}
     #toast.red{background:var(--red);}
     #toast.blue{background:var(--blue);}
-
-
-    .mobile-top-bar{display:none;height:56px;background:var(--navy-2);border-bottom:1px solid var(--border);align-items:center;padding:0 16px;gap:12px;position:fixed;top:0;left:0;right:0;z-index:60;}
-    .hamburger{background:none;border:none;cursor:pointer;color:var(--text-d);font-size:20px;padding:4px;}
-    .mobile-logo-text{font-family:'Anton',sans-serif;font-size:14px;}
     .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:45;}
     .mobile-bottom-nav{display:none;}
-    
+    @media (max-width: 768px) {
+      .mobile-bottom-nav{display:flex;}
+    }
   </style>
 </head>
-
 <body>
 
-<!-- ═══════════════════════════════════════════════
-     AUTH SCREEN
-══════════════════════════════════════════════════ -->
+<!-- TELA DE AUTENTICAÇÃO -->
 <div id="authScreen">
   <div class="auth-card">
     <div class="auth-logo">
@@ -103,13 +87,11 @@
       <p>Copa do Mundo 2026</p>
     </div>
     <div class="tricolor"></div>
-
     <div class="auth-tabs">
       <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Entrar</div>
       <div class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Criar Conta</div>
     </div>
-
-    <!-- LOGIN FORM -->
+    <!-- LOGIN -->
     <div id="loginForm">
       <div class="form-group">
         <label class="form-label">Nome de Perfil</label>
@@ -127,7 +109,6 @@
           <span class="sel-remove" onclick="clearPlayerSel('login')">✕</span>
         </div>
       </div>
-      <!-- 2FA -->
       <div id="tfa-login-section" style="display:none;">
         <div class="form-group">
           <label class="form-label">🔐 Código de Verificação</label>
@@ -138,13 +119,10 @@
       <div class="form-error" id="loginError">Credenciais inválidas. Verifique seu nome e jogador.</div>
       <button class="btn btn-blue" onclick="handleLogin()">ENTRAR</button>
       <div style="text-align:center;margin-top:12px;">
-  <button type="button" onclick="openResetPasswordModal()" style="background:none;border:none;color:var(--blue-l);cursor:pointer;font-size:12px;">
-    🔑 Esqueci minha senha
-  </button>
-</div>
+        <button type="button" onclick="openResetPasswordModal()" style="background:none;border:none;color:var(--blue-l);cursor:pointer;font-size:12px;">🔑 Esqueci minha senha</button>
+      </div>
     </div>
-
-    <!-- REGISTER FORM -->
+    <!-- REGISTRO -->
     <div id="registerForm" style="display:none;">
       <div class="form-group">
         <label class="form-label">Nome de Perfil</label>
@@ -180,15 +158,9 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════
-     MOBILE TOP BAR
-══════════════════════════════════════════════════ -->
-<div class="mobile-top-bar">
-  <button class="hamburger" onclick="toggleSidebar()">☰</button>
-  <span class="mobile-logo-text">⚽ BOLÃO DA CENTRAL</span>
-</div>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-<!-- Mobile Bottom Navigation -->
+
+<!-- MENU INFERIOR (SOMENTE MOBILE) -->
 <div class="mobile-bottom-nav" id="mobileBottomNav">
   <div class="nav-item" data-tab="games" onclick="switchTab('games')">
     <span class="nav-tab-logo">🏟️</span>
@@ -210,6 +182,10 @@
     <span class="nav-tab-logo">📊</span>
     <span>Grupos</span>
   </div>
+  <div class="nav-item" data-tab="topscorers" onclick="switchTab('topscorers')">
+    <span class="nav-tab-logo">⚽</span>
+    <span>Artilharia</span>
+  </div>
   <div class="nav-item" data-tab="info" onclick="switchTab('info')">
     <span class="nav-tab-logo">ℹ️</span>
     <span>Info</span>
@@ -218,13 +194,14 @@
     <span class="nav-tab-logo">⚙️</span>
     <span>Admin</span>
   </div>
+  <div class="nav-item" onclick="logout()">
+    <span class="nav-tab-logo">🚪</span>
+    <span>Sair</span>
+  </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════
-     APP LAYOUT
-══════════════════════════════════════════════════ -->
+<!-- APP LAYOUT (SIDEBAR + CONTEÚDO PRINCIPAL) -->
 <div id="appLayout">
-  <!-- SIDEBAR -->
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="sidebar-logo-inner">
@@ -283,233 +260,114 @@
     </div>
   </nav>
 
-  <!-- MAIN CONTENT -->
   <main class="main-content">
-
-    <!-- ─── JOGOS ─── -->
+    <!-- JOGOS -->
     <div class="tab-content active" id="tabGames">
       <div class="page-header">
-        <div>
-          <div class="page-title">🏟️ Jogos</div>
-          <div class="page-subtitle">Faça seu palpite antes do início de cada partida</div>
-        </div>
+        <div><div class="page-title">🏟️ Jogos</div><div class="page-subtitle">Faça seu palpite antes do início de cada partida</div></div>
       </div>
       <div class="date-selector" id="dateSelector"></div>
       <div class="games-list" id="gamesList"></div>
     </div>
-
-    <!-- ─── PALPITES ATIVOS ─── -->
+    <!-- PALPITES ATIVOS -->
     <div class="tab-content" id="tabBets">
       <div class="page-header">
-        <div>
-          <div class="page-title">📋 Palpites Ativos</div>
-          <div class="page-subtitle">Seus palpites em aberto — editáveis até o início da partida</div>
-        </div>
+        <div><div class="page-title">📋 Palpites Ativos</div><div class="page-subtitle">Seus palpites em aberto — editáveis até o início da partida</div></div>
       </div>
       <div class="bets-list" id="betsList"></div>
-      <div class="page-footer">
-        <button class="btn-ghost" onclick="openFinalizedModal()">📁 Palpites Finalizados</button>
-      </div>
+      <div class="page-footer"><button class="btn-ghost" onclick="openFinalizedModal()">📁 Palpites Finalizados</button></div>
     </div>
-
-    <!-- ─── RANKING ─── -->
+    <!-- RANKING -->
     <div class="tab-content" id="tabRanking">
-      <div class="page-header">
-        <div>
-          <div class="page-title">🏆 Ranking</div>
-          <div class="page-subtitle">Classificação geral do Bolão da Central 2026</div>
-        </div>
-      </div>
-      <div class="ranking-wrap">
-        <table class="ranking-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Jogador</th>
-              <th class="center" style="color:var(--blue-l)">PTS</th>
-              <th class="center">JP</th>
-              <th class="center" style="color:var(--gold)">C</th>
-              <th class="center">MC</th>
-            </tr>
-          </thead>
-          <tbody id="rankingBody"></tbody>
-        </table>
-      </div>
-      <div class="tiebreak-note">
-        ⚖️ <strong>Critério de desempate:</strong> Pontos → Craques (C) → Marcadores Certos (MC) → Média de pontos por palpite
-      </div>
+      <div class="page-header"><div><div class="page-title">🏆 Ranking</div><div class="page-subtitle">Classificação geral do Bolão da Central 2026</div></div></div>
+      <div class="ranking-wrap"><table class="ranking-table"><thead><tr><th>#</th><th>Jogador</th><th class="center" style="color:var(--blue-l)">PTS</th><th class="center">JP</th><th class="center" style="color:var(--gold)">C</th><th class="center">MC</th></tr></thead><tbody id="rankingBody"></tbody></table></div>
+      <div class="tiebreak-note">⚖️ <strong>Critério de desempate:</strong> Pontos → Craques (C) → Marcadores Certos (MC) → Média de pontos por palpite</div>
     </div>
-
-    <!-- ─── INFORMAÇÕES ─── -->
+    <!-- INFORMAÇÕES -->
     <div class="tab-content" id="tabInfo">
-      <div class="page-header">
-        <div>
-          <div class="page-title">ℹ️ Informações</div>
-          <div class="page-subtitle">Regras, pontuação e premiação</div>
-        </div>
-      </div>
+      <div class="page-header"><div><div class="page-title">ℹ️ Informações</div><div class="page-subtitle">Regras, pontuação e premiação</div></div></div>
       <div class="info-grid">
         <div class="info-card">
           <div class="info-card-title">⚡ Pontuação</div>
-          <div class="score-rule">
-            <span>Placar Exato</span>
-            <span class="pts pts-gold">7 pts</span>
-          </div>
-          <div class="score-rule">
-            <span>Vencedor / Empate Certo</span>
-            <span class="pts pts-green">5 pts</span>
-          </div>
-          <div class="score-rule">
-            <span>Marcador (1º gol)</span>
-            <span class="pts pts-blue">3 pts</span>
-          </div>
-          <div class="score-rule">
-            <span>+1 por cada gol adicional</span>
-            <span class="pts pts-blue">+1 pt</span>
-          </div>
-          <div class="score-rule">
-            <span>Craque do Jogo</span>
-            <span class="pts pts-red">4 pts</span>
-          </div>
+          <div class="score-rule"><span>Placar Exato</span><span class="pts pts-gold">7 pts</span></div>
+          <div class="score-rule"><span>Vencedor / Empate Certo</span><span class="pts pts-green">5 pts</span></div>
+          <div class="score-rule"><span>Marcador (1º gol)</span><span class="pts pts-blue">3 pts</span></div>
+          <div class="score-rule"><span>+1 por cada gol adicional</span><span class="pts pts-blue">+1 pt</span></div>
+          <div class="score-rule"><span>Craque do Jogo</span><span class="pts pts-red">4 pts</span></div>
         </div>
         <div class="info-card">
           <div class="info-card-title">🥇 Premiação</div>
-          <div class="prize-item">
-            <div class="prize-medal">🥇</div>
-            <div class="prize-info">
-              <div class="prize-place">1º Lugar</div>
-              <div class="prize-desc">A definir pelo organizador</div>
-            </div>
-          </div>
-          <div class="prize-item">
-            <div class="prize-medal">🥈</div>
-            <div class="prize-info">
-              <div class="prize-place">2º Lugar</div>
-              <div class="prize-desc">A definir pelo organizador</div>
-            </div>
-          </div>
-          <div class="prize-item">
-            <div class="prize-medal">🥉</div>
-            <div class="prize-info">
-              <div class="prize-place">3º Lugar</div>
-              <div class="prize-desc">A definir pelo organizador</div>
-            </div>
-          </div>
-          <div class="prize-item">
-            <div class="prize-medal">⭐</div>
-            <div class="prize-info">
-              <div class="prize-place">Mais Craques</div>
-              <div class="prize-desc">Prêmio especial de melhor selecionador</div>
-            </div>
-          </div>
+          <div class="prize-item"><div class="prize-medal">🥇</div><div class="prize-info"><div class="prize-place">1º Lugar</div><div class="prize-desc">A definir pelo organizador</div></div></div>
+          <div class="prize-item"><div class="prize-medal">🥈</div><div class="prize-info"><div class="prize-place">2º Lugar</div><div class="prize-desc">A definir pelo organizador</div></div></div>
+          <div class="prize-item"><div class="prize-medal">🥉</div><div class="prize-info"><div class="prize-place">3º Lugar</div><div class="prize-desc">A definir pelo organizador</div></div></div>
+          <div class="prize-item"><div class="prize-medal">⭐</div><div class="prize-info"><div class="prize-place">Mais Craques</div><div class="prize-desc">Prêmio especial de melhor selecionador</div></div></div>
         </div>
         <div class="info-card info-card-full">
           <div class="info-card-title">📜 Regras Gerais</div>
           <div class="rule-item"><strong>Prazo de palpite:</strong> Palpites devem ser feitos antes do horário de início da partida. Após o início, o palpite é bloqueado automaticamente.</div>
-          <div class="rule-item"><strong>Jogador representante:</strong> Cada palpite inclui a seleção de um jogador dentre as duas seleções em campo. Este jogador compete tanto como Marcador quanto como Craque do Jogo.</div>
-          <div class="rule-item"><strong>Marcador:</strong> Pontua 3 pts base se o jogador selecionado marcar um gol, +1 pt por gol adicional do mesmo jogador (ex: 2 gols = 4 pts, 3 gols = 5 pts).</div>
-          <div class="rule-item"><strong>Craque do Jogo:</strong> Pontua 4 pts se o jogador selecionado for eleito o Craque da Partida pelo organizador.</div>
-          <div class="rule-item"><strong>Placar vs. Resultado:</strong> Acertar o placar exato vale 7 pts. Acertar apenas o vencedor ou empate vale 5 pts (não acumula com o placar exato).</div>
+          <div class="rule-item"><strong>Jogador representante:</strong> Cada palpite inclui a seleção de um jogador dentre as duas seleções em campo.</div>
+          <div class="rule-item"><strong>Marcador:</strong> Pontua 3 pts base se o jogador selecionado marcar um gol, +1 pt por gol adicional.</div>
+          <div class="rule-item"><strong>Craque do Jogo:</strong> Pontua 4 pts se o jogador selecionado for eleito o Craque da Partida.</div>
+          <div class="rule-item"><strong>Placar vs. Resultado:</strong> Acertar o placar exato vale 7 pts. Acertar apenas o vencedor ou empate vale 5 pts.</div>
           <div class="rule-item"><strong>Desempate:</strong> Pontos → Craques → Marcadores Certos → Média de pontos por palpite.</div>
           <div class="rule-item"><strong>Tabela de Rankings:</strong> JP = Jogos Palpitados | MC = Marcadores Certos | C = Craques do Jogo acertados.</div>
         </div>
       </div>
     </div>
-
-    <!-- ─── JOGOS DA COPA ─── -->
-<div class="tab-content" id="tabWorldcup">
-  <div class="page-header">
-    <div>
-      <div class="page-title">🌍 Jogos da Copa do Mundo 2026</div>
-      <div class="page-subtitle">Resultados em tempo real e próximos jogos</div>
+    <!-- JOGOS DA COPA -->
+    <div class="tab-content" id="tabWorldcup">
+      <div class="page-header"><div><div class="page-title">🌍 Jogos da Copa do Mundo 2026</div><div class="page-subtitle">Resultados em tempo real e próximos jogos</div></div></div>
+      <div id="worldcupGamesList"></div>
     </div>
-  </div>
-  <div id="worldcupGamesList"></div>
-</div>
-
-<!-- ─── CLASSIFICAÇÃO ─── -->
-<div class="tab-content" id="tabStandings">
-  <div class="page-header">
-    <div>
-      <div class="page-title">📊 Classificação dos Grupos</div>
-      <div class="page-subtitle">Tabela de classificação da Copa do Mundo FIFA 2026</div>
+    <!-- CLASSIFICAÇÃO -->
+    <div class="tab-content" id="tabStandings">
+      <div class="page-header"><div><div class="page-title">📊 Classificação dos Grupos</div><div class="page-subtitle">Tabela de classificação da Copa do Mundo FIFA 2026</div></div></div>
+      <div id="standingsContainer"></div>
     </div>
-  </div>
-  <div id="standingsContainer"></div>
-</div>
-
-<!-- ─── ARTILHARIA ─── -->
-<div class="tab-content" id="tabTopscorers">
-  <div class="page-header">
-    <div>
-      <div class="page-title">⚽ Artilharia</div>
-      <div class="page-subtitle">Principais goleadores da Copa</div>
+    <!-- ARTILHARIA -->
+    <div class="tab-content" id="tabTopscorers">
+      <div class="page-header"><div><div class="page-title">⚽ Artilharia</div><div class="page-subtitle">Principais goleadores da Copa</div></div></div>
+      <div id="topscorersList"></div>
     </div>
-  </div>
-  <div id="topscorersList"></div>
-</div>
-
-    <!-- ─── ADMIN ─── -->
+    <!-- ADMIN -->
     <div class="tab-content" id="tabAdmin">
-      <div class="page-header">
-        <div>
-          <div class="page-title">⚙️ Admin</div>
-          <div class="page-subtitle">Inserir resultados das partidas</div>
-        </div>
-      </div>
+      <div class="page-header"><div><div class="page-title">⚙️ Admin</div><div class="page-subtitle">Inserir resultados das partidas</div></div></div>
       <div id="adminGamesList"></div>
+      <div id="adminPanelContent"></div>
     </div>
-
   </main>
 </div>
 
-<!-- ═══════════════════════════════════════════════
-     MODAL — PALPITES FINALIZADOS
-══════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modalFinalized">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">📁 Palpites Finalizados</div>
-      <button class="modal-close" onclick="closeModal('modalFinalized')">✕</button>
-    </div>
-    <div class="modal-body" id="modalFinalizedBody"></div>
-  </div>
-</div>
+<!-- MODAIS -->
+<div class="modal-overlay" id="modalFinalized"><div class="modal"><div class="modal-header"><div class="modal-title">📁 Palpites Finalizados</div><button class="modal-close" onclick="closeModal('modalFinalized')">✕</button></div><div class="modal-body" id="modalFinalizedBody"></div></div></div>
+<div class="modal-overlay" id="modalEditBet"><div class="modal"><div class="modal-header"><div class="modal-title">✏️ Editar Palpite</div><button class="modal-close" onclick="closeModal('modalEditBet')">✕</button></div><div class="modal-body" id="modalEditBody"></div></div></div>
+<div class="modal-overlay" id="modalResetPassword"><div class="modal"><div class="modal-header"><div class="modal-title">🔑 Recuperar Senha</div><button class="modal-close" onclick="closeModal('modalResetPassword')">✕</button></div><div class="modal-body"><p style="margin-bottom:16px;">Digite seu nome de perfil para receber uma senha temporária.</p><div class="form-group"><label class="form-label">Nome de Perfil</label><input class="form-input" id="resetName" placeholder="Seu apelido no bolão"></div><button class="btn btn-blue" onclick="requestPasswordReset()" style="width:100%;">Enviar Senha Temporária</button></div></div></div>
 
-<!-- ═══════════════════════════════════════════════
-MODAL — EDITAR PALPITE
-══════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modalEditBet">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">✏️ Editar Palpite</div>
-      <button class="modal-close" onclick="closeModal('modalEditBet')">✕</button>
-    </div>
-    <div class="modal-body" id="modalEditBody"></div>
-  </div>
-</div>
-
-<!-- TOAST -->
 <div id="toast"></div>
-
-<div class="modal-overlay" id="modalResetPassword">
+<div class="modal-overlay" id="modalForcePasswordChange">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">🔑 Recuperar Senha</div>
-      <button class="modal-close" onclick="closeModal('modalResetPassword')">✕</button>
+      <div class="modal-title">🔐 Escolha uma nova senha</div>
+      <button class="modal-close" onclick="closeModal('modalForcePasswordChange')">✕</button>
     </div>
     <div class="modal-body">
-      <p style="margin-bottom:16px;">Digite seu nome de perfil para receber uma senha temporária.</p>
+      <p>Você está usando uma senha temporária. Por favor, escolha um novo jogador como sua senha permanente.</p>
       <div class="form-group">
-        <label class="form-label">Nome de Perfil</label>
-        <input class="form-input" id="resetName" placeholder="Seu apelido no bolão">
+        <label class="form-label">Novo Jogador (Senha)</label>
+        <div class="psearch-wrap">
+          <input class="form-input" id="newPasswordPlayerSearch" placeholder="Pesquisar jogador...">
+          <div class="psearch-results" id="newPasswordPlayerResults"></div>
+        </div>
+        <div class="selected-player" id="newPasswordSelectedPlayer">
+          <span id="newPasswordSelFlag"></span>
+          <span id="newPasswordSelName"></span>
+          <span class="sel-remove" onclick="clearNewPasswordSel()">✕</span>
+        </div>
       </div>
-      <button class="btn btn-blue" onclick="requestPasswordReset()" style="width:100%;">Enviar Senha Temporária</button>
+      <button class="btn btn-green" onclick="submitNewPassword()">SALVAR NOVA SENHA</button>
     </div>
   </div>
 </div>
-
 <script type="module" src="js/app.js"></script>
-
 </body>
 </html>

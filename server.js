@@ -9,32 +9,46 @@ const { Pool } = pkg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configurar conexão com PostgreSQL (se DATABASE_URL existir)
+// =============================================
+// CONEXÃO COM POSTGRESQL
+// =============================================
 let pool = null;
+
 if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
   });
   console.log('✅ PostgreSQL conectado');
 } else {
-  console.log('⚠️ DATABASE_URL não encontrada - usando apenas localStorage');
+  console.error('❌ DATABASE_URL não encontrada! Banco de dados não disponível.');
 }
 
-// Função para criar tabelas (apenas se tiver banco)
+// =============================================
+// CRIAÇÃO DAS TABELAS
+// =============================================
 async function initDatabase() {
   if (!pool) return;
   
   try {
+    // Primeiro, drop da constraint UNIQUE se existir (para evitar conflitos)
+    try {
+      await pool.query(`ALTER TABLE users DROP CONSTRAINT users_profile_name_key;`);
+      console.log('✅ Constraint UNIQUE removida (se existia)');
+    } catch (e) {
+      // Constraint não existia, ignorar erro
+    }
+    
+    // Recriar tabela users sem UNIQUE
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
-        profile_name TEXT UNIQUE,
+        profile_name TEXT,
         password_player_id TEXT,
         is_admin BOOLEAN DEFAULT FALSE,
         is_hidden BOOLEAN DEFAULT FALSE,
@@ -42,8 +56,10 @@ async function initDatabase() {
         secure_auth BOOLEAN DEFAULT FALSE,
         two_fa_code TEXT,
         created_at BIGINT
-      );
-      
+      )
+    `);
+    
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS bets (
         user_id TEXT,
         game_id TEXT,
@@ -52,96 +68,117 @@ async function initDatabase() {
         player_id TEXT,
         saved_at BIGINT,
         PRIMARY KEY (user_id, game_id)
-      );
-      
+      )
+    `);
+    
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
         data JSONB
-      );
+      )
     `);
-    console.log('✅ Tabelas criadas/verificadas');
+    
+    console.log('✅ Tabelas verificadas/criadas com sucesso');
   } catch (error) {
-    console.error('❌ Erro ao criar tabelas:', error.message);
+    console.error('❌ Erro ao criar tabelas:', error);
   }
 }
 
-// Inicializar banco
 await initDatabase();
 
-// Middleware
+// =============================================
+// MIDDLEWARE
+// =============================================
 app.use(express.json());
-
-// ⚠️ Servir arquivos estáticos (ORDEM IMPORTANTE)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // =============================================
-// ENDPOINTS DA API
+// ENDPOINT: USUÁRIOS (GET)
 // =============================================
-
-// USERS
 app.get('/api/users', async (req, res) => {
   if (!pool) {
-    return res.json({ users: [], localOnly: true });
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
   }
   
   try {
-    const result = await pool.query('SELECT * FROM users ORDER BY created_at DESC');
-    // Converter snake_case para camelCase
-    const users = result.rows.map(row => ({
-      id: row.id,
-      profileName: row.profile_name,
-      passwordPlayerId: row.password_player_id,
-      isAdmin: row.is_admin,
-      isHidden: row.is_hidden,
-      email: row.email,
-      secureAuth: row.secure_auth,
-      twoFaCode: row.two_fa_code,
-      createdAt: row.created_at,
-      // Preservar outros campos customizados se existirem
-      ...row
-    }));
-    res.json({ users });
+    const result = await pool.query(`
+      SELECT 
+        id, 
+        profile_name as "profileName", 
+        email, 
+        is_admin as "isAdmin", 
+        is_hidden as "isHidden", 
+        secure_auth as "secureAuth", 
+        two_fa_code as "twoFaCode", 
+        created_at as "createdAt"
+      FROM users 
+      ORDER BY created_at DESC
+    `);
+    res.json({ users: result.rows });
   } catch (error) {
-    console.error('Erro ao buscar users:', error);
+    console.error('❌ GET /api/users erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
+// =============================================
+// ENDPOINT: USUÁRIOS (POST)
+// =============================================
 app.post('/api/users', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
   const { users } = req.body;
   
-  if (!pool || !users) {
-    return res.json({ success: true, localOnly: true });
+  if (!users || !Array.isArray(users)) {
+    return res.status(400).json({ error: 'Dados inválidos' });
   }
   
   try {
     for (const user of users) {
-      await pool.query(
-        `INSERT INTO users (id, profile_name, password_player_id, is_admin, is_hidden, email, secure_auth, two_fa_code, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         ON CONFLICT (id) DO UPDATE SET
-           profile_name = EXCLUDED.profile_name,
-           password_player_id = EXCLUDED.password_player_id,
-           is_admin = EXCLUDED.is_admin,
-           is_hidden = EXCLUDED.is_hidden,
-           email = EXCLUDED.email,
-           secure_auth = EXCLUDED.secure_auth,
-           two_fa_code = EXCLUDED.two_fa_code,
-           created_at = EXCLUDED.created_at`,
-        [user.id, user.profileName, user.passwordPlayerId, user.isAdmin || false, user.isHidden || false, user.email || null, user.secureAuth || false, user.twoFaCode || null, user.createdAt || Date.now()]
-      );
+      const query = `
+        INSERT INTO users (
+          id, profile_name, password_player_id, email, 
+          is_admin, is_hidden, secure_auth, two_fa_code, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (id) DO UPDATE SET
+          profile_name = EXCLUDED.profile_name,
+          password_player_id = EXCLUDED.password_player_id,
+          email = EXCLUDED.email,
+          is_admin = EXCLUDED.is_admin,
+          is_hidden = EXCLUDED.is_hidden,
+          secure_auth = EXCLUDED.secure_auth,
+          two_fa_code = EXCLUDED.two_fa_code,
+          created_at = EXCLUDED.created_at
+      `;
+      
+      await pool.query(query, [
+        user.id,
+        user.profileName,
+        user.passwordPlayerId,
+        user.email || null,
+        user.isAdmin || false,
+        user.isHidden || false,
+        user.secureAuth || false,
+        user.twoFaCode || null,
+        user.createdAt || Date.now()
+      ]);
     }
+    
     res.json({ success: true });
   } catch (error) {
-    console.error('Erro ao salvar users:', error);
+    console.error('❌ POST /api/users erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// BETS
+// =============================================
+// ENDPOINT: PALPITES (GET)
+// =============================================
 app.get('/api/bets', async (req, res) => {
   if (!pool) {
-    return res.json({ bets: {}, localOnly: true });
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
   }
   
   try {
@@ -158,20 +195,26 @@ app.get('/api/bets', async (req, res) => {
     }
     res.json({ bets });
   } catch (error) {
-    console.error('Erro ao buscar bets:', error);
+    console.error('❌ GET /api/bets erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
+// =============================================
+// ENDPOINT: PALPITES (POST)
+// =============================================
 app.post('/api/bets', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
   const { bets } = req.body;
   
-  if (!pool || !bets) {
-    return res.json({ success: true, localOnly: true });
+  if (!bets) {
+    return res.json({ success: true });
   }
   
   try {
-    // Limpar bets antigas do usuário (opcional)
     for (const [userId, userBets] of Object.entries(bets)) {
       for (const [gameId, bet] of Object.entries(userBets)) {
         await pool.query(
@@ -188,35 +231,44 @@ app.post('/api/bets', async (req, res) => {
     }
     res.json({ success: true });
   } catch (error) {
-    console.error('Erro ao salvar bets:', error);
+    console.error('❌ POST /api/bets erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// GAMES
+// =============================================
+// ENDPOINT: JOGOS (GET)
+// =============================================
 app.get('/api/games', async (req, res) => {
   if (!pool) {
-    return res.json({ games: null, localOnly: true });
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
   }
   
   try {
-    const result = await pool.query('SELECT * FROM games');
+    const result = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
     if (result.rows.length > 0) {
       res.json({ games: result.rows[0].data });
     } else {
       res.json({ games: null });
     }
   } catch (error) {
-    console.error('Erro ao buscar games:', error);
+    console.error('❌ GET /api/games erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
+// =============================================
+// ENDPOINT: JOGOS (POST)
+// =============================================
 app.post('/api/games', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
   const { games } = req.body;
   
-  if (!pool || !games) {
-    return res.json({ success: true, localOnly: true });
+  if (!games) {
+    return res.json({ success: true });
   }
   
   try {
@@ -227,15 +279,17 @@ app.post('/api/games', async (req, res) => {
     );
     res.json({ success: true });
   } catch (error) {
-    console.error('Erro ao salvar games:', error);
+    console.error('❌ POST /api/games erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// CLEAR ALL DATA
+// =============================================
+// ENDPOINT: LIMPAR DADOS
+// =============================================
 app.delete('/api/clear', async (req, res) => {
   if (!pool) {
-    return res.json({ success: true, localOnly: true });
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
   }
   
   try {
@@ -244,15 +298,44 @@ app.delete('/api/clear', async (req, res) => {
     await pool.query('DELETE FROM games');
     res.json({ success: true });
   } catch (error) {
-    console.error('Erro ao limpar dados:', error);
+    console.error('❌ DELETE /api/clear erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// =============================================
-// FOOTBALL API
-// =============================================
+app.delete('/api/users/:id', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
 
+  const { id } = req.params;
+
+  try {
+    // Impedir remoção do admin padrão
+    if (id === 'admin_default') {
+      return res.status(403).json({ error: 'Não é possível remover o administrador padrão' });
+    }
+
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Também remover palpites do usuário (opcional, mas recomendado)
+    await pool.query('DELETE FROM bets WHERE user_id = $1', [id]);
+
+    res.json({ success: true, message: 'Usuário removido com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao deletar usuário:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// =============================================
+// ENDPOINT: FOOTBALL API (PROXY)
+// =============================================
 app.get('/api/football', async (req, res) => {
   const { endpoint, team } = req.query;
   
@@ -269,20 +352,16 @@ app.get('/api/football', async (req, res) => {
       url = 'https://api.football-data.org/v4/competitions/WC/matches';
       if (team) url += `?team=${team}`;
       break;
+      case 'ligue1_fixtures':
+  url = 'https://api.football-data.org/v4/competitions/FL1/matches';
+  break;
     case 'topscorers':
       url = 'https://api.football-data.org/v4/competitions/WC/scorers';
-      break;
-    case 'ligue1_fixtures':
-      url = 'https://api.football-data.org/v4/competitions/FL1/matches';
-      if (team) url += `?team=${team}`;
-      break;
-    case 'ligue1_standings':
-      url = 'https://api.football-data.org/v4/competitions/FL1/standings';
       break;
     default:
       return res.status(400).json({ error: 'Endpoint não suportado' });
   }
-
+  
   try {
     const response = await fetch(url, {
       headers: { 'X-Auth-Token': process.env.API_KEY }
@@ -290,71 +369,25 @@ app.get('/api/football', async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    console.error('Erro no proxy:', error);
+    console.error('❌ Erro no proxy football:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/sync-games', async (req, res) => {
-  const { competition = 'WC' } = req.query;
-  
-  try {
-    const response = await fetch(`https://api.football-data.org/v4/competitions/${competition}/matches`, {
-      headers: { 'X-Auth-Token': process.env.API_KEY }
-    });
-    const data = await response.json();
-    
-    if (!data.matches) {
-      return res.status(404).json({ error: 'Nenhum jogo encontrado' });
-    }
-    
-    const games = data.matches.map(match => ({
-      id: match.id,
-      date: match.utcDate.split('T')[0],
-      time: new Date(match.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      homeTeam: match.homeTeam.name,
-      awayTeam: match.awayTeam.name,
-      status: match.status,
-      homeScore: match.score.fullTime.home,
-      awayScore: match.score.fullTime.away
-    }));
-    
-    res.json(games);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/admin/info', (req, res) => {
-  res.json({
-    username: process.env.ADMIN_USERNAME || 'eVagabundoTaLa11223',
-    playerId: process.env.ADMIN_PASSWORD_PLAYER_ID || 'de04'
-  });
-});
-
 // =============================================
-// FALLBACK (SEMPRE POR ÚLTIMO)
+// FALLBACK
 // =============================================
-
 app.get('*', (req, res) => {
-  // Se for requisição de arquivo com extensão, retorna 404
   if (req.path.match(/\.\w+$/)) {
     return res.status(404).send('Arquivo não encontrado');
   }
-  // Senão, retorna o index.html
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // =============================================
 // INICIAR SERVIDOR
 // =============================================
-
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`📂 Servindo arquivos estáticos de: ${path.join(__dirname, 'public')}`);
-  if (pool) {
-    console.log(`🗄️ Banco de dados conectado`);
-  } else {
-    console.log(`💾 Usando apenas localStorage (sem banco)`);
-  }
+  console.log(`📂 Servindo arquivos de: ${path.join(__dirname, 'public')}`);
 });
