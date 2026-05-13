@@ -21,17 +21,20 @@ export async function renderAdmin() {
   
   container.innerHTML = `
     <div class="admin-tabs" style="display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid var(--border);">
-      <button class="admin-tab-btn active" onclick="showAdminTab('users')">👥 Usuários</button>
-      <button class="admin-tab-btn" onclick="showAdminTab('games')">⚽ Resultados</button>
+      <button class="admin-tab-btn active" onclick="showAdminTab('users', this)">👥 Usuários</button>
+      <button class="admin-tab-btn" onclick="showAdminTab('games', this)">⚽ Resultados</button>
     </div>
     <div id="adminTabContent"></div>
   `;
   
   // Mostrar aba de usuários por padrão
-  showAdminTab('users');
+  const firstButton = container.querySelector('.admin-tab-btn');
+  if (firstButton) {
+    showAdminTab('users', firstButton);
+  }
 }
 
-window.showAdminTab = (tab) => {
+window.showAdminTab = (tab, button) => {
   const content = document.getElementById('adminTabContent');
   if (!content) return;
   
@@ -39,7 +42,7 @@ window.showAdminTab = (tab) => {
   document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-  if (event?.target) event.target.classList.add('active');
+  if (button) button.classList.add('active');
   
   if (tab === 'users') {
     renderAdminPanel();
