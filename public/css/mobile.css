@@ -9,9 +9,9 @@
       .ranking-table th:nth-child(n+4),.ranking-table td:nth-child(n+4){display:none;}
       .page-header{flex-direction:column;}
       .admin-row-inner{flex-direction:column;align-items:flex-start;}
-    } 
+    }
 
-    * {
+* {
   box-sizing: border-box;
 }
 
@@ -77,4 +77,3 @@ body {
     font-size: 20px !important;
   }
 }
-
