@@ -1,7 +1,7 @@
 import { TEAMS } from './data/teams.js';
 import { showToast, openModal, closeModal } from './ui.js';
 import { filterPlayers, getPlayer, getPlayersByTeams } from './exportplayer.js';
-import { loadBets, saveBets } from './storage.js';
+import { loadBets, saveBets, loadGames } from './storage.js';
 import { formatDate, sign, playerDisplayName, teamFlagImg } from './utils.js';
 import {
   GAMES_STATE,
@@ -11,16 +11,35 @@ import {
   editingPlayerSel,
   setEditingPlayerSel,
   editingGameId,
-  setEditingGameId
+  setEditingGameId,
+  setGamesState
 } from './state.js';
 import { renderBets } from './bets.js';
-import { startAutoUpdate } from './liveDataService.js';
+
+// Função para garantir que GAMES_STATE é um array
+async function ensureGamesState() {
+  let games = GAMES_STATE;
+  if (!games || !Array.isArray(games)) {
+    games = await loadGames();
+    setGamesState(games);
+  }
+  return games;
+}
+
+function getUniqueDates(games) {
+  if (!games || !Array.isArray(games)) return [];
+  return [...new Set(games.map(g => g.date))].sort();
+}
 
 export async function renderGames() {
-  await syncGamesWithAPI();
-  const dates = getUniqueDates();
-  if (!currentDate) setCurrentDate(dates[0]);
+  const games = await ensureGamesState();
+  
+  const dates = getUniqueDates(games);
+  if (!currentDate && dates.length > 0) setCurrentDate(dates[0]);
+  
   const sel = document.getElementById('dateSelector');
+  if (!sel) return;
+  
   sel.innerHTML = dates.map(d => {
     const dt = new Date(d + 'T12:00:00');
     const day = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
@@ -33,12 +52,12 @@ export async function renderGames() {
     </div>`;
   }).join('');
 
-  renderGameList();
+  await renderGameList(games);
 }
 
-export function selectDate(d) {
+export async function selectDate(d) {
   setCurrentDate(d);
-  renderGames();
+  await renderGames();
 }
 
 export function isGameLocked(game) {
@@ -56,14 +75,17 @@ export function getBadge(bet, game) {
   return { cls: 'rb-loss', txt: 'Errou' };
 }
 
-function renderGameList() {
-  const games = GAMES_STATE.filter(g => g.date === currentDate);;
+async function renderGameList(gamesState) {
+  const games = gamesState.filter(g => g.date === currentDate);
   const list = document.getElementById('gamesList');
+  if (!list) return;
+  
   if (!games.length) {
     list.innerHTML = '<div class="no-games-msg"><div class="icon">📅</div><p>Sem jogos para esta data.</p></div>';
     return;
   }
-  const bets = loadBets();
+  
+  const bets = await loadBets();
   const userBets = bets[currentUser?.id] || {};
 
   list.innerHTML = games.map(game => {
@@ -111,10 +133,10 @@ function renderGameList() {
               <div class="game-presults" id="gpr_${game.id}"></div>
             </div>
             <div class="sel-player-badge${selP?' show':''}" id="spb_${game.id}">
-  <span class="spb-star">⭐</span>
-  <span id="spb_name_${game.id}">${selP ? `<img src="${TEAMS[selP.team]?.flag}" style="width:20px;height:14px;vertical-align:middle;margin-right:6px;border-radius:2px;"> ${selP.name} (${TEAMS[selP.team]?.name || selP.team})` : ''}</span>
-  <span class="spb-remove" onclick="clearGamePlayer('${game.id}')">✕</span>
-</div>
+              <span class="spb-star">⭐</span>
+              <span id="spb_name_${game.id}">${selP ? `<img src="${TEAMS[selP.team]?.flag}" style="width:20px;height:14px;vertical-align:middle;margin-right:6px;border-radius:2px;"> ${selP.name} (${TEAMS[selP.team]?.name || selP.team})` : ''}</span>
+              <span class="spb-remove" onclick="clearGamePlayer('${game.id}')">✕</span>
+            </div>
             <div class="save-bet-row">
               <button class="save-bet-btn" onclick="saveBet('${game.id}')">SALVAR PALPITE</button>
               <div class="bet-saved-msg${bet.homeScore!==undefined?' show':''}" id="bsm_${game.id}">✓ Palpite salvo</div>
@@ -126,16 +148,16 @@ function renderGameList() {
   }).join('');
 
   // Inicializar seleções anteriores
-  games.forEach(game => {
+  for (const game of games) {
     if (!isGameLocked(game)) {
-      const bets = loadBets();
+      const bets = await loadBets();
       const bet = (bets[currentUser?.id] || {})[game.id] || {};
       if (bet.playerId) {
         const p = getPlayer(bet.playerId);
         if (p) setGamePlayerDisplay(game.id, p);
       }
     }
-  });
+  }
 }
 
 const gamePlayerSelections = {};
@@ -146,12 +168,11 @@ function setGamePlayerDisplay(gameId, p) {
   if (badge) badge.classList.add('show');
   if (nameSpan) {
     const team = TEAMS[p.team];
-    // Usa innerHTML para renderizar a imagem corretamente
     const flagImg = team?.flag ? `<img src="${team.flag}" style="width:20px;height:14px;vertical-align:middle;margin-right:6px;border-radius:2px;">` : '';
     nameSpan.innerHTML = `${flagImg} ${p.name} (${team?.name || p.team})`;
   }
 }
-// Funções de busca de jogador (precisam estar no window)
+
 export function filterGamePlayers(gameId) {
   const game = GAMES_STATE.find(g => g.id === gameId);
   if (!game) return;
@@ -176,19 +197,14 @@ export function selectGamePlayer(gameId, playerId) {
   if (!p) return;
   
   gamePlayerSelections[gameId] = p;
-  
-  // Atualizar o badge do jogador
   setGamePlayerDisplay(gameId, p);
   
-  // Fechar o dropdown de resultados
   const res = document.getElementById('gpr_' + gameId);
   if (res) res.classList.remove('open');
   
-  // Limpar o input de busca
   const inp = document.getElementById('gpinp_' + gameId);
   if (inp) inp.value = '';
   
-  // Mostrar toast de confirmação
   const team = TEAMS[p.team];
   showToast(`${p.name} (${team?.name || p.team}) selecionado! ⭐`, 'green');
 }
@@ -205,19 +221,22 @@ function showGameResults(gameId) {
   filterGamePlayers(gameId);
 }
 
-export function saveBet(gameId) {
+export async function saveBet(gameId) {
   const s1 = document.getElementById('s1_' + gameId)?.value;
   const s2 = document.getElementById('s2_' + gameId)?.value;
   if (s1 === '' || s2 === '') { showToast('Informe o placar antes de salvar.', 'red'); return; }
-  const bets = loadBets();
+  
+  const bets = await loadBets();
   if (!bets[currentUser.id]) bets[currentUser.id] = {};
   const selP = gamePlayerSelections[gameId] || (bets[currentUser.id][gameId]?.playerId ? getPlayer(bets[currentUser.id][gameId].playerId) : null);
   bets[currentUser.id][gameId] = {
-    homeScore: parseInt(s1), awayScore: parseInt(s2),
+    homeScore: parseInt(s1), 
+    awayScore: parseInt(s2),
     playerId: selP?.id || null,
     savedAt: Date.now()
   };
-  saveBets(bets);
+  await saveBets(bets);
+  
   document.getElementById('bsm_' + gameId)?.classList.add('show');
   window.updateSidebar?.();
   showToast('Palpite salvo com sucesso! ⚽', 'green');
@@ -279,11 +298,11 @@ export function openEditBet(gameId) {
   });
 }
 
-export function saveEditBet() {
+export async function saveEditBet() {
   if (!editingGameId || !currentUser) return;
   const s1 = parseInt(document.getElementById('edit_s1')?.value);
   const s2 = parseInt(document.getElementById('edit_s2')?.value);
-  const bets = loadBets();
+  const bets = await loadBets();
   if (!bets[currentUser.id]) bets[currentUser.id] = {};
   bets[currentUser.id][editingGameId] = {
     homeScore: isNaN(s1) ? 0 : s1,
@@ -291,7 +310,7 @@ export function saveEditBet() {
     playerId: editingPlayerSel?.id || null,
     savedAt: Date.now()
   };
-  saveBets(bets);
+  await saveBets(bets);
   closeModal('modalEditBet');
   renderBets();
   window.updateSidebar?.();
@@ -313,40 +332,6 @@ export function clearEditPlayer() {
   setEditingPlayerSel(null);
   document.getElementById('edit_selp').classList.remove('show');
 }
-
-function getUniqueDates() {
-  return [...new Set(GAMES_STATE.map(g => g.date))].sort();
-}
-
-export async function syncGamesWithAPI() {
-  console.log('🔄 Sincronizando jogos com a API...');
-  
-  try {
-    const response = await fetch('/api/football?endpoint=ligue1_fixtures');
-    const data = await response.json();
-    
-    if (data.matches) {
-      const games = data.matches.map(match => ({
-        id: match.id.toString(),
-        date: match.utcDate.split('T')[0],
-        time: new Date(match.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        home: match.homeTeam.name.toLowerCase().replace(/\s/g, '_'),
-        away: match.awayTeam.name.toLowerCase().replace(/\s/g, '_'),
-        group: 'Ligue 1',
-        venue: match.venue || 'Estádio',
-        status: match.status === 'FINISHED' ? 'completed' : 'upcoming',
-        result: null
-      }));
-      
-      localStorage.setItem('bc26_games', JSON.stringify(games));
-      console.log(`✅ Sincronizado ${games.length} jogos`);
-      return games;
-    }
-  } catch (error) {
-    console.error('Erro na sincronização:', error);
-  }
-}
-
 
 // Tornar funções globais (necessário para onclick)
 window.saveBet = saveBet;

@@ -6,8 +6,8 @@ import { formatDate, playerDisplayName, teamFlagImg } from './utils.js';
 import { calcBetPoints } from './ranking.js';          // precisa exportar calcBetPoints
 import { isGameLocked, getBadge } from './gamemanager.js'; // precisa exportar
 
-export function renderBets(){
-  const bets = loadBets();
+export async function renderBets(){
+  const bets = await loadBets();
   const userBets = bets[currentUser?.id]||{};
   const gameIds  = Object.keys(userBets);
   const activeBets = gameIds.filter(gid=>{
@@ -45,8 +45,8 @@ export function renderBets(){
 }
 
 // Movida para fora de renderBets e exportada / global
-export function openFinalizedModal(){
-  const bets = loadBets();
+export async function openFinalizedModal(){
+  const bets = await loadBets();
   const userBets = bets[currentUser?.id]||{};
   const finalized = Object.keys(userBets).filter(gid=>{
     const g = GAMES_STATE.find(x=>x.id===gid);

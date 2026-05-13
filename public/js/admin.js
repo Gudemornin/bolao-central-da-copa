@@ -1,16 +1,15 @@
-// js/admin.js
 import { TEAMS } from './data/teams.js';
 import { showToast } from './ui.js';
 import { getPlayer, getPlayersByTeams } from './exportplayer.js';
-import { saveGames } from './storage.js';
-import { GAMES_STATE } from './state.js';
+import { saveGames, loadGames, loadBets } from './storage.js';
+import { GAMES_STATE, setGamesState } from './state.js';
 import { formatDate, teamFlagImg } from './utils.js';
 import { renderAdminPanel } from './adminPanel.js';
 
 // Array para armazenar goleadores temporariamente (por jogo)
 const tempScorers = {};
 
-export function renderAdmin() {
+export async function renderAdmin() {
   const container = document.getElementById('adminGamesList');
   if (!container) return;
   
@@ -40,7 +39,7 @@ window.showAdminTab = (tab) => {
   document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-  event?.target?.classList?.add('active');
+  if (event?.target) event.target.classList.add('active');
   
   if (tab === 'users') {
     renderAdminPanel();
@@ -49,9 +48,13 @@ window.showAdminTab = (tab) => {
   }
 };
 
-export function renderAdminGames() {
-  const el = document.getElementById('adminGamesList');
+export async function renderAdminGames() {
+  const el = document.getElementById('adminTabContent');
   if (!el) return;
+
+  // Garantir que GAMES_STATE está atualizado
+  const games = GAMES_STATE.length ? GAMES_STATE : await loadGames();
+  if (games.length && !GAMES_STATE.length) setGamesState(games);
 
   el.innerHTML = GAMES_STATE.map(g => {
     const t1 = TEAMS[g.home], t2 = TEAMS[g.away];
@@ -142,19 +145,18 @@ function renderScorersList(gameId, scorers, gamePlayers) {
 
 window.adminAddScorer = (gameId) => {
   if (!tempScorers[gameId]) tempScorers[gameId] = [];
-  // Adicionar um goleador vazio
   tempScorers[gameId].push({ playerId: '', goals: 1 });
-  renderAdmin(); // Re-renderizar a parte do admin
+  renderAdminGames(); // ← mudou para renderAdminGames
 };
 
 window.adminRemoveScorer = (gameId, index) => {
   if (tempScorers[gameId]) {
     tempScorers[gameId].splice(index, 1);
-    renderAdmin();
+    renderAdminGames(); // ← mudou para renderAdminGames
   }
 };
 
-window.adminSaveGame = (gameId) => {
+window.adminSaveGame = async (gameId) => {
   const idx = GAMES_STATE.findIndex(g => g.id === gameId);
   if (idx === -1) return;
   
@@ -170,27 +172,32 @@ window.adminSaveGame = (gameId) => {
   // Pegar craque do jogo
   const craqueId = document.getElementById(`craque_${gameId}`)?.value || null;
   
-  // Pegar todos os goleadores do tempScorers (que estão atualizados)
+  // Pegar todos os goleadores - capturar valores atuais do DOM
   const scorersList = tempScorers[gameId] || [];
-  const scorers = scorersList.filter(s => s.playerId && s.playerId !== '').map(s => ({
-    playerId: s.playerId,
-    goals: parseInt(s.goals) || 1
-  }));
+  const updatedScorers = [];
+  
+  for (let i = 0; i < scorersList.length; i++) {
+    const playerId = document.getElementById(`scorer_player_${gameId}_${i}`)?.value;
+    const goals = parseInt(document.getElementById(`scorer_goals_${gameId}_${i}`)?.value);
+    if (playerId && playerId !== '') {
+      updatedScorers.push({ playerId, goals: goals || 1 });
+    }
+  }
   
   // Atualizar GAMES_STATE
   GAMES_STATE[idx].status = 'completed';
   GAMES_STATE[idx].result = {
     homeScore,
     awayScore,
-    scorers: scorers,
+    scorers: updatedScorers,
     craqueId: craqueId || null
   };
   
-  // Salvar no localStorage
-  saveGames(GAMES_STATE);
+  // Salvar no localStorage via API
+  await saveGames(GAMES_STATE);
   
   showToast('Resultado salvo com sucesso! ✅', 'green');
-  renderAdmin();
+  renderAdminGames(); // ← mudou para renderAdminGames
 };
 
 // Exportar função principal

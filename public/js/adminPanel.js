@@ -23,7 +23,7 @@ if (!currentUser || !currentUser.isAdmin) {
 return true;
 }
 
-export function renderAdminPanel() {
+export async function renderAdminPanel() {
 const container = document.getElementById('adminPanelContent');
 if (!container) return;
 
@@ -38,8 +38,8 @@ if (!currentUser || !currentUser.isAdmin) {
     return;
 }
 
-const users = loadUsers(); // Pode ser síncrono ou assíncrono - ajuste
-const bets = loadBets();
+const users = await loadUsers(); // Pode ser síncrono ou assíncrono - ajuste
+const bets = await loadBets();
 
   // Se users for Promise (assíncrono), precisa usar await
   // Vou assumir que é síncrono por enquanto

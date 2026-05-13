@@ -1,4 +1,3 @@
-// js/navigation.js
 import { cap } from './utils.js';
 import { setCurrentTab, currentUser } from './state.js';
 import { renderGames } from './gamemanager.js';
@@ -7,17 +6,23 @@ import { renderAdmin } from './admin.js';
 import { renderBets } from './bets.js';
 import { renderStandings, renderTopScorers } from './worldcupData.js';
 import { TEAMS } from './data/teams.js';
-import { GAMES_STATE } from './state.js';
+import { GAMES_STATE, setGamesState } from './state.js';
+import { loadGames } from './storage.js';
+import { getPlayer } from './exportplayer.js';
 
 // Função para exibir "Jogos da Copa" com bandeiras
-function renderWorldCupGames() {
+async function renderWorldCupGames() {
   const container = document.getElementById('worldcupGamesList');
   if (!container) return;
   
-  // Pegar todos os jogos (futuros e passados)
-  const games = GAMES_STATE;
+  // Garantir que temos os jogos carregados
+  let games = GAMES_STATE;
+  if (!games || !games.length) {
+    games = await loadGames();
+    if (games.length) setGamesState(games);
+  }
   
-  if (!games.length) {
+  if (!games || !games.length) {
     container.innerHTML = '<div class="empty-state">Nenhum jogo encontrado.</div>';
     return;
   }
@@ -62,6 +67,14 @@ function renderWorldCupGames() {
       const statusClass = game.status === 'completed' ? 'status-completed' : 'status-upcoming';
       const statusText = game.status === 'completed' ? '✅ Finalizado' : '📅 Agendado';
       
+      // Buscar nome do goleador se existir
+      let scorerName = '—';
+      if (game.result && game.result.scorers && game.result.scorers.length) {
+        const scorerIds = game.result.scorers.map(s => s.playerId);
+        const scorerNames = scorerIds.map(id => getPlayer(id)?.name || '?').join(', ');
+        scorerName = scorerNames;
+      }
+      
       html += `
         <div class="game-card" style="background:var(--navy-2);border-radius:var(--r);overflow:hidden;">
           <div class="game-card-header" style="padding:12px 16px;background:var(--navy-3);display:flex;justify-content:space-between;align-items:center;">
@@ -101,7 +114,7 @@ function renderWorldCupGames() {
             
             <!-- Detalhes adicionais -->
             <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:center;gap:20px;font-size:12px;color:var(--text-d);">
-              ${game.result && game.result.scorerId ? `<span>⚽ Goleador: ${getPlayer(game.result.scorerId)?.name || '—'}</span>` : ''}
+              ${game.result && game.result.scorers && game.result.scorers.length ? `<span>⚽ Goleador: ${scorerName}</span>` : ''}
               ${game.result && game.result.craqueId ? `<span>⭐ Craque: ${getPlayer(game.result.craqueId)?.name || '—'}</span>` : ''}
             </div>
           </div>
@@ -118,55 +131,48 @@ function renderWorldCupGames() {
   container.innerHTML = html;
 }
 
-// Função auxiliar para buscar jogador (se precisar)
-function getPlayer(playerId) {
-  if (!playerId) return null;
-  // Importar dinamicamente para evitar dependência circular
-  import('./exportplayer.js').then(module => {
-    return module.getPlayer(playerId);
-  }).catch(() => null);
-  return null;
-}
-
-export function switchTab(tab) {
-
-if (tab === 'admin') {
-  // Verificar se é admin antes de renderizar
-  if (currentUser && currentUser.isAdmin) {
-    renderAdmin();
-  } else {
-    // Mostrar mensagem de acesso negado
-    const adminContainer = document.getElementById('adminGamesList');
-    if (adminContainer) {
-      adminContainer.innerHTML = `
-        <div style="text-align:center;padding:60px 20px;">
-          <div style="font-size:48px;margin-bottom:16px;">🔒</div>
-          <h3 style="font-family:Anton;margin-bottom:8px;">Acesso Restrito</h3>
-          <p style="color:var(--text-d);">Apenas administradores podem acessar esta área.</p>
-        </div>
-      `;
-    }
-  }
-}
-
+export async function switchTab(tab) {
   setCurrentTab(tab);
+  
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
+  
   document.querySelectorAll('.tab-content').forEach(el => {
     el.classList.toggle('active', el.id === 'tab' + cap(tab));
   });
+  
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar')?.classList.remove('open');
     document.getElementById('sidebarOverlay')?.classList.remove('show');
   }
-  if (tab === 'games') renderGames();
-  if (tab === 'bets') renderBets();
-  if (tab === 'ranking') renderRanking();
-  if (tab === 'worldcup') renderWorldCupGames();
-  if (tab === 'standings') renderStandings();
-  if (tab === 'topscorers') renderTopScorers();
-  if (tab === 'admin') renderAdmin();
+  
+  // ADMIN - verificar se é admin antes de renderizar
+  if (tab === 'admin') {
+    if (currentUser && currentUser.isAdmin) {
+      await renderAdmin();
+    } else {
+      const adminContainer = document.getElementById('adminGamesList');
+      if (adminContainer) {
+        adminContainer.innerHTML = `
+          <div style="text-align:center;padding:60px 20px;">
+            <div style="font-size:48px;margin-bottom:16px;">🔒</div>
+            <h3 style="font-family:Anton;margin-bottom:8px;">Acesso Restrito</h3>
+            <p style="color:var(--text-d);">Apenas administradores podem acessar esta área.</p>
+          </div>
+        `;
+      }
+    }
+    return;
+  }
+  
+  // Outras abas
+  if (tab === 'games') await renderGames();
+  if (tab === 'bets') await renderBets();
+  if (tab === 'ranking') await renderRanking();
+  if (tab === 'worldcup') await renderWorldCupGames();
+  if (tab === 'standings') await renderStandings();
+  if (tab === 'topscorers') await renderTopScorers();
 }
 
 window.switchTab = switchTab;
