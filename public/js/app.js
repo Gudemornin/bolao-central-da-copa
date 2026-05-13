@@ -30,13 +30,6 @@ export function updateSidebar() {
 
 window.updateSidebar = updateSidebar;
 
-function updateMobileMenu() {
-  const mobileAdmin = document.getElementById('mobileNavAdmin');
-  if (mobileAdmin) {
-    mobileAdmin.style.display = currentUser?.isAdmin ? 'flex' : 'none';
-  }
-}
-
 async function init() {
   initModalClosers();
   
