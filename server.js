@@ -50,13 +50,26 @@ async function initDatabase() {
         id TEXT PRIMARY KEY,
         profile_name TEXT,
         password_player_id TEXT,
+        password_backup TEXT,
+        password_reset_pending BOOLEAN DEFAULT FALSE,
+        temp_password JSONB,
+        reset_by_admin BOOLEAN DEFAULT FALSE,
         is_admin BOOLEAN DEFAULT FALSE,
         is_hidden BOOLEAN DEFAULT FALSE,
         email TEXT,
         secure_auth BOOLEAN DEFAULT FALSE,
         two_fa_code TEXT,
+        admin_overrides JSONB,
         created_at BIGINT
       )
+    `);
+    
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_backup TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_pending BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_password JSONB;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_by_admin BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_overrides JSONB;
     `);
     
     await pool.query(`
@@ -105,11 +118,17 @@ app.get('/api/users', async (req, res) => {
       SELECT 
         id, 
         profile_name as "profileName", 
+        password_player_id as "passwordPlayerId", 
+        password_backup as "passwordBackup", 
+        password_reset_pending as "passwordResetPending", 
+        temp_password as "tempPassword", 
+        reset_by_admin as "resetByAdmin", 
         email, 
         is_admin as "isAdmin", 
         is_hidden as "isHidden", 
         secure_auth as "secureAuth", 
         two_fa_code as "twoFaCode", 
+        admin_overrides as "adminOverrides", 
         created_at as "createdAt"
       FROM users 
       ORDER BY created_at DESC
@@ -139,17 +158,22 @@ app.post('/api/users', async (req, res) => {
     for (const user of users) {
       const query = `
         INSERT INTO users (
-          id, profile_name, password_player_id, email, 
-          is_admin, is_hidden, secure_auth, two_fa_code, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          id, profile_name, password_player_id, password_backup, password_reset_pending, temp_password, reset_by_admin, email, 
+          is_admin, is_hidden, secure_auth, two_fa_code, admin_overrides, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         ON CONFLICT (id) DO UPDATE SET
           profile_name = EXCLUDED.profile_name,
           password_player_id = EXCLUDED.password_player_id,
+          password_backup = EXCLUDED.password_backup,
+          password_reset_pending = EXCLUDED.password_reset_pending,
+          temp_password = EXCLUDED.temp_password,
+          reset_by_admin = EXCLUDED.reset_by_admin,
           email = EXCLUDED.email,
           is_admin = EXCLUDED.is_admin,
           is_hidden = EXCLUDED.is_hidden,
           secure_auth = EXCLUDED.secure_auth,
           two_fa_code = EXCLUDED.two_fa_code,
+          admin_overrides = EXCLUDED.admin_overrides,
           created_at = EXCLUDED.created_at
       `;
       
@@ -157,11 +181,16 @@ app.post('/api/users', async (req, res) => {
         user.id,
         user.profileName,
         user.passwordPlayerId,
+        user.passwordBackup || null,
+        user.passwordResetPending || false,
+        user.tempPassword || null,
+        user.resetByAdmin || false,
         user.email || null,
         user.isAdmin || false,
         user.isHidden || false,
         user.secureAuth || false,
         user.twoFaCode || null,
+        user.adminOverrides || null,
         user.createdAt || Date.now()
       ]);
     }
