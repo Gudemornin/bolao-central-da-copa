@@ -536,18 +536,6 @@ export async function adminEditUserCraques(userId, newCraques) {
   return true;
 }
 
-export { 
-  loginUser,
-  switchAuthTab,
-  handleLogin,
-  handleRegister,
-  logout,
-  adminRemoveUser,
-  adminResetUserPassword,
-  adminEditUserPoints,
-  adminEditUserCraques,
-  requestPasswordReset
-};
 
 // Registrar funções no window (para onclick do HTML)
 window.switchAuthTab = switchAuthTab;
