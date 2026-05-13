@@ -1,16 +1,16 @@
 export const GAMES = [
 
   {
-    id: 'ligue1_brest_strasbourg',
-    date: '2026-05-13',
-    time: '16:00',
-    home: 'brest',
-    away: 'strasbourg',
-    group: 'Teste',
-    venue: 'Stade Francis-Le Blé, Brest',
-    status: 'upcoming',
-    result: null
-},
+  id: 'brest_strasbourg_13maio',
+  date: '2026-05-13',
+  time: '16:00',
+  home: 'brest',
+  away: 'strasbourg',
+  group: 'Ligue 1',
+  venue: 'Stade Francis-Le Blé, Brest',
+  status: 'upcoming',
+  result: null
+  },
   // ═══════════════ MATCHDAY 1 - 11 Jun ═══════════════
   {id:'g01',date:'2026-06-11',time:'13:00',timezone:'UTC-6',home:'mexico',away:'south_africa',group:'A',venue:'Estadio Azteca, Cidade do México',status:'upcoming',result:null},
   {id:'g02',date:'2026-06-11',time:'20:00',timezone:'UTC-6',home:'south_korea',away:'czech_republic',group:'A',venue:'Estadio Akron, Zapopan',status:'upcoming',result:null},

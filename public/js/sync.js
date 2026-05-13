@@ -1,56 +1,92 @@
-let lastSyncTime = null;
+// js/sync.js
+import { TEAMS } from './data/teams.js';
+import { loadGames, saveGames } from './storage.js';
+import { setGamesState } from './state.js';
 
 export async function syncGamesWithAPI() {
-const now = new Date();
-
-  // Sincronizar a cada 1 hora (ou após cada jogo terminar)
-  if (lastSyncTime && (now - lastSyncTime) < 60 * 60 * 1000) {
-    console.log('⏳ Sincronização recente, pulando...');
-    return;
-}
+console.log('🔄 Sincronizando jogos com a API...');
 
 try {
-    console.log('🔄 Sincronizando jogos com a API...');
-    const response = await fetch('/api/sync-games?competition=WC');
-    const apiGames = await response.json();
+    const response = await fetch('/api/football?endpoint=ligue1_fixtures');
+    const data = await response.json();
     
-    // Carregar jogos atuais do localStorage
-    let localGames = JSON.parse(localStorage.getItem('bc26_games') || '[]');
+    if (!data.matches) return [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    // Atualizar ou adicionar jogos
-    apiGames.forEach(apiGame => {
-    const existingIndex = localGames.findIndex(g => g.id === apiGame.id);
+    // Carregar jogos existentes (incluindo manuais)
+    const existingGames = await loadGames();
+    const existingGamesMap = new Map(existingGames.map(g => [g.id, g]));
     
-    if (existingIndex !== -1) {
-        // Atualizar jogo existente (status, placar)
-        localGames[existingIndex] = { 
-        ...localGames[existingIndex], 
-        ...apiGame,
-          // Preservar palpites? Sim, eles ficam em outro localStorage
-        };
-    } else {
-        // Adicionar novo jogo
-        localGames.push(apiGame);
+    // Filtrar e mapear jogos da API
+    const newGames = [];
+    
+    for (const match of data.matches) {
+      // Verificar se os dois times existem no TEAMS
+    const homeKey = match.homeTeam.name.toLowerCase().replace(/\s/g, '_');
+    const awayKey = match.awayTeam.name.toLowerCase().replace(/\s/g, '_');
+    const homeExists = TEAMS[homeKey];
+    const awayExists = TEAMS[awayKey];
+    
+    if (!homeExists || !awayExists) {
+        console.log(`⚠️ Jogo ignorado (time não cadastrado): ${match.homeTeam.name} vs ${match.awayTeam.name}`);
+        continue;
     }
-    });
     
-    // Salvar jogos atualizados
-    localStorage.setItem('bc26_games', JSON.stringify(localGames));
-    lastSyncTime = now;
+      // Verificar se é futuro (opcional - pode manter passados para histórico)
+    const matchDate = new Date(match.utcDate);
+    matchDate.setHours(0, 0, 0, 0);
     
-    console.log(`✅ Sincronizado ${apiGames.length} jogos`);
+      // Só adicionar se for futuro OU se já existir no banco (preservar)
+    const isFuture = matchDate >= today;
+    const alreadyExists = existingGamesMap.has(match.id.toString());
     
-    // Re-renderizar se necessário
-    if (window.currentTab === 'games') {
-    window.renderGames();
+    if (!isFuture && !alreadyExists) {
+        console.log(`📅 Jogo passado ignorado (não existia): ${match.homeTeam.name} vs ${match.awayTeam.name}`);
+        continue;
     }
+    
+    const gameObj = {
+        id: match.id.toString(),
+        date: match.utcDate.split('T')[0],
+        time: new Date(match.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        home: homeKey,
+        away: awayKey,
+        group: 'Ligue 1',
+        venue: match.venue || 'Estádio',
+        status: match.status === 'FINISHED' ? 'completed' : 'upcoming',
+        result: null
+    };
+    
+      // Preservar resultado se já existia
+    const existing = existingGamesMap.get(gameObj.id);
+    if (existing && existing.result) {
+        gameObj.result = existing.result;
+        gameObj.status = existing.status;
+    }
+    
+    newGames.push(gameObj);
+    }
+    
+    // Mesclar com jogos manuais que não vieram da API (ex: jogo de 13/05)
+    for (const existing of existingGames) {
+    if (!newGames.some(g => g.id === existing.id)) {
+        // Jogo manual, manter
+        newGames.push(existing);
+        console.log(`✅ Jogo manual preservado: ${existing.home} vs ${existing.away} (${existing.date})`);
+    }
+    }
+    
+    // Salvar
+    await saveGames(newGames);
+    setGamesState(newGames);
+    
+    console.log(`✅ Sincronizado ${newGames.length} jogos (futuros + manuais)`);
+    return newGames;
+    
 } catch (error) {
-    console.error('❌ Erro na sincronização:', error);
+    console.error('Erro na sincronização:', error);
+    return [];
 }
 }
-
-// Sincronizar automaticamente a cada hora
-setInterval(syncGamesWithAPI, 60 * 60 * 1000);
-
-// Sincronizar ao carregar a página
-syncGamesWithAPI();
