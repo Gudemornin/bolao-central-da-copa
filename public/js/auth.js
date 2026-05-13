@@ -381,9 +381,9 @@ export async function requestPasswordReset () {
 
   const newPasswordPlayer = generateRandomPlayer();
   user.passwordBackup = user.passwordPlayerId;
-  user.passwordPlayerId = newPasswordPlayer.id;
   user.passwordResetPending = true;
   user.tempPassword = newPasswordPlayer;
+  user.passwordPlayerId = newPasswordPlayer.id;
   
   await saveUsers(users);
   

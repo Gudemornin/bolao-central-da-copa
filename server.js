@@ -86,7 +86,21 @@ app.get('/api/users', async (req, res) => {
   
   try {
     const result = await pool.query('SELECT * FROM users ORDER BY created_at DESC');
-    res.json({ users: result.rows });
+    // Converter snake_case para camelCase
+    const users = result.rows.map(row => ({
+      id: row.id,
+      profileName: row.profile_name,
+      passwordPlayerId: row.password_player_id,
+      isAdmin: row.is_admin,
+      isHidden: row.is_hidden,
+      email: row.email,
+      secureAuth: row.secure_auth,
+      twoFaCode: row.two_fa_code,
+      createdAt: row.created_at,
+      // Preservar outros campos customizados se existirem
+      ...row
+    }));
+    res.json({ users });
   } catch (error) {
     console.error('Erro ao buscar users:', error);
     res.status(500).json({ error: error.message });
