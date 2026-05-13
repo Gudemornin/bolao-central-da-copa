@@ -334,9 +334,157 @@ export function loginUser (user) {
   }
   
   if (window.updateSidebar) window.updateSidebar();
-  switchTab('games');
+  
+  // Verificar se há senha temporária pendente
+  if (user.passwordResetPending && user.tempPassword) {
+    console.log('⚠️ Usuário com senha temporária - abrindo modal');
+    openModal('modalSetNewPassword');
+  } else {
+    switchTab('games');
+  }
+  
   showToast(`Bem-vindo, ${user.profileName}! ⚽`, 'green');
 };
+
+// =============================================
+// VARIÁVEL PARA NOVA SENHA
+// =============================================
+let selNewPassword = null;
+
+// =============================================
+// DEFINIR NOVA SENHA PERMANENTE
+// =============================================
+export async function handleSetNewPassword () {
+  const newPlayer = selNewPassword;
+  const errEl = document.getElementById('newPasswordError');
+  
+  errEl.classList.remove('show');
+  errEl.textContent = '';
+  
+  if (!newPlayer) {
+    errEl.textContent = 'Selecione um jogador como sua nova senha.';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  if (!currentUser) {
+    errEl.textContent = 'Erro: Usuário não está logado.';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  const users = await loadUsers();
+  const user = users.find(u => u.id === currentUser.id);
+  
+  if (!user) {
+    errEl.textContent = 'Erro: Usuário não encontrado.';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  // Atualizar senha e limpar flags
+  user.passwordPlayerId = newPlayer.id;
+  user.passwordResetPending = false;
+  user.tempPassword = null;
+  
+  await saveUsers(users);
+  
+  // Atualizar estado local
+  setCurrentUser(user);
+  
+  closeModal('modalSetNewPassword');
+  showToast('✅ Senha alterada com sucesso!', 'green');
+  
+  // Limpar variável
+  selNewPassword = null;
+  document.getElementById('newPasswordSelected').classList.remove('show');
+  
+  switchTab('games');
+}
+
+// =============================================
+// SELEÇÃO DE NOVO JOGADOR-SENHA
+// =============================================
+function selectNewPassword(playerId) {
+  const p = getPlayer(playerId);
+  if (!p) return;
+  
+  selNewPassword = p;
+  
+  document.getElementById('newPasswordSearch').value = '';
+  document.getElementById('newPasswordResults').classList.remove('open');
+  document.getElementById('newPasswordResults').innerHTML = '';
+  
+  const team = TEAMS[p.team];
+  const flagImg = team ? `<img src="${team.flag}" style="width:24px;height:18px;vertical-align:middle;margin-right:8px;">` : '';
+  
+  document.getElementById('newPasswordSelFlag').innerHTML = flagImg;
+  document.getElementById('newPasswordSelName').textContent = p.name + ' (' + (team?.name || p.team) + ')';
+  document.getElementById('newPasswordSelected').classList.add('show');
+}
+
+// =============================================
+// LIMPAR SELEÇÃO DE NOVA SENHA
+// =============================================
+export function clearNewPasswordSel () {
+  selNewPassword = null;
+  document.getElementById('newPasswordSelected').classList.remove('show');
+  document.getElementById('newPasswordSearch').value = '';
+}
+
+// =============================================
+// INICIALIZAR BUSCA DE JOGADORES PARA NOVA SENHA
+// =============================================
+function initNewPasswordSearch() {
+  const inp = document.getElementById('newPasswordSearch');
+  const res = document.getElementById('newPasswordResults');
+  
+  if (!inp || !res) return;
+  
+  inp.addEventListener('input', () => {
+    const q = inp.value.trim();
+    
+    if (!q) {
+      res.classList.remove('open');
+      res.innerHTML = '';
+      return;
+    }
+    
+    const found = filterPlayers(q);
+    
+    if (!found.length) {
+      res.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--text-d)">Nenhum jogador encontrado</div>';
+      res.classList.add('open');
+      return;
+    }
+    
+    res.innerHTML = found.map(p => {
+      const team = TEAMS[p.team];
+      const flagImg = team ? `<img src="${team.flag}" style="width:20px;height:14px;vertical-align:middle;margin-right:6px;">` : '';
+      return `
+        <div class="psearch-item" data-player-id="${p.id}" onclick="selectNewPassword('${p.id}')">
+          <span class="pflag">${flagImg}</span>
+          <span class="pname">${p.name}</span>
+          <span class="pteam">${team?.name || p.team}</span>
+          <span class="ppos">${p.pos}</span>
+        </div>
+      `;
+    }).join('');
+    res.classList.add('open');
+  });
+  
+  inp.addEventListener('focus', () => {
+    if (inp.value.trim()) {
+      res.classList.add('open');
+    }
+  });
+  
+  document.addEventListener('click', (e) => {
+    if (!inp.contains(e.target) && !res.contains(e.target)) {
+      res.classList.remove('open');
+    }
+  });
+}
 
 // =============================================
 // LOGOUT
@@ -547,6 +695,9 @@ window.logout = logout;
 window.loginUser = loginUser;
 window.requestPasswordReset = requestPasswordReset;
 window.openResetPasswordModal = () => openModal('modalResetPassword');
+window.handleSetNewPassword = handleSetNewPassword;
+window.clearNewPasswordSel = clearNewPasswordSel;
+window.selectNewPassword = selectNewPassword;
 window.adminRemoveUser = adminRemoveUser;
 window.adminResetUserPassword = adminResetUserPassword;
 window.adminEditUserPoints = adminEditUserPoints;
@@ -559,6 +710,7 @@ function initAuth() {
   console.log('🚀 Inicializando autenticação...');
   initPlayerSearch('loginPlayerSearch', 'loginPlayerResults');
   initPlayerSearch('regPlayerSearch', 'regPlayerResults');
+  initNewPasswordSearch();
 }
 
 window.openResetPasswordModal = () => openModal('modalResetPassword');
