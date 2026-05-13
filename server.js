@@ -14,19 +14,13 @@ const PORT = process.env.PORT || 3000;
 // Middleware para parsear JSON
 app.use(express.json());
 
-// 1️⃣ PRIMEIRO: Servir arquivos estáticos (CSS, JS, imagens)
-app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
-    }
-    if (filePath.endsWith('.js')) {
-      res.setHeader('Content-Type', 'application/javascript');
-    }
-  }
-}));
+// ⚠️ IMPORTANTE: Servir arquivos estáticos PRIMEIRO
+app.use(express.static(path.join(__dirname, 'public')));
 
-// 2️⃣ SEGUNDO: Rotas da API
+// Também servir arquivos estáticos da raiz (se houver)
+app.use(express.static(path.join(__dirname)));
+
+// Rotas da API
 app.get('/api/football', async (req, res) => {
   const { endpoint, team } = req.query;
   
@@ -69,7 +63,6 @@ app.get('/api/football', async (req, res) => {
   }
 });
 
-// API para sincronizar jogos
 app.get('/api/sync-games', async (req, res) => {
   const { competition = 'WC' } = req.query;
   
@@ -100,7 +93,6 @@ app.get('/api/sync-games', async (req, res) => {
   }
 });
 
-// API para informações do admin
 app.get('/api/admin/info', (req, res) => {
   res.json({
     username: process.env.ADMIN_USERNAME || 'eVagabundoTaLa11223',
@@ -108,24 +100,18 @@ app.get('/api/admin/info', (req, res) => {
   });
 });
 
-app.get('/css/:file', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'css', req.params.file));
-});
-
-app.get('/js/:file', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'js', req.params.file));
-});
-
-// 3️⃣ POR ÚLTIMO: Fallback para SPA
+// ⚠️ Fallback para SPA - APENAS para rotas que NÃO são arquivos
 app.get('*', (req, res) => {
-  // Verificar se não é uma requisição de arquivo
-  if (!req.path.includes('.')) {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  } else {
-    res.status(404).send('Arquivo não encontrado');
+  // Se a requisição é para um arquivo com extensão (css, js, png, etc.), retorna 404
+  if (req.path.match(/\.\w+$/)) {
+    return res.status(404).send('Arquivo não encontrado');
   }
+  
+  // Senão, retorna o index.html
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Servindo arquivos estáticos de: ${path.join(__dirname, 'public')}`);
 });
