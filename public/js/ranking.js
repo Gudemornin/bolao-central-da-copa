@@ -33,12 +33,13 @@ export function calcBetPoints(bet, game) {
   return pts;
 }
 
-function getUserStats(userId) {
-  const users = loadUsers();
+// Tornar getUserStats assíncrona
+async function getUserStats(userId) {
+  const users = await loadUsers(); // ← AWAIT
   const user = users.find(u => u.id === userId);
   
   // Cálculo normal
-  const bets = loadBets();
+  const bets = await loadBets(); // ← AWAIT
   const userBets = bets[userId] || {};
   let pts = 0, jp = 0, mc = 0, craque = 0;
   
@@ -82,32 +83,47 @@ function getUserStats(userId) {
   return { pts, jp, mc, craque, avg };
 }
   
+// getUserPoints também precisa ser assíncrona
+export async function getUserPoints(userId) { 
+  const stats = await getUserStats(userId);
+  return stats.pts; 
+}
 
-export function getUserPoints(userId){ return getUserStats(userId).pts; }
-
-export function renderRanking(){
-  const users = loadUsers();
+// renderRanking também precisa ser assíncrona
+export async function renderRanking() {
+  const users = await loadUsers(); // ← AWAIT
   const visibleUsers = users.filter(u => u.profileName !== 'eVagabundoTaLa11223');
 
-  const rows = users.map(u=>({ user:u, ...getUserStats(u.id) }))
-    .sort((a,b)=>{
-      if(b.pts!==a.pts) return b.pts-a.pts;
-      if(b.craque!==a.craque) return b.craque-a.craque;
-      if(b.mc!==a.mc) return b.mc-a.mc;
-      return b.avg-a.avg;
-    });
+  // Mapear stats para cada usuário (Promise.all para aguardar todos)
+  const rows = await Promise.all(
+    visibleUsers.map(async (u) => ({
+      user: u,
+      ...(await getUserStats(u.id))
+    }))
+  );
+  
+  rows.sort((a, b) => {
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    if (b.craque !== a.craque) return b.craque - a.craque;
+    if (b.mc !== a.mc) return b.mc - a.mc;
+    return b.avg - a.avg;
+  });
 
-  const medals=['gold','silver','bronze'];
-  document.getElementById('rankingBody').innerHTML = rows.map((r,i)=>{
-    const pos=i+1;
-    const isMe = r.user.id===currentUser?.id;
-    return `<tr class="${isMe?'my-row':''}">
-      <td><span class="rank-pos${pos<=3?' '+medals[i]:''}">${pos<=3?['🥇','🥈','🥉'][i]:pos}</span></td>
+  const medals = ['gold', 'silver', 'bronze'];
+  const rankingBody = document.getElementById('rankingBody');
+  
+  if (!rankingBody) return;
+  
+  rankingBody.innerHTML = rows.map((r, i) => {
+    const pos = i + 1;
+    const isMe = r.user.id === currentUser?.id;
+    return `<tr class="${isMe ? 'my-row' : ''}">
+      <td><span class="rank-pos${pos <= 3 ? ' ' + medals[i] : ''}">${pos <= 3 ? ['🥇', '🥈', '🥉'][i] : pos}</span></td>
       <td>
         <div class="rank-user">
           <div class="rank-avatar">${r.user.profileName.charAt(0).toUpperCase()}</div>
           <div>
-            <div class="rank-name">${r.user.profileName}${isMe?'<span class="rank-you">(você)</span>':''}</div>
+            <div class="rank-name">${r.user.profileName}${isMe ? '<span class="rank-you">(você)</span>' : ''}</div>
           </div>
         </div>
       </td>
@@ -117,5 +133,6 @@ export function renderRanking(){
       <td class="rank-stat">${r.mc}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-d)">Nenhum participante ainda.</td></tr>';
+  
   updateSidebar();
 }
