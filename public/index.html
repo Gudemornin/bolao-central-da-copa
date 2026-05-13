@@ -180,15 +180,8 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════
-     MOBILE TOP BAR
-══════════════════════════════════════════════════ -->
-<div class="mobile-top-bar">
-  <button class="hamburger" onclick="toggleSidebar()">☰</button>
-  <span class="mobile-logo-text">⚽ BOLÃO DA CENTRAL</span>
-</div>
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-<!-- Mobile Bottom Navigation -->
+
+<<!-- MENU INFERIOR (SOMENTE MOBILE) -->
 <div class="mobile-bottom-nav" id="mobileBottomNav">
   <div class="nav-item" data-tab="games" onclick="switchTab('games')">
     <span class="nav-tab-logo">🏟️</span>
@@ -202,10 +195,6 @@
     <span class="nav-tab-logo">🏆</span>
     <span>Ranking</span>
   </div>
-  <div class="nav-item" data-tab="profile" onclick="switchTab('profile')">
-    <span class="nav-tab-logo">👤</span>
-    <span>Perfil</span>
-  </div>
   <div class="nav-item" data-tab="worldcup" onclick="switchTab('worldcup')">
     <span class="nav-tab-logo">🌍</span>
     <span>Jogos</span>
@@ -214,6 +203,10 @@
     <span class="nav-tab-logo">📊</span>
     <span>Grupos</span>
   </div>
+  <div class="nav-item" data-tab="topscorers" onclick="switchTab('topscorers')">
+    <span class="nav-tab-logo">⚽</span>
+    <span>Artilharia</span>
+  </div>
   <div class="nav-item" data-tab="info" onclick="switchTab('info')">
     <span class="nav-tab-logo">ℹ️</span>
     <span>Info</span>
@@ -221,6 +214,10 @@
   <div class="nav-item" data-tab="admin" id="mobileNavAdmin" style="display:none;" onclick="switchTab('admin')">
     <span class="nav-tab-logo">⚙️</span>
     <span>Admin</span>
+  </div>
+  <div class="nav-item" onclick="logout()">
+    <span class="nav-tab-logo">🚪</span>
+    <span>Sair</span>
   </div>
 </div>
 

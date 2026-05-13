@@ -97,4 +97,27 @@ window.toggleSidebar = () => {
   document.getElementById('sidebarOverlay')?.classList.toggle('show');
 };
 
+export function updateMobileMenu() {
+  const mobileAdmin = document.getElementById('mobileNavAdmin');
+  if (mobileAdmin) {
+    mobileAdmin.style.display = currentUser?.isAdmin ? 'flex' : 'none';
+  }
+}
+
+// Função para marcar o item ativo no menu inferior
+export function updateMobileActiveTab(tab) {
+  const mobileItems = document.querySelectorAll('.mobile-bottom-nav .nav-item');
+  mobileItems.forEach(item => {
+    if (item.getAttribute('data-tab') === tab) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+
+}
+
+window.updateMobileMenu = updateMobileMenu;
+window.updateMobileActiveTab = updateMobileActiveTab;
+
 export { updateMobileMenu };

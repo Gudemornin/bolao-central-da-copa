@@ -1,5 +1,12 @@
+/* =============================================
+   MOBILE.CSS - COMPLETO
+   Bolão da Central 2026
+   ============================================= */
+
+/* BREAKPOINT PRINCIPAL: 768px */
 @media (max-width: 768px) {
-  /* Sidebar - menu lateral */
+  
+  /* ========== SIDEBAR (MENU LATERAL) ========== */
   .sidebar {
     transform: translateX(-100%);
     transition: transform 0.3s ease;
@@ -28,7 +35,7 @@
     display: block;
   }
   
-  /* Top bar com menu hambúrguer */
+  /* ========== TOP BAR (MENU HAMBÚRGUER) ========== */
   .mobile-top-bar {
     display: flex;
     position: fixed;
@@ -62,15 +69,7 @@
     color: var(--gold);
   }
   
-  /* Conteúdo principal com espaço para o top bar */
-  .main-content {
-    margin-left: 0 !important;
-    padding: 72px 12px 70px 12px !important;
-    width: 100%;
-    overflow-x: hidden;
-  }
-  
-  /* Abas de navegação (menu inferior) - NOVO */
+  /* ========== MENU INFERIOR (NAVEGAÇÃO MOBILE) ========== */
   .mobile-bottom-nav {
     display: flex;
     position: fixed;
@@ -78,12 +77,14 @@
     left: 0;
     right: 0;
     background: var(--navy-2);
-    border-top: 1px solid var(--border);
-    padding: 8px 12px;
-    gap: 8px;
+    border-top: 2px solid var(--border);
+    padding: 8px 8px;
+    gap: 4px;
     overflow-x: auto;
     z-index: 100;
     -webkit-overflow-scrolling: touch;
+    justify-content: space-around;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
   }
   
   .mobile-bottom-nav .nav-item {
@@ -99,11 +100,17 @@
     text-align: center;
     color: var(--text-d);
     cursor: pointer;
+    transition: all 0.2s ease;
   }
   
   .mobile-bottom-nav .nav-item .nav-tab-logo {
-    font-size: 20px;
+    font-size: 22px;
     margin-bottom: 4px;
+  }
+  
+  .mobile-bottom-nav .nav-item span:last-child {
+    font-size: 10px;
+    font-weight: 500;
   }
   
   .mobile-bottom-nav .nav-item.active {
@@ -111,7 +118,26 @@
     color: var(--blue-l);
   }
   
-  /* Ajustes gerais */
+  .mobile-bottom-nav .nav-item:active {
+    transform: scale(0.95);
+  }
+  
+  /* Esconder menu inferior no desktop */
+  @media (min-width: 769px) {
+    .mobile-bottom-nav {
+      display: none !important;
+    }
+  }
+  
+  /* ========== CONTEÚDO PRINCIPAL ========== */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 72px 12px 70px 12px !important;
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
+  /* ========== GRADE DE INFORMAÇÕES ========== */
   .info-grid {
     grid-template-columns: 1fr;
   }
@@ -120,7 +146,7 @@
     grid-column: 1;
   }
   
-  /* Tabelas responsivas */
+  /* ========== TABELAS RESPONSIVAS ========== */
   .ranking-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -132,35 +158,55 @@
   
   .ranking-table th,
   .ranking-table td {
-    padding: 8px 4px;
-    font-size: 11px;
+    padding: 10px 8px;
+    font-size: 12px;
   }
   
   .ranking-table th:first-child,
   .ranking-table td:first-child {
-    padding-left: 8px;
+    padding-left: 12px;
   }
   
   .ranking-table th:last-child,
   .ranking-table td:last-child {
-    padding-right: 8px;
+    padding-right: 12px;
   }
   
-  /* Cards de jogos */
+  /* Esconder colunas menos importantes no mobile */
+  .ranking-table th:nth-child(4),
+  .ranking-table td:nth-child(4),
+  .ranking-table th:nth-child(6),
+  .ranking-table td:nth-child(6) {
+    display: none;
+  }
+  
+  /* ========== CARDS DE JOGOS ========== */
   .game-teams {
+    flex-direction: row !important;
     flex-wrap: wrap;
+    gap: 12px !important;
   }
   
   .team-side {
-    min-width: 100px;
+    flex: 1;
+    min-width: 90px;
+    flex-direction: column !important;
+    gap: 6px !important;
   }
   
   .team-flag img {
     width: 40px !important;
+    height: auto;
   }
   
   .team-name-lbl {
-    font-size: 11px;
+    font-size: 11px !important;
+    white-space: normal;
+    text-align: center;
+  }
+  
+  .vs-area {
+    min-width: 100px;
   }
   
   .score-input {
@@ -169,11 +215,15 @@
     font-size: 20px !important;
   }
   
-  .vs-area {
-    min-width: 120px;
+  .score-sep {
+    font-size: 20px !important;
   }
   
-  /* Admin */
+  .vs-lbl {
+    font-size: 11px !important;
+  }
+  
+  /* ========== ADMIN ========== */
   .admin-row-inner {
     flex-direction: column;
     align-items: flex-start;
@@ -188,54 +238,143 @@
     font-size: 12px;
   }
   
-  /* Page header */
+  .admin-tabs {
+    flex-wrap: wrap;
+  }
+  
+  .admin-tab-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  
+  /* ========== HEADER ========== */
   .page-header {
     flex-direction: column;
     gap: 8px;
   }
   
   .page-title {
-    font-size: 20px;
+    font-size: 22px;
   }
   
-  /* Botões */
+  .page-subtitle {
+    font-size: 12px;
+  }
+  
+  /* ========== BOTÕES ========== */
   .btn {
     padding: 10px 16px;
+    font-size: 13px;
   }
   
-  /* Modal */
+  .save-bet-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+  
+  /* ========== MODAL ========== */
   .modal {
     width: 95%;
     margin: 10px;
+    max-height: 90vh;
+  }
+  
+  .modal-header {
+    padding: 14px 18px;
   }
   
   .modal-body {
-    padding: 12px 16px;
+    padding: 14px 18px;
   }
   
-  /* Selector de datas */
+  .modal-title {
+    font-size: 16px;
+  }
+  
+  /* ========== SELECTOR DE DATAS ========== */
   .date-selector {
-    gap: 6px;
+    gap: 8px;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
   }
   
   .date-btn {
-    padding: 6px 10px;
-    min-width: 60px;
+    padding: 8px 12px;
+    min-width: 65px;
   }
   
   .date-btn .dnum {
+    font-size: 20px;
+  }
+  
+  .date-btn .dname {
+    font-size: 10px;
+  }
+  
+  .date-btn .dmonth {
+    font-size: 9px;
+  }
+  
+  /* ========== BADGES ========== */
+  .game-badge, 
+  .locked-badge, 
+  .status-badge {
+    font-size: 9px;
+    padding: 3px 8px;
+  }
+  
+  /* ========== CARD DE PALPITES ========== */
+  .bet-card {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .bet-match-info {
+    flex: 1 1 100%;
+  }
+  
+  .bet-score-disp {
     font-size: 18px;
   }
   
-  /* Badges */
-  .game-badge, .locked-badge, .status-badge {
-    font-size: 9px;
-    padding: 2px 6px;
+  .edit-bet-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  /* ========== RANKING ========== */
+  .rank-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  
+  .rank-name {
+    font-size: 13px;
+  }
+  
+  .rank-pts {
+    font-size: 18px;
+  }
+  
+  .rank-pos {
+    font-size: 16px;
+  }
+  
+  /* ========== TOAST ========== */
+  #toast {
+    bottom: 80px;
+    right: 16px;
+    left: 16px;
+    text-align: center;
   }
 }
 
-/* Extra small devices (celulares pequenos) */
+/* =============================================
+   EXTRA SMALL DEVICES (celulares pequenos - até 480px)
+   ============================================= */
 @media (max-width: 480px) {
+  
   .mobile-bottom-nav .nav-item {
     min-width: 55px;
     font-size: 10px;
@@ -246,19 +385,35 @@
   }
   
   .team-side {
-    min-width: 80px;
+    min-width: 70px;
+  }
+  
+  .team-flag img {
+    width: 32px !important;
+  }
+  
+  .team-name-lbl {
+    font-size: 9px !important;
   }
   
   .score-input {
-    width: 40px !important;
-    height: 40px !important;
+    width: 42px !important;
+    height: 42px !important;
     font-size: 16px !important;
+  }
+  
+  .score-sep {
+    font-size: 16px !important;
+  }
+  
+  .vs-area {
+    min-width: 85px;
   }
   
   .ranking-table th,
   .ranking-table td {
-    font-size: 9px;
-    padding: 6px 2px;
+    font-size: 10px;
+    padding: 8px 4px;
   }
   
   .rank-avatar {
@@ -270,74 +425,75 @@
   .rank-name {
     font-size: 11px;
   }
-}
-
-/* Correção do layout dos cards de jogo no mobile - mantendo horizontal */
-@media (max-width: 768px) {
-  /* Mantém os times lado a lado, mas com espaçamento adequado */
-  .game-teams {
-    display: flex;
-    flex-direction: row !important;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px !important;
+  
+  .rank-pts {
+    font-size: 14px;
   }
-
-  /* Cada time ocupa espaço proporcional */
-  .team-side {
-    flex: 1;
-    flex-direction: column !important;
-    gap: 4px !important;
+  
+  .page-title {
+    font-size: 18px;
   }
-
-  /* Bandeiras menores */
-  .team-flag img {
-    width: 32px !important;
-    height: auto;
-  }
-
-  /* Nome do time em uma linha, menor */
-  .team-name-lbl {
-    font-size: 10px !important;
-    white-space: nowrap;
-  }
-
-  /* Área do placar */
-  .vs-area {
-    min-width: 90px;
-  }
-
-  /* Inputs do placar */
-  .score-input {
-    width: 45px !important;
-    height: 45px !important;
-    font-size: 18px !important;
-  }
-
-  .score-sep {
-    font-size: 18px !important;
-  }
-
-  /* VS menor */
-  .vs-lbl {
-    font-size: 10px !important;
-  }
-
-  /* Cabeçalho do card */
+  
   .game-card-header {
-    flex-wrap: wrap;
-    gap: 6px;
     font-size: 9px;
   }
+}
 
-  .game-badge, .locked-badge {
-    font-size: 8px;
-    padding: 2px 5px;
+/* =============================================
+   DESKTOP (esconder elementos mobile)
+   ============================================= */
+@media (min-width: 769px) {
+  .mobile-top-bar {
+    display: none !important;
   }
+  
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+  
+  .sidebar-overlay {
+    display: none !important;
+  }
+}
 
-  /* Botão salvar */
-  .save-bet-btn {
-    padding: 8px 12px;
-    font-size: 11px;
+/* =============================================
+   CORREÇÕES GERAIS PARA MOBILE
+   ============================================= */
+
+/* Remover hover effects que atrapalham no toque */
+@media (max-width: 768px) {
+  .nav-item:hover,
+  .game-card:hover,
+  .btn:hover,
+  .admin-action-btn:hover {
+    transform: none;
+  }
+  
+  /* Melhorar toque em botões */
+  button,
+  .nav-item,
+  .date-btn,
+  .game-pitem,
+  .psearch-item {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  
+  /* Evitar zoom em inputs */
+  input[type="number"],
+  input[type="text"],
+  input[type="email"],
+  select {
+    font-size: 16px;
+  }
+  
+  /* Ajuste do placar no card de jogo */
+  .score-inputs {
+    justify-content: center;
+  }
+  
+  /* Badge de status */
+  .status-badge {
+    white-space: nowrap;
   }
 }
