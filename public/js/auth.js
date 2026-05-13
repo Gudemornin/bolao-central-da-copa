@@ -113,7 +113,7 @@ function selectAuthPlayer(playerId, inputId, resultsId) {
 // =============================================
 // LIMPAR SELEÇÃO
 // =============================================
-window.clearPlayerSel = function(prefix) {
+export function clearPlayerSel (prefix) {
   if (prefix === 'login') {
     selPlayerLogin = null;
   } else {
@@ -126,7 +126,7 @@ window.clearPlayerSel = function(prefix) {
 // =============================================
 // TROCAR ABA LOGIN/REGISTRO
 // =============================================
-window.switchAuthTab = function(tab) {
+export function switchAuthTab (tab) {
   document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
   document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
   document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
@@ -138,7 +138,7 @@ window.switchAuthTab = function(tab) {
 // =============================================
 // 2FA
 // =============================================
-window.toggleSecureAuth = function() {
+export function toggleSecureAuth () {
   const open = document.getElementById('secureAuthCheck').checked;
   document.getElementById('secureSection').classList.toggle('open', open);
 };
@@ -160,7 +160,7 @@ function generateRandomPlayer() {
 // =============================================
 // REGISTRO
 // =============================================
-window.handleRegister = async function() {
+export async function handleRegister () {
   const name = document.getElementById('regName').value.trim();
   const player = selPlayerReg;
   const secure = document.getElementById('secureAuthCheck').checked;
@@ -230,7 +230,7 @@ window.handleRegister = async function() {
 // =============================================
 // LOGIN
 // =============================================
-window.handleLogin = async function() {
+export async function handleLogin () {
   const name = document.getElementById('loginName').value.trim();
   const player = selPlayerLogin;
   const errEl = document.getElementById('loginError');
@@ -321,7 +321,7 @@ window.handleLogin = async function() {
 // =============================================
 // FINALIZAR LOGIN
 // =============================================
-window.loginUser = function(user) {
+export function loginUser (user) {
   setCurrentUser(user);
   localStorage.setItem('bc26_session', user.id);
   
@@ -341,7 +341,7 @@ window.loginUser = function(user) {
 // =============================================
 // LOGOUT
 // =============================================
-window.logout = function() {
+export function logout () {
   setCurrentUser(null);
   localStorage.removeItem('bc26_session');
   document.getElementById('appLayout').classList.remove('show');
@@ -364,7 +364,7 @@ window.logout = function() {
 // =============================================
 // RECUPERAÇÃO DE SENHA
 // =============================================
-window.requestPasswordReset = async function() {
+export async function requestPasswordReset () {
   const profileName = document.getElementById('resetName')?.value.trim();
   if (!profileName) {
     showToast('Digite seu nome de perfil', 'red');
@@ -420,7 +420,7 @@ window.requestPasswordReset = async function() {
 // =============================================
 // FUNÇÕES DE ADMIN
 // =============================================
-window.adminRemoveUser = async function(userId) {
+export async function adminRemoveUser (userId) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
@@ -440,7 +440,7 @@ window.adminRemoveUser = async function(userId) {
   return true;
 };
 
-window.adminResetUserPassword = async function(userId) {
+export async function adminResetUserPassword (userId) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return null;
@@ -484,7 +484,7 @@ window.adminResetUserPassword = async function(userId) {
   return newPasswordPlayer;
 };
 
-window.adminEditUserPoints = async function(userId, newPoints) {
+export async function adminEditUserPoints (userId, newPoints) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
@@ -510,7 +510,33 @@ window.adminEditUserPoints = async function(userId, newPoints) {
   return true;
 };
 
-window.adminEditUserCraques = async function(userId, newCraques) {
+export async function adminEditUserCraques(userId, newCraques) {
+  if (!currentUser?.isAdmin) {
+    showToast('Acesso negado', 'red');
+    return false;
+  }
+  
+  const users = await loadUsers(); // Use await se loadUsers for async
+  const user = users.find(u => u.id === userId);
+  
+  if (!user) {
+    showToast('Usuário não encontrado', 'red');
+    return false;
+  }
+  
+  if (!user.adminOverrides) user.adminOverrides = {};
+  user.adminOverrides.manualCraques = newCraques;
+  
+  await saveUsers(users); // Use await se saveUsers for async
+  showToast(`Craques de ${user.profileName} alterados para ${newCraques}!`, 'green');
+  
+  if (window.renderRanking) window.renderRanking();
+  if (window.renderAdminPanel) window.renderAdminPanel();
+  
+  return true;
+}
+
+export async function adminEditUserCraques (userId, newCraques) {
   if (!currentUser?.isAdmin) {
     showToast('Acesso negado', 'red');
     return false;
