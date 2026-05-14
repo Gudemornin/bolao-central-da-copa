@@ -549,6 +549,31 @@ MODAL — EDITAR PALPITE
   </div>
 </div>
 
+<div class="modal-overlay" id="modalChangePassword">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Alterar Senha</div>
+      <button class="modal-close" onclick="closeModal('modalChangePassword')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom:16px;">Escolha um novo jogador como sua senha. Guarde bem!</p>
+      <div class="form-group">
+        <label class="form-label">🔒 Nova Senha — Jogador</label>
+        <div class="psearch-wrap">
+          <input class="form-input" id="changePwdPlayerSearch" placeholder="Pesquisar jogador..." autocomplete="off">
+          <div class="psearch-results" id="changePwdPlayerResults"></div>
+        </div>
+        <div class="selected-player" id="changePwdSelectedPlayer">
+          <span id="changePwdSelFlag"></span>
+          <span id="changePwdSelName"></span>
+          <span class="sel-remove" onclick="clearChangePwdSel()">✕</span>
+        </div>
+      </div>
+      <button class="btn btn-green" onclick="submitChangePassword()" style="width:100%;">SALVAR NOVA SENHA</button>
+    </div>
+  </div>
+</div>
+
 <script type="module" src="js/app.js"></script>
 
 </body>
