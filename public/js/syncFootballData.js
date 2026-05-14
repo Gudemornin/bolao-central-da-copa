@@ -25,12 +25,12 @@ import { TEAMS }                 from './data/teams.js';
 
 export const FD_COMPETITIONS = {
   WC:  { code: 'WC',  season: 2026, name: 'Copa do Mundo 2026', group: 'Copa do Mundo' },
-  PD:  { code: 'PD',  season: 2024, name: 'La Liga',            group: 'La Liga'        },
-  PL:  { code: 'PL',  season: 2024, name: 'Premier League',     group: 'Premier League' },
-  BL1: { code: 'BL1', season: 2024, name: 'Bundesliga',         group: 'Bundesliga'     },
-  SA:  { code: 'SA',  season: 2024, name: 'Serie A',            group: 'Serie A'        },
-  FL1: { code: 'FL1', season: 2024, name: 'Ligue 1',            group: 'Ligue 1'        },
-  CL:  { code: 'CL',  season: 2024, name: 'Champions League',   group: 'Champions League' },
+  PD:  { code: 'PD',  season: 2025, name: 'La Liga',            group: 'La Liga'        },
+  PL:  { code: 'PL',  season: 2025, name: 'Premier League',     group: 'Premier League' },
+  BL1: { code: 'BL1', season: 2025, name: 'Bundesliga',         group: 'Bundesliga'     },
+  SA:  { code: 'SA',  season: 2025, name: 'Serie A',            group: 'Serie A'        },
+  FL1: { code: 'FL1', season: 2025, name: 'Ligue 1',            group: 'Ligue 1'        },
+  CL:  { code: 'CL',  season: 2025, name: 'Champions League',   group: 'Champions League' },
 };
 
 // Ligas sincronizadas automaticamente a cada 5 min

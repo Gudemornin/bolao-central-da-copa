@@ -333,8 +333,8 @@ app.post('/api/sync-results', async (req, res) => {
 
   // Season por competição
   const SEASON_MAP = {
-    WC: 2026, PD: 2024, PL: 2024,
-    BL1: 2024, SA: 2024, FL1: 2024, CL: 2024,
+    WC: 2026, PD: 2025, PL: 2025,
+    BL1: 2025, SA: 2025, FL1: 2025, CL: 2025,
   };
 
   try {

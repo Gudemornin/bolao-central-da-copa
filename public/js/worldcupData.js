@@ -3,7 +3,7 @@
 // Liga da Copa do Mundo 2026: id=1, season=2026
 // Para testes (La Liga):      id=140, season=2024
 
-import { getStandings, getTopScorers, LEAGUES } from './liveDataService.js';
+import { fetchFdStandings, fetchFdScorers, FD_COMPETITIONS } from './syncFootballData.js'
 import { calculateStandings, calculateTopScorers, groupStandingsByGroup } from './standingsCalculator.js';
 
 // ── Mapeamento de nomes em PT-BR ──────────────────────────────────────────────
@@ -88,7 +88,7 @@ export async function renderStandings() {
     }
 
     const teams  = calculateStandings(leagueData);
-    const groups = groupStandingsByGroup(teams);
+    const groups = await fetchFdStandings('WC', 2026);
 
     let html = `
       <div style="margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
