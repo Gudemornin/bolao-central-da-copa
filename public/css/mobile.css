@@ -475,3 +475,53 @@
   background: var(--blue);
   border-radius: 3px;
 }
+
+/* =============================================
+   SELECTOR DE DATAS - MOBILE
+   ============================================= */
+@media (max-width: 768px) {
+  .date-selector {
+    gap: 8px;
+    padding: 8px 0 12px 0;
+  }
+  
+  .date-btn {
+    padding: 8px 12px;
+    min-width: 60px;
+  }
+  
+  .date-btn .dnum {
+    font-size: 18px;
+  }
+  
+  .date-btn .dname {
+    font-size: 9px;
+  }
+  
+  .date-btn .dmonth {
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .date-selector {
+    gap: 6px;
+  }
+  
+  .date-btn {
+    padding: 6px 10px;
+    min-width: 55px;
+  }
+  
+  .date-btn .dnum {
+    font-size: 16px;
+  }
+  
+  .date-btn .dname {
+    font-size: 8px;
+  }
+  
+  .date-btn .dmonth {
+    font-size: 7px;
+  }
+}
