@@ -177,6 +177,23 @@ img[src*="flagcdn"] {
   transition: all 0.2s;
 }
 
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.main-content {
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tab-content {
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .admin-action-btn:hover {
   transform: translateY(-1px);
   opacity: 0.9;
@@ -184,6 +201,7 @@ img[src*="flagcdn"] {
 
 .mobile-bottom-nav {
   display: none;
+
 }
 
 /* Exibir menu inferior apenas no mobile */
@@ -201,3 +219,8 @@ img[src*="flagcdn"] {
       pointer-events: none !important;
     }
   }
+/* Garantir que nada ultrapasse as bordas */
+* {
+  box-sizing: border-box;
+}
+
