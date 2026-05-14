@@ -525,3 +525,92 @@
     font-size: 7px;
   }
 }
+
+@media (max-width: 768px) {
+  /* Cards da copa */
+  .worldcup-game-card,      /* se usar classe específica */
+  .game-card {              /* classe genérica usada na renderização */
+    margin: 12px;
+  }
+
+  .game-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .game-card-header > div:first-child {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .game-teams {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .team-home, .team-away {
+    flex-direction: row !important;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .team-flag img {
+    width: 40px;
+    height: 30px;
+  }
+
+  .team-name-lbl {
+    font-size: 12px;
+  }
+
+  .vs-area {
+    order: -1;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .score-inputs {
+    justify-content: center;
+  }
+
+  .score-input {
+    width: 55px;
+    height: 55px;
+    font-size: 20px;
+  }
+
+  .status-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Reduz o padding das células da primeira e segunda coluna */
+  .ranking-table td:first-child,
+  .ranking-table th:first-child {
+    padding-right: 4px;
+    width: 40px;
+  }
+
+  .ranking-table td:nth-child(2),
+  .ranking-table th:nth-child(2) {
+    padding-left: 4px;
+  }
+
+  /* Ajusta o container do usuário (avatar + nome) */
+  .rank-user {
+    gap: 6px; /* reduz o espaçamento padrão */
+  }
+
+  .rank-avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .rank-name {
+    font-size: 13px;
+  }
+}
