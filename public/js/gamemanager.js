@@ -104,11 +104,19 @@ async function renderGameList() {
     return;
   }
   
+  // Ordenar jogos por data e hora
+  const sortedGames = [...gamesState].sort((a, b) => {
+    const dateA = new Date(`${a.date}T${a.time}:00`);
+    const dateB = new Date(`${b.date}T${b.time}:00`);
+    return dateA - dateB;
+  });
+  
+  // Filtrar jogos da data atual + futuros
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   yesterday.setHours(0, 0, 0, 0);
   
-  const games = gamesState.filter(g => {
+  const games = sortedGames.filter(g => {
     if (!g || !g.date) return false;
     const gameDate = new Date(g.date);
     gameDate.setHours(0, 0, 0, 0);
@@ -127,16 +135,21 @@ async function renderGameList() {
   const userBets = bets[currentUser?.id] || {};
 
   list.innerHTML = games.map(game => {
-    const t1 = TEAMS[game.home], t2 = TEAMS[game.away];
+    const t1 = TEAMS[game.home];
+    const t2 = TEAMS[game.away];
     const locked = isGameLocked(game);
     const bet = userBets[game.id] || {};
     const selP = bet.playerId ? getPlayer(bet.playerId) : null;
-
+    
+    // Nome do grupo/torneio
+    const groupDisplay = game.group === 'Ligue 1' ? '🏆 Ligue 1' : `🌍 Copa do Mundo - Grupo ${game.group}`;
+    
     return `<div class="game-card${locked ? ' locked' : ''}" id="gc_${game.id}">
       <div class="game-card-header">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="game-badge">${game.group || 'Ligue 1'}</span>
-          <span>⏰ ${game.time} | 📍 ${game.venue}</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="game-badge">${groupDisplay}</span>
+          <span>⏰ ${game.time}</span>
+          <span>📍 ${game.venue || 'Estádio'}</span>
         </div>
         <div>
           ${locked ? `<span class="locked-badge">${game.status==='completed'?'✅ Finalizado':'🔒 Fechado'}</span>` : '<span class="game-badge">Aberto</span>'}
@@ -145,39 +158,42 @@ async function renderGameList() {
       <div class="game-card-body">
         <div class="game-teams">
           <div class="team-side">
-            <div class="team-flag">${teamFlagImg(t1, 38)}</div>
+            <div class="team-flag">${teamFlagImg(t1, 48)}</div>
             <div class="team-name-lbl">${t1?.name || game.home}</div>
           </div>
           <div class="vs-area">
             <div class="vs-lbl">VS</div>
             <div class="score-inputs">
-              <input class="score-input" type="number" min="0" max="99" id="s1_${game.id}" value="${bet.homeScore!==undefined?bet.homeScore:''}" placeholder="0" ${locked?'disabled':''}>
+              <input class="score-input" type="number" min="0" max="99" id="s1_${game.id}" value="${bet.homeScore!==undefined?bet.homeScore:''}" placeholder="0" ${locked?'disabled':''}
+                oninput="this.value = Math.min(99, Math.max(0, parseInt(this.value) || 0))">
               <span class="score-sep">:</span>
-              <input class="score-input" type="number" min="0" max="99" id="s2_${game.id}" value="${bet.awayScore!==undefined?bet.awayScore:''}" placeholder="0" ${locked?'disabled':''}>
+              <input class="score-input" type="number" min="0" max="99" id="s2_${game.id}" value="${bet.awayScore!==undefined?bet.awayScore:''}" placeholder="0" ${locked?'disabled':''}
+                oninput="this.value = Math.min(99, Math.max(0, parseInt(this.value) || 0))">
             </div>
           </div>
           <div class="team-side">
-            <div class="team-flag">${teamFlagImg(t2, 38)}</div>
+            <div class="team-flag">${teamFlagImg(t2, 48)}</div>
             <div class="team-name-lbl">${t2?.name || game.away}</div>
           </div>
         </div>
         <div class="player-select-area">
           <div class="ps-lbl">⭐ Selecionar Jogador Representante</div>
-          ${locked ? `<div style="font-size:13px;color:var(--text-d);padding:8px;background:var(--navy-3);border-radius:6px;">${selP?playerDisplayName(selP):'Nenhum jogador selecionado'}</div>` :
+          ${locked ? 
+            `<div style="font-size:13px;color:var(--text-d);padding:8px;background:var(--navy-3);border-radius:6px;">${selP ? playerDisplayName(selP) : 'Nenhum jogador selecionado'}</div>` :
             `<div class="game-psearch" id="gps_${game.id}">
               <input class="game-psearch-input" placeholder="Buscar jogador das duas seleções..." id="gpinp_${game.id}"
                 oninput="filterGamePlayers('${game.id}')"
                 onfocus="showGameResults('${game.id}')">
               <div class="game-presults" id="gpr_${game.id}"></div>
             </div>
-            <div class="sel-player-badge${selP?' show':''}" id="spb_${game.id}">
+            <div class="sel-player-badge${selP ? ' show' : ''}" id="spb_${game.id}">
               <span class="spb-star">⭐</span>
               <span id="spb_name_${game.id}">${selP ? `<img src="${TEAMS[selP.team]?.flag}" style="width:20px;height:14px;vertical-align:middle;margin-right:6px;border-radius:2px;"> ${selP.name} (${TEAMS[selP.team]?.name || selP.team})` : ''}</span>
               <span class="spb-remove" onclick="clearGamePlayer('${game.id}')">✕</span>
             </div>
             <div class="save-bet-row">
               <button class="save-bet-btn" onclick="saveBet('${game.id}')">SALVAR PALPITE</button>
-              <div class="bet-saved-msg${bet.homeScore!==undefined?' show':''}" id="bsm_${game.id}">✓ Palpite salvo</div>
+              <div class="bet-saved-msg${bet.homeScore !== undefined ? ' show' : ''}" id="bsm_${game.id}">✓ Palpite salvo</div>
             </div>`
           }
         </div>

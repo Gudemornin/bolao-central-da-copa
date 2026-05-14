@@ -91,89 +91,55 @@ function mapTeamName(apiName) {
 // sync.js - substitua a função syncGamesWithAPI
 
 export async function syncGamesWithAPI() {
-  console.log('🔄 Sincronizando jogos com a API...');
-
+  console.log('🔄 Sincronizando jogos...');
+  
+  // Carregar jogos existentes
+  let existingGames = await loadGames();
+  if (!Array.isArray(existingGames)) existingGames = [];
+  
+  // Separar jogos da Copa (preservar)
+  const worldCupGames = existingGames.filter(g => g.date && g.date.startsWith('2026-06'));
+  
   try {
     const response = await fetch('/api/football?endpoint=ligue1_fixtures');
     const data = await response.json();
-
-    if (!data.matches) return [];
-
-    // Carregar jogos existentes
-    let existingGames = await loadGames();
-    if (!Array.isArray(existingGames)) {
-      console.warn('⚠️ existingGames não é array, corrigindo...');
-      existingGames = [];
-    }
     
-    const existingGamesMap = new Map(existingGames.map(g => [g.id, g]));
-    const apiGames = [];
-
-    for (const match of data.matches) {
-      const homeKey = mapTeamName(match.homeTeam.name);
-      const awayKey = mapTeamName(match.awayTeam.name);
-      
-      const homeExists = TEAMS[homeKey];
-      const awayExists = TEAMS[awayKey];
-      
-      if (!homeExists || !awayExists) {
-        console.log(`⚠️ Jogo ignorado (time não cadastrado): ${match.homeTeam.name} vs ${match.awayTeam.name}`);
-        continue;
-      }
-      
-      const gameObj = {
+    if (data.matches && data.matches.length) {
+      const ligue1Games = data.matches.map(match => ({
         id: match.id.toString(),
         date: match.utcDate.split('T')[0],
         time: new Date(match.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        home: homeKey,
-        away: awayKey,
+        home: mapTeamName(match.homeTeam.name),
+        away: mapTeamName(match.awayTeam.name),
         group: 'Ligue 1',
         venue: match.venue || 'Estádio',
         status: match.status === 'FINISHED' ? 'completed' : 'upcoming',
         result: null
-      };
+      }));
       
-      const existing = existingGamesMap.get(gameObj.id);
-      if (existing && existing.result) {
-        gameObj.result = existing.result;
-        gameObj.status = existing.status;
-      }
+      // Mesclar: manter jogos da Copa + adicionar Ligue 1 (sem duplicar)
+      const existingIds = new Set(worldCupGames.map(g => g.id));
+      const newLigue1Games = ligue1Games.filter(g => !existingIds.has(g.id));
+      const mergedGames = [...worldCupGames, ...newLigue1Games];
       
-      apiGames.push(gameObj);
+      // Ordenar por data
+      mergedGames.sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}:00`);
+        const dateB = new Date(`${b.date}T${b.time}:00`);
+        return dateA - dateB;
+      });
+      
+      await saveGames(mergedGames);
+      setGamesState(mergedGames);
+      console.log(`✅ Sincronizado: ${worldCupGames.length} jogos da Copa + ${newLigue1Games.length} do Ligue 1`);
+      return mergedGames;
     }
-    
-    // Mesclar: manter TODOS os jogos existentes que são válidos
-    const mergedGames = [...apiGames];
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    for (const existing of existingGames) {
-      const alreadyInApi = apiGames.some(g => g.id === existing.id);
-      const gameDate = new Date(existing.date);
-      gameDate.setHours(0, 0, 0, 0);
-      
-      // ✅ CORREÇÃO: Manter jogos de hoje, amanhã OU que já têm resultado
-      const isTodayOrFuture = gameDate >= today;
-      const hasResult = existing.result && existing.result.homeScore !== undefined;
-      const isWorldCupGame = existing.date && existing.date.startsWith('2026-06');
-      
-      if (!alreadyInApi && (isTodayOrFuture || hasResult || isWorldCupGame)) {
-        mergedGames.push(existing);
-        console.log(`✅ Jogo preservado: ${existing.home} vs ${existing.away} (${existing.date})`);
-      } else if (!alreadyInApi && !isTodayOrFuture && !hasResult && !isWorldCupGame) {
-        console.log(`🗑️ Jogo removido (passado sem resultado): ${existing.home} vs ${existing.away} (${existing.date})`);
-      }
-    }
-    
-    await saveGames(mergedGames);
-    setGamesState(mergedGames);
-    
-    console.log(`✅ Sincronizado ${mergedGames.length} jogos`);
-    return mergedGames;
-    
   } catch (error) {
     console.error('Erro na sincronização:', error);
-    return [];
   }
+  
+  // Se falhar, mantém só os jogos da Copa
+  await saveGames(worldCupGames);
+  setGamesState(worldCupGames);
+  return worldCupGames;
 }
