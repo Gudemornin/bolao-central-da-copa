@@ -14,6 +14,7 @@ import { loadGames, saveGames }      from './storage.js';
 import { setGamesState }             from './state.js';
 import { GAMES as MANUAL_GAMES }     from './data/games.js';
 import { getFixtures, LEAGUES }      from './liveDataService.js';
+import { syncGamesFromTheSportsDB }  from './syncTheSportsDB.js';
 
 // ── Configuração padrão de sincronização ─────────────────────────────────────
 
@@ -316,8 +317,9 @@ export async function syncGamesWithAPI(mode = 'test', date = null) {
   // ── 2. Buscar fixtures da API ──────────────────────────────────────────────
   const fixtures = await getFixtures(leagueId, season, date);
   if (!fixtures?.length) {
-    console.warn(`⚠️  Nenhum fixture retornado pela API (${leagueName})`);
-    return existingGames; // Retorna o que temos
+    console.warn(`⚠️  Nenhum fixture retornado pela API (${leagueName}). Tentando fallback com TheSportsDB...`);
+    const fallbackGames = await syncGamesFromTheSportsDB(leagueName);
+    return fallbackGames.length ? fallbackGames : existingGames;
   }
 
   // ── 3. Converter e filtrar ─────────────────────────────────────────────────

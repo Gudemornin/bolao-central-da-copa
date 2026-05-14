@@ -122,12 +122,14 @@ export function startAutoUpdate(key, fetchFn, intervalMs = 300_000) {
 }
 
 // ── Constantes de liga para uso externo ──────────────────────────────────────
+// Nota: apenas a Copa do Mundo usa a temporada 2026 diretamente.
+// Campeonatos de clubes atuais usam a temporada 2024 na API-SPORTS (temporada 2024-25).
 
 export const LEAGUES = {
-  LA_LIGA:    { id: 140, season: 2026, name: 'La Liga'          },
-  PREMIER:    { id: 39,  season: 2026, name: 'Premier League'   },
-  BUNDESLIGA: { id: 78,  season: 2026, name: 'Bundesliga'       },
-  SERIE_A:    { id: 135, season: 2026, name: 'Serie A'          },
-  LIGUE_1:    { id: 61,  season: 2026, name: 'Ligue 1'          },
+  LA_LIGA:    { id: 140, season: 2024, name: 'La Liga'          },
+  PREMIER:    { id: 39,  season: 2024, name: 'Premier League'   },
+  BUNDESLIGA: { id: 78,  season: 2024, name: 'Bundesliga'       },
+  SERIE_A:    { id: 135, season: 2024, name: 'Serie A'          },
+  LIGUE_1:    { id: 61,  season: 2024, name: 'Ligue 1'          },
   WORLD_CUP:  { id: 1,   season: 2026, name: 'Copa do Mundo'    },
 };

@@ -113,7 +113,8 @@ function mapTeamName(apiName) {
 // Converter status da TheSportsDB para o formato do sistema
 function mapStatus(status) {
   if (status === 'FT' || status === 'AET' || status === 'PENS') return 'completed';
-  if (status === 'NS' || status === '1H' || status === '2H' || status === 'HT') return 'upcoming';
+  if (status === 'LIVE' || status === 'Live' || status === '1H' || status === '2H' || status === 'HT') return 'live';
+  if (status === 'NS') return 'upcoming';
   return 'upcoming';
 }
 

@@ -90,7 +90,16 @@ export default async function handler(req, res) {
     if (!apiRes.ok) {
       const text = await apiRes.text();
       console.error(`❌ HTTP ${apiRes.status}:`, text.substring(0, 200));
-      return res.status(apiRes.status).json({ error: `API retornou HTTP ${apiRes.status}` });
+      let body = text;
+      try {
+        body = JSON.parse(text);
+      } catch (parseErr) {
+        // mantém o body como texto
+      }
+      return res.status(apiRes.status).json({
+        error: `API retornou HTTP ${apiRes.status}`,
+        body,
+      });
     }
 
     const data = await apiRes.json();
