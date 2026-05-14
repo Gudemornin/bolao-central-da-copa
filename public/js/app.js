@@ -38,13 +38,30 @@ async function init() {
   
   if (sid) {
     try {
-      const users = await loadUsers();
+      // Carregar usuários do localStorage PRIMEIRO (fallback rápido)
+      let users = [];
+      const localUsers = localStorage.getItem('bc26_users');
+      if (localUsers) {
+        users = JSON.parse(localUsers);
+      }
+      
+      // Se não achou no localStorage, tenta da API
+      if (!users.length) {
+        users = await loadUsers();
+      } else {
+        // Atualiza em background com a API (opcional)
+        loadUsers().then(apiUsers => {
+          if (apiUsers.length) {
+            localStorage.setItem('bc26_users', JSON.stringify(apiUsers));
+          }
+        }).catch(console.error);
+      }
+      
       console.log('👥 Usuários carregados:', users);
       
-      // Buscar por id OU por profileName (fallback)
       let user = users.find(u => u.id === sid);
       
-      // Se não encontrar pelo id, tentar pelo profileName (para admin)
+      // Fallback para admin
       if (!user && sid === 'admin_default') {
         user = users.find(u => u.profileName === 'eVagabundoTaLa11223' || u.profile_name === 'eVagabundoTaLa11223');
       }
@@ -52,29 +69,29 @@ async function init() {
       console.log('👤 Usuário encontrado:', user);
       
       if (user) {
-        // Atualizar diretamente o state
         setCurrentUser(user);
+        // Renova a sessão
         localStorage.setItem('bc26_session', user.id);
         
-        // Esconder tela de auth e mostrar app
+        // Esconder auth e mostrar app
         document.getElementById('authScreen').style.display = 'none';
         document.getElementById('appLayout').classList.add('show');
         
         // Mostrar admin se for admin
         const navAdmin = document.getElementById('navAdmin');
-        if (navAdmin) {
-          navAdmin.style.display = user.isAdmin ? 'flex' : 'none';
-        }
+        if (navAdmin) navAdmin.style.display = user.isAdmin ? 'flex' : 'none';
         
         updateSidebar();
-        updateMobileMenu();
+        if (typeof updateMobileMenu === 'function') updateMobileMenu();
         switchTab('games');
         return;
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar usuários:', error);
+      console.error('❌ Erro ao restaurar sessão:', error);
     }
   }
+  
+  // Se chegou aqui, não há sessão válida
   document.getElementById('authScreen').style.display = '';
 }
 
