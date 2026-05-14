@@ -11,7 +11,7 @@
 //   players         → /players?team=ID&season=ANO
 //
 // IDs de liga úteis:
-//   La Liga (teste): 140  | season: 2024  (temporada 2024-25)
+//   La Liga (teste): 140  | season: 202  (temporada 2024-25)
 //   Copa do Mundo:     1  | season: 2026
 
 const API_KEY  = process.env.API_FOOTBALL_KEY;

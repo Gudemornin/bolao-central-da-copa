@@ -229,7 +229,9 @@ export function calcBetPoints(bet, game, events = null) {
 
     // Goleiro: pênalti defendido
     if (isGK) {
-      pts += playerEvents.filter(e => e.type === 'penalty_saved').length * 5;
+      pts += playerEvents
+        .filter(e => e.type === 'penalty_saved')
+        .reduce((sum, ev) => sum + (ev.value || 1), 0) * 5;
     }
 
     // Clean sheet (goleiro ou zagueiro que jogou ≥ 60 min)
