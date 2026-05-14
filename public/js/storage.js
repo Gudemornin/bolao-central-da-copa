@@ -53,25 +53,40 @@ export async function saveUsers(users) {
 }
 
 export async function loadUsers() {
-  let users = []
-  
-  if (USE_API) {
-    const result = await apiRequest('/users')
-    if (result && result.users && Array.isArray(result.users)) {
-      users = result.users
-    }
-  }
-  
-  if (!users.length) {
-    try {
-      const localUsers = localStorage.getItem('bc26_users')
-      if (localUsers) {
-        users = JSON.parse(localUsers)
+  // Primeiro tenta o localStorage (rápido)
+  let users = [];
+  try {
+    const localUsers = localStorage.getItem('bc26_users');
+    if (localUsers) {
+      users = JSON.parse(localUsers);
+      if (users.length) {
+        // Em segundo plano, atualiza com a API
+        loadUsersFromAPI().then(apiUsers => {
+          if (apiUsers.length) {
+            localStorage.setItem('bc26_users', JSON.stringify(apiUsers));
+            // Se houver diferença, recarrega a página? Opcional.
+          }
+        }).catch(console.error);
+        return users;
       }
-    } catch (e) {
-      users = []
+    }
+  } catch(e) {}
+  
+  // Se não tinha no localStorage, busca da API
+  return loadUsersFromAPI();
+}
+
+async function loadUsersFromAPI() {
+  if (USE_API) {
+    const result = await apiRequest('/users');
+    if (result && result.users && Array.isArray(result.users)) {
+      const users = result.users;
+      localStorage.setItem('bc26_users', JSON.stringify(users));
+      return users;
     }
   }
+  return [];
+}
   
   // Garantir que users é array e corrigir nomes
   users = (users || []).filter(u => u && u.id).map(u => ({

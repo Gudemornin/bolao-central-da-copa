@@ -827,7 +827,6 @@ function initAuth() {
   console.log('🚀 Inicializando autenticação...');
   initPlayerSearch('loginPlayerSearch', 'loginPlayerResults');
   initPlayerSearch('regPlayerSearch', 'regPlayerResults');
-  initChangePasswordSearch();
   initChangePasswordModal();
 }
 
