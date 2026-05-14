@@ -162,7 +162,7 @@ export async function renderAdminGames() {
           <div class="admin-label">⭐ Craque do Jogo</div>
           <select class="admin-input admin-input-wide" id="craque_${g.id}" style="width:auto;margin-top:6px;">
             <option value="">Nenhum</option>
-            ${gamePlayers.map(p => `<option value="${p.id}" ${r.craqueId === p.id ? 'selected' : ''}>${TEAMS[p.team]?.flag} ${p.name}</option>`).join('')}
+            ${gamePlayers.map(p => `<option value="${p.id}" ${r.craqueId === p.id ? 'selected' : ''}>${p.name} (${TEAMS[p.team]?.name || p.team})</option>`).join('')}
           </select>
         </div>
         
@@ -176,24 +176,47 @@ export async function renderAdminGames() {
   }).join('');
 }
 
+function renderPlayerSearchControl(gameId, itemType, idx, selectedPlayerId, gamePlayers, onlyGoalkeepers = false) {
+  const player = selectedPlayerId ? getPlayer(selectedPlayerId) : null;
+  const placeholderLabel = player ? `${player.name} (${TEAMS[player.team]?.name || player.team})` : '';
+  const selectedValue = player ? player.name : '';
+
+  return `
+    <div class="player-search-wrapper" style="position:relative;width:100%;">
+      <input
+        type="text"
+        class="admin-input player-search-input"
+        id="player_search_${gameId}_${itemType}_${idx}"
+        placeholder="Buscar jogador..."
+        autocomplete="off"
+        value="${selectedValue}"
+        oninput="filterAdminPlayers('${gameId}','${itemType}',${idx}, ${onlyGoalkeepers})"
+        onfocus="showAdminPlayerResults('${gameId}','${itemType}',${idx}, ${onlyGoalkeepers})"
+        style="width:100%;"
+      />
+      <input type="hidden" id="player_selected_${gameId}_${itemType}_${idx}" value="${selectedPlayerId || ''}" />
+      <div class="player-search-results" id="player_results_${gameId}_${itemType}_${idx}" style="position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--bg);border:1px solid var(--border);border-top:none;max-height:220px;overflow:auto;"></div>
+    </div>
+  `;
+}
+
 function renderScorersList(gameId, scorers, gamePlayers) {
   if (!scorers.length) {
     return '<div style="color:var(--text-d);font-size:12px;padding:8px;">Nenhum goleador adicionado ainda.</div>';
   }
   
   return scorers.map((scorer, idx) => {
-    const player = getPlayer(scorer.playerId);
-    const team = player ? TEAMS[player.team] : null;
     return `
-      <div class="scorer-item" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--navy-3);padding:8px;border-radius:6px;">
-        <span style="font-weight:600;min-width:30px;">${idx + 1}º</span>
-        <select class="admin-input admin-input-wide" id="scorer_player_${gameId}_${idx}" style="width:180px;">
-          <option value="">Selecione</option>
-          ${gamePlayers.map(p => `<option value="${p.id}" ${scorer.playerId === p.id ? 'selected' : ''}>${TEAMS[p.team]?.flag} ${p.name}</option>`).join('')}
-        </select>
-        <input type="number" class="admin-input" id="scorer_goals_${gameId}_${idx}" value="${scorer.goals || 1}" min="1" max="9" style="width:60px;text-align:center;">
-        <span>gol(s)</span>
-        <button class="admin-remove-btn" onclick="adminRemoveScorer('${gameId}', ${idx})" style="background:var(--red);color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">✕</button>
+      <div class="scorer-item" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;background:var(--navy-3);padding:8px;border-radius:6px;position:relative;">
+        <span style="font-weight:600;min-width:30px;margin-top:8px;">${idx + 1}º</span>
+        <div style="flex:1;min-width:220px;">
+          ${renderPlayerSearchControl(gameId, 'scorer', idx, scorer.playerId, gamePlayers, false)}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" class="admin-input" id="scorer_goals_${gameId}_${idx}" value="${scorer.goals || 1}" min="1" max="9" style="width:60px;text-align:center;">
+          <span style="white-space:nowrap;">gol(s)</span>
+          <button class="admin-remove-btn" onclick="adminRemoveScorer('${gameId}', ${idx})" style="background:var(--red);color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">✕</button>
+        </div>
       </div>
     `;
   }).join('');
@@ -205,22 +228,17 @@ function getTypeEvents(gameId, type) {
 
 function renderEventSection(gameId, eventType, label, gamePlayers, onlyGoalkeepers = false) {
   const events = getTypeEvents(gameId, eventType);
-  const options = (onlyGoalkeepers ? gamePlayers.filter(p => p.pos === 'GOL') : gamePlayers)
-    .map(p => `<option value="${p.id}">${TEAMS[p.team]?.flag} ${p.name}</option>`)
-    .join('');
-
   if (!events.length) {
     return `<div style="color:var(--text-d);font-size:12px;padding:8px;">Nenhum ${label.toLowerCase()} adicionado ainda.</div>`;
   }
 
   return events.map((event, idx) => {
     return `
-      <div class="event-item" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--navy-3);padding:8px;border-radius:6px;">
-        <span style="font-weight:600;min-width:30px;">${idx + 1}º</span>
-        <select class="admin-input admin-input-wide" id="event_player_${gameId}_${eventType}_${idx}" style="width:220px;">
-          <option value="">Selecione</option>
-          ${options.replace(`value="${event.playerId}"`, `value="${event.playerId}" selected`)}
-        </select>
+      <div class="event-item" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;background:var(--navy-3);padding:8px;border-radius:6px;position:relative;">
+        <span style="font-weight:600;min-width:30px;margin-top:8px;">${idx + 1}º</span>
+        <div style="flex:1;min-width:220px;">
+          ${renderPlayerSearchControl(gameId, `${eventType}`, idx, event.playerId, gamePlayers, onlyGoalkeepers)}
+        </div>
         <button class="admin-remove-btn" onclick="adminRemoveEvent('${gameId}', '${eventType}', ${idx})" style="background:var(--red);color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">✕</button>
       </div>
     `;
@@ -257,6 +275,49 @@ window.adminRemoveEvent = (gameId, eventType, index) => {
   renderAdminGames();
 };
 
+function normalizeBoolean(value) {
+  return value === true || value === 'true';
+}
+
+window.filterAdminPlayers = (gameId, itemType, idx, onlyGoalkeepers) => {
+  const game = GAMES_STATE.find(g => g.id === gameId);
+  if (!game) return;
+  const input = document.getElementById(`player_search_${gameId}_${itemType}_${idx}`);
+  const results = document.getElementById(`player_results_${gameId}_${itemType}_${idx}`);
+  if (!input || !results) return;
+
+  const q = input.value;
+  let players = filterPlayers(q, [game.home, game.away]);
+  if (normalizeBoolean(onlyGoalkeepers)) {
+    players = players.filter(p => p.pos === 'GOL');
+  }
+
+  results.innerHTML = players.map(p => `
+    <div class="player-search-item" onclick="selectAdminPlayer('${gameId}','${itemType}',${idx},'${p.id}')" style="padding:8px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);">
+      <span>${p.name} (${TEAMS[p.team]?.name || p.team})</span>
+      <span style="opacity:.7;font-size:12px;">${p.pos}</span>
+    </div>
+  `).join('') || '<div style="padding:8px 12px;font-size:12px;color:var(--text-d);">Nenhum resultado</div>';
+  results.style.display = 'block';
+};
+
+window.showAdminPlayerResults = (gameId, itemType, idx, onlyGoalkeepers) => {
+  const results = document.getElementById(`player_results_${gameId}_${itemType}_${idx}`);
+  if (!results) return;
+  results.style.display = 'block';
+  filterAdminPlayers(gameId, itemType, idx, onlyGoalkeepers);
+};
+
+window.selectAdminPlayer = (gameId, itemType, idx, playerId) => {
+  const input = document.getElementById(`player_search_${gameId}_${itemType}_${idx}`);
+  const hidden = document.getElementById(`player_selected_${gameId}_${itemType}_${idx}`);
+  const results = document.getElementById(`player_results_${gameId}_${itemType}_${idx}`);
+  const player = getPlayer(playerId);
+  if (input) input.value = player ? `${player.name} (${TEAMS[player.team]?.name || player.team})` : '';
+  if (hidden) hidden.value = playerId;
+  if (results) results.style.display = 'none';
+};
+
 window.adminSaveGame = async (gameId) => {
   const idx = GAMES_STATE.findIndex(g => g.id === gameId);
   if (idx === -1) return;
@@ -278,7 +339,7 @@ window.adminSaveGame = async (gameId) => {
   const updatedScorers = [];
   
   for (let i = 0; i < scorersList.length; i++) {
-    const playerId = document.getElementById(`scorer_player_${gameId}_${i}`)?.value;
+    const playerId = document.getElementById(`player_selected_${gameId}_scorer_${i}`)?.value;
     const goals = parseInt(document.getElementById(`scorer_goals_${gameId}_${i}`)?.value);
     if (playerId && playerId !== '') {
       updatedScorers.push({ playerId, goals: goals || 1 });
@@ -289,7 +350,7 @@ window.adminSaveGame = async (gameId) => {
   const eventList = tempEvents[gameId] || [];
   for (let i = 0; i < eventList.length; i++) {
     const event = eventList[i];
-    const playerId = document.getElementById(`event_player_${gameId}_${event.type}_${i}`)?.value;
+    const playerId = document.getElementById(`player_selected_${gameId}_${event.type}_${i}`)?.value;
     if (!playerId) continue;
     const player = getPlayer(playerId);
     if (!player) continue;
