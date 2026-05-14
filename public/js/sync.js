@@ -100,7 +100,7 @@ export async function syncGamesWithAPI() {
   const worldCupGames = existingGames.filter(g => g.date && g.date.startsWith('2026-06'));
   
   try {
-    const response = await fetch('/api/football?endpoint=ligue1_fixtures');
+    const response = await fetch('/api/football?endpoint=laliga_fixtures');
     const data = await response.json();
     
     if (!data.matches || !data.matches.length) {
@@ -137,7 +137,7 @@ export async function syncGamesWithAPI() {
         time: new Date(match.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         home: homeKey,
         away: awayKey,
-        group: 'Ligue 1',
+        group: 'La Liga',
         venue: match.venue || 'Estádio',
         status: match.status === 'FINISHED' ? 'completed' : 'upcoming',
         result: existingGame?.result || null
@@ -146,10 +146,10 @@ export async function syncGamesWithAPI() {
       validLigue1Games.push(gameObj);
     }
     
-    console.log(`✅ ${validLigue1Games.length} jogos do Ligue 1 importados`);
+    console.log(`✅ ${validLigue1Games.length} jogos do La Liga  importados`);
     console.log(`⚠️ ${skippedGames.length} jogos ignorados (times não cadastrados):`, skippedGames);
     
-    // Mesclar: jogos da Copa + jogos válidos do Ligue 1
+    // Mesclar: jogos da Copa + jogos válidos do La Liga
     const existingIds = new Set(worldCupGames.map(g => g.id));
     const newLigue1Games = validLigue1Games.filter(g => !existingIds.has(g.id));
     const mergedGames = [...worldCupGames, ...newLigue1Games];

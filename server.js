@@ -381,8 +381,8 @@ app.get('/api/football', async (req, res) => {
       url = 'https://api.football-data.org/v4/competitions/WC/matches';
       if (team) url += `?team=${team}`;
       break;
-      case 'ligue1_fixtures':
-  url = 'https://api.football-data.org/v4/competitions/FL1/matches';
+      case 'laliga_fixtures':
+  url = 'https://api.football-data.org/v4/competitions/PD/matches'; // PD = Primera Division
   break;
     case 'topscorers':
       url = 'https://api.football-data.org/v4/competitions/WC/scorers';
