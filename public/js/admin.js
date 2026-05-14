@@ -8,6 +8,7 @@ import { renderAdminPanel } from './adminPanel.js';
 
 // Array para armazenar goleadores temporariamente (por jogo)
 const tempScorers = {};
+const tempEvents = {};
 
 export async function renderAdmin() {
   const container = document.getElementById('adminGamesList');
@@ -68,6 +69,9 @@ export async function renderAdminGames() {
     if (!tempScorers[g.id]) {
       tempScorers[g.id] = r.scorers ? [...r.scorers] : [];
     }
+    if (!tempEvents[g.id]) {
+      tempEvents[g.id] = r.events ? [...r.events] : [];
+    }
     
     // Lista de goleadores atuais
     const scorersList = tempScorers[g.id] || [];
@@ -103,7 +107,56 @@ export async function renderAdminGames() {
             ${renderScorersList(g.id, scorersList, gamePlayers)}
           </div>
         </div>
-        
+
+        <!-- Eventos do Jogo -->
+        <div class="admin-section">
+          <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🅰️ Assistências</span>
+            <button type="button" class="admin-add-btn" onclick="adminAddEvent('${g.id}','assist')" style="background:var(--green);padding:4px 10px;font-size:11px;">
+              + Adicionar Assistência
+            </button>
+          </div>
+          <div id="event_section_assist_${g.id}" style="margin-top:10px;">
+            ${renderEventSection(g.id, 'assist', 'Assistência', gamePlayers)}
+          </div>
+        </div>
+
+        <div class="admin-section" style="margin-top:14px;">
+          <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🟨 Cartões Amarelos</span>
+            <button type="button" class="admin-add-btn" onclick="adminAddEvent('${g.id}','yellow_card')" style="background:var(--green);padding:4px 10px;font-size:11px;">
+              + Adicionar Cartão
+            </button>
+          </div>
+          <div id="event_section_yellow_card_${g.id}" style="margin-top:10px;">
+            ${renderEventSection(g.id, 'yellow_card', 'Cartão Amarelo', gamePlayers)}
+          </div>
+        </div>
+
+        <div class="admin-section" style="margin-top:14px;">
+          <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🟥 Cartões Vermelhos</span>
+            <button type="button" class="admin-add-btn" onclick="adminAddEvent('${g.id}','red_card')" style="background:var(--green);padding:4px 10px;font-size:11px;">
+              + Adicionar Cartão
+            </button>
+          </div>
+          <div id="event_section_red_card_${g.id}" style="margin-top:10px;">
+            ${renderEventSection(g.id, 'red_card', 'Cartão Vermelho', gamePlayers)}
+          </div>
+        </div>
+
+        <div class="admin-section" style="margin-top:14px;">
+          <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🧤 Pênaltis Defendidos</span>
+            <button type="button" class="admin-add-btn" onclick="adminAddEvent('${g.id}','penalty_saved')" style="background:var(--green);padding:4px 10px;font-size:11px;">
+              + Adicionar Defesa
+            </button>
+          </div>
+          <div id="event_section_penalty_saved_${g.id}" style="margin-top:10px;">
+            ${renderEventSection(g.id, 'penalty_saved', 'Penalti Defendido', gamePlayers, true)}
+          </div>
+        </div>
+
         <!-- Craque do Jogo -->
         <div class="admin-section">
           <div class="admin-label">⭐ Craque do Jogo</div>
@@ -146,17 +199,62 @@ function renderScorersList(gameId, scorers, gamePlayers) {
   }).join('');
 }
 
+function getTypeEvents(gameId, type) {
+  return (tempEvents[gameId] || []).filter(event => event.type === type);
+}
+
+function renderEventSection(gameId, eventType, label, gamePlayers, onlyGoalkeepers = false) {
+  const events = getTypeEvents(gameId, eventType);
+  const options = (onlyGoalkeepers ? gamePlayers.filter(p => p.pos === 'GOL') : gamePlayers)
+    .map(p => `<option value="${p.id}">${TEAMS[p.team]?.flag} ${p.name}</option>`)
+    .join('');
+
+  if (!events.length) {
+    return `<div style="color:var(--text-d);font-size:12px;padding:8px;">Nenhum ${label.toLowerCase()} adicionado ainda.</div>`;
+  }
+
+  return events.map((event, idx) => {
+    return `
+      <div class="event-item" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--navy-3);padding:8px;border-radius:6px;">
+        <span style="font-weight:600;min-width:30px;">${idx + 1}º</span>
+        <select class="admin-input admin-input-wide" id="event_player_${gameId}_${eventType}_${idx}" style="width:220px;">
+          <option value="">Selecione</option>
+          ${options.replace(`value="${event.playerId}"`, `value="${event.playerId}" selected`)}
+        </select>
+        <button class="admin-remove-btn" onclick="adminRemoveEvent('${gameId}', '${eventType}', ${idx})" style="background:var(--red);color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+
 window.adminAddScorer = (gameId) => {
   if (!tempScorers[gameId]) tempScorers[gameId] = [];
   tempScorers[gameId].push({ playerId: '', goals: 1 });
-  renderAdminGames(); // ← mudou para renderAdminGames
+  renderAdminGames();
+};
+
+window.adminAddEvent = (gameId, eventType) => {
+  if (!tempEvents[gameId]) tempEvents[gameId] = [];
+  tempEvents[gameId].push({ type: eventType, playerId: '' });
+  renderAdminGames();
 };
 
 window.adminRemoveScorer = (gameId, index) => {
   if (tempScorers[gameId]) {
     tempScorers[gameId].splice(index, 1);
-    renderAdminGames(); // ← mudou para renderAdminGames
+    renderAdminGames();
   }
+};
+
+window.adminRemoveEvent = (gameId, eventType, index) => {
+  if (!tempEvents[gameId]) return;
+  let currentIndex = -1;
+  tempEvents[gameId] = tempEvents[gameId].filter(event => {
+    if (event.type !== eventType) return true;
+    currentIndex += 1;
+    return currentIndex !== index;
+  });
+  renderAdminGames();
 };
 
 window.adminSaveGame = async (gameId) => {
@@ -186,6 +284,22 @@ window.adminSaveGame = async (gameId) => {
       updatedScorers.push({ playerId, goals: goals || 1 });
     }
   }
+
+  const updatedEvents = [];
+  const eventList = tempEvents[gameId] || [];
+  for (let i = 0; i < eventList.length; i++) {
+    const event = eventList[i];
+    const playerId = document.getElementById(`event_player_${gameId}_${event.type}_${i}`)?.value;
+    if (!playerId) continue;
+    const player = getPlayer(playerId);
+    if (!player) continue;
+    updatedEvents.push({
+      type: event.type,
+      playerId,
+      playerName: player.name,
+      team: player.team
+    });
+  }
   
   // Atualizar GAMES_STATE
   GAMES_STATE[idx].status = 'completed';
@@ -193,7 +307,8 @@ window.adminSaveGame = async (gameId) => {
     homeScore,
     awayScore,
     scorers: updatedScorers,
-    craqueId: craqueId || null
+    craqueId: craqueId || null,
+    events: updatedEvents
   };
   
   // Salvar no localStorage via API
