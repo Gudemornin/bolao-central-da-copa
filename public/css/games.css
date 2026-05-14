@@ -432,3 +432,30 @@
     font-size: 7px;
   }
 }
+
+.date-selector {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 4px 16px 4px;
+  margin-bottom: 20px;
+  scrollbar-width: none; /* Firefox */
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+  cursor: grab;
+  user-select: none;
+  scroll-behavior: smooth; /* Rolagem suave */
+}
+
+/* Esconde barra de rolagem no Chrome/Safari/Edge */
+.date-selector::-webkit-scrollbar {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+/* Cursor de arrastar */
+.date-selector:active {
+  cursor: grabbing;
+}

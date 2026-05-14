@@ -64,23 +64,34 @@ function getUniqueDates() {
 
 export async function renderGames() {
   await syncGamesWithAPI();
+  
   const dates = getUniqueDates();
   if (!currentDate && dates.length) setCurrentDate(dates[0]);
   
   const sel = document.getElementById('dateSelector');
-  if (sel) {
-    sel.innerHTML = dates.map(d => {
-      const dt = new Date(d + 'T12:00:00');
-      const day = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-      const num = dt.getDate();
-      const mon = dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-      return `<div class="date-btn${d === currentDate ? ' active' : ''}" onclick="selectDate('${d}')">
+  if (!sel) return;
+  
+  // Renderizar botões de data
+  sel.innerHTML = dates.map(d => {
+    const dt = new Date(d + 'T12:00:00');
+    const day = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').substring(0, 3);
+    const num = dt.getDate();
+    const mon = dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').substring(0, 3);
+    const isActive = d === currentDate;
+    return `
+      <button class="date-btn ${isActive ? 'active' : ''}" onclick="selectDate('${d}')">
         <span class="dnum">${num}</span>
         <span class="dname">${day}</span>
         <span class="dmonth">${mon}</span>
-      </div>`;
-    }).join('');
-  }
+      </button>
+    `;
+  }).join('');
+  
+  // Adicionar evento de scroll do mouse
+  sel.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    sel.scrollLeft += e.deltaY;
+  }, { passive: false });
   
   await renderGameList();
 }
@@ -419,6 +430,8 @@ export async function cleanOldGames() {
     console.error('Erro ao limpar jogos antigos:', error);
   }
 }
+
+
 
 cleanOldGames();
 
