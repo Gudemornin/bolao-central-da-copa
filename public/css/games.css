@@ -1,110 +1,218 @@
-    .date-selector{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;margin-bottom:22px;scrollbar-width:none;}
-    .date-selector::-webkit-scrollbar{display:none;}
-    .date-btn{flex-shrink:0;padding:10px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--navy-2);color:var(--text-d);cursor:pointer;font-family:'Outfit',sans-serif;font-size:12px;font-weight:500;transition:all .2s;text-align:center;min-width:72px;}
-    .date-btn .dnum{font-family:'Anton',sans-serif;font-size:22px;display:block;line-height:1;}
-    .date-btn .dname{font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
-    .date-btn .dmonth{font-size:10px;color:var(--text-m);margin-top:1px;}
-    .date-btn:hover{border-color:var(--blue);color:var(--text);}
-    .date-btn.active{background:var(--blue);border-color:var(--blue);color:#fff;}
-    .date-btn.active .dmonth{color:rgba(255,255,255,.7);}
-    .games-list{display:flex;flex-direction:column;gap:14px;}
-    .game-card{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color .2s;}
-    .game-card:hover{border-color:rgba(27,79,216,.3);}
-    .game-card.locked{opacity:.65;}
-    .game-card-header{padding:9px 14px;background:var(--navy-3);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text-d);border-bottom:1px solid var(--border);}
-    .game-badge{font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(27,79,216,.2);color:var(--blue-l);font-weight:700;}
-    .locked-badge{font-size:10px;padding:2px 7px;background:rgba(200,16,46,.15);color:var(--red-l);border-radius:20px;font-weight:700;}
-    .game-card-body{padding:18px 16px 14px;}
-    .game-teams{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;}
-    .team-side{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;}
-    .team-flag{font-size:38px;line-height:1;}
-    .team-name-lbl{font-size:12px;font-weight:600;text-align:center;}
-    .vs-area{display:flex;flex-direction:column;align-items:center;gap:6px;}
-    .vs-lbl{font-family:'Anton',sans-serif;font-size:14px;color:var(--text-d);}
-    .score-inputs{display:flex;align-items:center;gap:5px;}
-    .score-input{width:46px;height:46px;text-align:center;font-family:'Anton',sans-serif;font-size:22px;background:var(--navy-3);border:2px solid var(--border);border-radius:var(--r-sm);color:var(--text);outline:none;transition:border-color .2s;}
-    .score-input:focus{border-color:var(--blue);}
-    .score-input:disabled{cursor:default;color:var(--text-d);}
-    .score-sep{font-family:'Anton',sans-serif;font-size:22px;color:var(--text-m);}
-    .player-select-area{border-top:1px solid var(--border);padding-top:14px;}
-    .ps-lbl{font-size:11px;font-weight:700;color:var(--text-d);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
-    .game-psearch{position:relative;}
-    .game-psearch-input{width:100%;background:var(--navy-3);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;outline:none;transition:border-color .2s;}
-    .game-psearch-input:focus{border-color:var(--blue);}
-    .game-psearch-input::placeholder{color:var(--text-m);}
-    .game-presults{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--navy-3);border:1px solid var(--border);border-radius:var(--r-sm);max-height:180px;overflow-y:auto;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4);}
-    .game-presults.open{display:block;}
-    .game-pitem{padding:8px 12px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:background .1s;}
-    .game-pitem:hover{background:var(--glass-2);}
-    .game-pitem .gpi-name{}
-    .game-pitem .gpi-right{display:flex;align-items:center;gap:6px;}
-    .game-pitem .gpi-team{font-size:11px;color:var(--text-d);}
-    .game-pitem .gpi-pos{font-size:10px;background:var(--glass-2);padding:2px 5px;border-radius:4px;color:var(--text-d);}
-    .sel-player-badge{display:none;align-items:center;gap:8px;background:rgba(27,79,216,.1);border:1px solid rgba(27,79,216,.2);border-radius:var(--r-sm);padding:8px 12px;margin-top:8px;font-size:13px;}
-    .sel-player-badge.show{display:flex;}
-    .spb-star{color:var(--gold);}
-    .spb-remove{margin-left:auto;cursor:pointer;color:var(--red-l);font-size:14px;line-height:1;}
-    .save-bet-row{display:flex;align-items:center;gap:12px;margin-top:14px;}
-    .save-bet-btn{padding:9px 20px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-family:'Anton',sans-serif;font-size:13px;letter-spacing:.8px;cursor:pointer;transition:all .2s;}
-    .save-bet-btn:hover{background:var(--green-l);transform:translateY(-1px);}
-    .bet-saved-msg{color:var(--green-l);font-size:12px;font-weight:600;display:none;}
-    .bet-saved-msg.show{display:block;}
-    .no-games-msg{text-align:center;padding:50px 20px;color:var(--text-d);}
-    .no-games-msg .icon{font-size:40px;margin-bottom:10px;}
-    .bets-list{display:flex;flex-direction:column;gap:10px;}
-    .bet-card{background:var(--navy-2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;transition:border-color .2s;}
-    .bet-card:hover{border-color:rgba(27,79,216,.25);}
-    .bet-match-info{flex:1;}
-    .bet-match-name{font-size:14px;font-weight:600;}
-    .bet-date-time{font-size:11px;color:var(--text-d);margin-top:2px;}
-    .bet-score-disp{font-family:'Anton',sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;white-space:nowrap;}
-    .bet-player-info{text-align:right;}
-    .bet-player-name{font-size:12px;color:var(--text-d);}
-    .bet-player-label{font-size:10px;color:var(--text-m);}
-    .edit-bet-btn{padding:7px 14px;background:rgba(27,79,216,.12);border:1px solid rgba(27,79,216,.25);border-radius:var(--r-sm);color:var(--blue-l);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
-    .edit-bet-btn:hover{background:rgba(27,79,216,.22);}
-    .empty-state{text-align:center;padding:60px 20px;color:var(--text-d);}
-    .empty-state .es-icon{font-size:44px;margin-bottom:10px;}
-    .empty-state h3{font-size:16px;margin-bottom:6px;}
-    .empty-state p{font-size:13px;}
-    .page-footer{text-align:center;padding:24px 0;border-top:1px solid var(--border);margin-top:28px;}
-    .btn-ghost{padding:11px 22px;border:1px solid var(--border);background:none;color:var(--text-d);border-radius:var(--r-sm);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;width:auto;}
-    .btn-ghost:hover{border-color:var(--text-d);color:var(--text);}
- /* Estilos para a aba Jogos da Copa */
-.status-badge {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-weight: 600;
-}
-
-.status-completed {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--green-l);
-}
-
-.status-upcoming {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--blue-l);
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
 }
 
 .game-card {
-  transition: transform 0.2s, border-color 0.2s;
+  background: var(--navy-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.game-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(27, 79, 216, 0.3);
+.game-card-body {
+  padding: 20px 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.game-card-header {
+/* Layout dos times e placar */
+.game-teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.team-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0; /* Permite encolher se necessário */
+}
+
+.team-flag {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.team-flag img {
+  width: 56px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.team-name-lbl {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  word-break: break-word;
+  max-width: 120px;
+}
+
+.vs-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.vs-lbl {
+  font-family: 'Anton', sans-serif;
+  font-size: 14px;
+  color: var(--text-d);
+}
+
+.score-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-input {
+  width: 55px;
+  height: 55px;
+  text-align: center;
+  font-family: 'Anton', sans-serif;
+  font-size: 24px;
   background: var(--navy-3);
+  border: 2px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  outline: none;
 }
 
-.game-card img {
-  transition: transform 0.2s;
+.score-sep {
+  font-family: 'Anton', sans-serif;
+  font-size: 24px;
+  color: var(--text-m);
 }
 
-.game-card:hover img {
-  transform: scale(1.05);
+/* Header do card */
+.game-card-header {
+  padding: 12px 16px;
+  background: var(--navy-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.game-badge, .locked-badge {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Player select area */
+.player-select-area {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 8px;
+}
+
+/* =============================================
+   MOBILE (max-width: 768px)
+   ============================================= */
+@media (max-width: 768px) {
+  .game-teams {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+  
+  .team-side {
+    min-width: 100px;
+    flex: 0 1 auto;
+  }
+  
+  .team-flag img {
+    width: 45px;
+    height: 34px;
+  }
+  
+  .team-name-lbl {
+    font-size: 11px;
+    max-width: 100px;
+  }
+  
+  .vs-area {
+    min-width: 90px;
+  }
+  
+  .score-input {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+  
+  .score-sep {
+    font-size: 20px;
+  }
+  
+  .game-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .game-badge, .locked-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+}
+
+/* =============================================
+   EXTRA SMALL (max-width: 480px)
+   ============================================= */
+@media (max-width: 480px) {
+  .team-side {
+    min-width: 75px;
+  }
+  
+  .team-flag img {
+    width: 35px;
+    height: 26px;
+  }
+  
+  .team-name-lbl {
+    font-size: 9px;
+    max-width: 80px;
+  }
+  
+  .vs-area {
+    min-width: 75px;
+  }
+  
+  .score-input {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+  }
+  
+  .score-sep {
+    font-size: 18px;
+  }
+  
+  .game-card-body {
+    padding: 12px;
+  }
 }
