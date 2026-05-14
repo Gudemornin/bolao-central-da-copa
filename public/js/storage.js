@@ -111,10 +111,6 @@ async function loadUsersFromAPI() {
     users.push(adminUser)
     await saveUsers(users)
   }
-  
-  console.log('✅ loadUsers:', users.length, 'usuários')
-  return users
-}
 
 // =============================================
 // PALPITES (BETS)
