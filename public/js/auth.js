@@ -689,128 +689,112 @@ initTempPasswordSearch();
 // TROCAR SENHA VOLUNTÁRIA (COM MODAL)
 // =============================================
 
-let newPasswordPlayer = null;
+let changePwdSelectedPlayer = null;
 
-function initChangePasswordSearch() {
-  const inputId = 'changePwdPlayerSearch';
-  const resultsId = 'changePwdPlayerResults';
-  const inp = document.getElementById(inputId);
-  const res = document.getElementById(resultsId);
-  
-  if (!inp || !res) {
-    console.warn('⚠️ Elementos do modal de troca de senha não encontrados');
-    return;
-  }
-  
-  console.log('✅ Busca de jogador para troca de senha inicializada');
-  
-  inp.addEventListener('input', () => {
-    const q = inp.value.trim();
-    if (!q) {
-      res.classList.remove('open');
-      res.innerHTML = '';
+function initChangePasswordModal() {
+  const input = document.getElementById('changePwdPlayerSearch');
+  const results = document.getElementById('changePwdPlayerResults');
+  if (!input || !results) return;
+
+  input.addEventListener('input', () => {
+    const query = input.value.trim();
+    if (query.length < 2) {
+      results.classList.remove('open');
       return;
     }
-    
-    const found = filterPlayers(q);
-    if (!found.length) {
-      res.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--text-d)">Nenhum jogador encontrado</div>';
-      res.classList.add('open');
+
+    const matches = filterPlayers(query);
+    if (matches.length === 0) {
+      results.innerHTML = '<div class="psearch-item">Nenhum jogador encontrado</div>';
+      results.classList.add('open');
       return;
     }
-    
-    res.innerHTML = found.map(p => {
+
+    results.innerHTML = matches.map(p => {
       const team = TEAMS[p.team];
-      const flagImg = team ? `<img src="${team.flag}" style="width:20px;height:14px;">` : '';
+      const flag = team ? `<img src="${team.flag}" style="width:20px;height:14px;">` : '';
       return `
         <div class="psearch-item" data-player-id="${p.id}">
-          <span class="pflag">${flagImg}</span>
-          <span class="pname">${p.name}</span>
-          <span class="pteam">${team?.name || p.team}</span>
-          <span class="ppos">${p.pos}</span>
+          ${flag} ${p.name} (${team?.name || p.team})
         </div>
       `;
     }).join('');
-    res.classList.add('open');
-    
-    res.querySelectorAll('.psearch-item').forEach(item => {
-      item.addEventListener('click', function() {
-        const playerId = this.dataset.playerId;
-        const p = getPlayer(playerId);
-        if (p) {
-          newPasswordPlayer = p;
-          const team = TEAMS[p.team];
+    results.classList.add('open');
+
+    // Evento de clique nos resultados
+    results.querySelectorAll('.psearch-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        const playerId = el.dataset.playerId;
+        const player = getPlayer(playerId);
+        if (player) {
+          changePwdSelectedPlayer = player;
+          const team = TEAMS[player.team];
           const flagImg = team ? `<img src="${team.flag}" style="width:24px;height:18px;">` : '';
           document.getElementById('changePwdSelFlag').innerHTML = flagImg;
-          document.getElementById('changePwdSelName').textContent = `${p.name} (${team?.name || p.team})`;
+          document.getElementById('changePwdSelName').innerHTML = `${player.name} (${team?.name || player.team})`;
           document.getElementById('changePwdSelectedPlayer').classList.add('show');
-          inp.value = '';
-          res.classList.remove('open');
+          input.value = '';
+          results.classList.remove('open');
         }
       });
     });
   });
-  
+
+  // Fechar resultados ao clicar fora
   document.addEventListener('click', (e) => {
-    if (!inp.contains(e.target) && !res.contains(e.target)) {
-      res.classList.remove('open');
+    if (!input.contains(e.target) && !results.contains(e.target)) {
+      results.classList.remove('open');
     }
   });
 }
 
 function clearChangePwdSel() {
-  newPasswordPlayer = null;
+  changePwdSelectedPlayer = null;
   document.getElementById('changePwdSelectedPlayer').classList.remove('show');
   document.getElementById('changePwdPlayerSearch').value = '';
 }
 
 async function submitChangePassword() {
-  if (!newPasswordPlayer) {
+  if (!changePwdSelectedPlayer) {
     showToast('Selecione um jogador para ser sua nova senha.', 'red');
     return;
   }
-  
   if (!currentUser) {
     showToast('Usuário não encontrado.', 'red');
     return;
   }
-  
+
   const users = await loadUsers();
   const userIndex = users.findIndex(u => u.id === currentUser.id);
-  
   if (userIndex === -1) {
     showToast('Usuário não encontrado.', 'red');
     return;
   }
-  
+
   // Atualizar senha
-  users[userIndex].passwordPlayerId = newPasswordPlayer.id;
+  users[userIndex].passwordPlayerId = changePwdSelectedPlayer.id;
   users[userIndex].passwordResetPending = false;
   delete users[userIndex].tempPassword;
   delete users[userIndex].passwordBackup;
-  
+
   await saveUsers(users);
-  
-  // Atualizar currentUser
   setCurrentUser(users[userIndex]);
   localStorage.setItem('bc26_session', users[userIndex].id);
-  
+
   showToast('Senha alterada com sucesso! ✅', 'green');
   closeModal('modalChangePassword');
-  
-  // Limpar seleção
-  newPasswordPlayer = null;
-  document.getElementById('changePwdSelectedPlayer')?.classList.remove('show');
-  document.getElementById('changePwdPlayerSearch').value = '';
+  clearChangePwdSel();
 }
 
-// Função que abre o modal (chamada pelo botão)
+// Substitui a função antiga (que só dava alert)
 window.changePassword = () => {
   if (!currentUser) {
     showToast('Você precisa estar logado', 'red');
     return;
   }
   openModal('modalChangePassword');
+  // Garantir que a busca seja reiniciada
+  if (changePwdSelectedPlayer) clearChangePwdSel();
 };
 
 // Registrar funções no window
@@ -844,6 +828,7 @@ function initAuth() {
   initPlayerSearch('loginPlayerSearch', 'loginPlayerResults');
   initPlayerSearch('regPlayerSearch', 'regPlayerResults');
   initChangePasswordSearch();
+  initChangePasswordModal();
 }
 
 initAuth();

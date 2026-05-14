@@ -2,7 +2,8 @@
 import { TEAMS } from './data/teams.js';
 import { loadBets, loadUsers, loadGames } from './storage.js';
 import { GAMES_STATE, currentUser } from './state.js';
-import { formatDate, teamFlagImg, getPlayer } from './utils.js';
+import { formatDate, teamFlagImg } from './utils.js';
+import { getPlayer } from './exportplayer.js';
 
 let currentCommunityDate = null;
 
