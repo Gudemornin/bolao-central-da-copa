@@ -685,125 +685,72 @@ function initTempPasswordSearch() {
 initTempPasswordSearch();
 
 
-let selProfilePlayer = null;
+// =============================================
+// TROCAR SENHA VOLUNTÁRIA (COM MODAL)
+// =============================================
 
-function selectProfilePlayer(playerId) {
-  const p = getPlayer(playerId);
-  if (!p) return;
+let newPasswordPlayer = null;
 
-  selProfilePlayer = p;
-
-  const input = document.getElementById('profilePlayerSearch');
-  const results = document.getElementById('profileResults');
-  if (input) input.value = '';
-  if (results) results.classList.remove('open');
-
-  const team = TEAMS[p.team];
-  const flagImg = team ? `<img src="${team.flag}" style="width:24px;height:18px;vertical-align:middle;margin-right:8px;">` : '';
-
-  document.getElementById('profileSelFlag').innerHTML = flagImg;
-  document.getElementById('profileSelName').innerHTML = p.name + ' (' + (team?.name || p.team) + ')';
-  document.getElementById('profileSelectedPlayer').classList.add('show');
+function initChangePasswordSearch() {
+  const inputId = 'changePwdPlayerSearch';
+  const resultsId = 'changePwdPlayerResults';
+  const inp = document.getElementById(inputId);
+  const res = document.getElementById(resultsId);
   
-  showToast(`Jogador ${p.name} selecionado como nova senha`, 'blue');
-}
-
-function clearProfilePlayerSel() {
-  selProfilePlayer = null;
-  document.getElementById('profileSelectedPlayer').classList.remove('show');
-  const input = document.getElementById('profilePlayerSearch');
-  if (input) input.value = '';
-}
-
-async function changePassword() {
-  if (!currentUser) {
-    showToast('Você precisa estar logado', 'red');
-    return;
-  }
-
-  if (!selProfilePlayer) {
-    showToast('Selecione um novo jogador como senha', 'red');
-    return;
-  }
-
-  const users = await loadUsers();
-  const userIndex = users.findIndex(u => u.id === currentUser.id);
-  if (userIndex === -1) {
-    showToast('Usuário não encontrado', 'red');
-    return;
-  }
-
-  // Atualizar senha
-  users[userIndex].passwordPlayerId = selProfilePlayer.id;
-  // Limpar senha temporária se existir
-  delete users[userIndex].tempPassword;
-  delete users[userIndex].passwordResetPending;
-  delete users[userIndex].passwordBackup;
-
-  await saveUsers(users);
-
-  // Atualizar currentUser
-  setCurrentUser(users[userIndex]);
-  localStorage.setItem('bc26_session', users[userIndex].id);
-
-  showToast('Senha alterada com sucesso! 🔒', 'green');
-  clearProfilePlayerSel();
-}
-
-// =============================================
-// INICIALIZAÇÃO DA BUSCA PARA PERFIL
-// =============================================
-function initProfilePlayerSearch() {
-  const inp = document.getElementById('profilePlayerSearch');
-  const res = document.getElementById('profileResults');
-
   if (!inp || !res) {
-    console.warn('⚠️ Elementos de busca do perfil não encontrados');
+    console.warn('⚠️ Elementos do modal de troca de senha não encontrados');
     return;
   }
-
-  console.log('✅ Busca de jogador para perfil inicializada');
-
+  
+  console.log('✅ Busca de jogador para troca de senha inicializada');
+  
   inp.addEventListener('input', () => {
-    const query = inp.value.trim();
-    if (query.length < 2) {
+    const q = inp.value.trim();
+    if (!q) {
       res.classList.remove('open');
       res.innerHTML = '';
       return;
     }
-
-    const matches = PLAYERS.filter(p =>
-      p.name.toLowerCase().includes(query.toLowerCase()) ||
-      (TEAMS[p.team]?.name || '').toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 10);
-
-    if (matches.length === 0) {
-      res.innerHTML = '<div style="padding:10px;color:var(--text-d);">Nenhum jogador encontrado</div>';
+    
+    const found = filterPlayers(q);
+    if (!found.length) {
+      res.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--text-d)">Nenhum jogador encontrado</div>';
       res.classList.add('open');
       return;
     }
-
-    res.innerHTML = matches.map(p => {
+    
+    res.innerHTML = found.map(p => {
       const team = TEAMS[p.team];
-      const flag = team ? `<img src="${team.flag}" style="width:20px;height:15px;vertical-align:middle;margin-right:6px;">` : '';
+      const flagImg = team ? `<img src="${team.flag}" style="width:20px;height:14px;">` : '';
       return `
-        <div class="psearch-item" onclick="selectProfilePlayer('${p.id}')">
-          ${flag}
-          <span style="flex:1;">${p.name}</span>
-          <span style="font-size:11px;color:var(--text-d);">${team?.name || p.team}</span>
+        <div class="psearch-item" data-player-id="${p.id}">
+          <span class="pflag">${flagImg}</span>
+          <span class="pname">${p.name}</span>
+          <span class="pteam">${team?.name || p.team}</span>
+          <span class="ppos">${p.pos}</span>
         </div>
       `;
     }).join('');
-
     res.classList.add('open');
+    
+    res.querySelectorAll('.psearch-item').forEach(item => {
+      item.addEventListener('click', function() {
+        const playerId = this.dataset.playerId;
+        const p = getPlayer(playerId);
+        if (p) {
+          newPasswordPlayer = p;
+          const team = TEAMS[p.team];
+          const flagImg = team ? `<img src="${team.flag}" style="width:24px;height:18px;">` : '';
+          document.getElementById('changePwdSelFlag').innerHTML = flagImg;
+          document.getElementById('changePwdSelName').textContent = `${p.name} (${team?.name || p.team})`;
+          document.getElementById('changePwdSelectedPlayer').classList.add('show');
+          inp.value = '';
+          res.classList.remove('open');
+        }
+      });
+    });
   });
-
-  inp.addEventListener('focus', () => {
-    if (inp.value.trim().length >= 2) {
-      res.classList.add('open');
-    }
-  });
-
+  
   document.addEventListener('click', (e) => {
     if (!inp.contains(e.target) && !res.contains(e.target)) {
       res.classList.remove('open');
@@ -811,10 +758,64 @@ function initProfilePlayerSearch() {
   });
 }
 
+function clearChangePwdSel() {
+  newPasswordPlayer = null;
+  document.getElementById('changePwdSelectedPlayer').classList.remove('show');
+  document.getElementById('changePwdPlayerSearch').value = '';
+}
 
-window.changePassword = changePassword;
-window.clearProfilePlayerSel = clearProfilePlayerSel;
-window.selectProfilePlayer = selectProfilePlayer;
+async function submitChangePassword() {
+  if (!newPasswordPlayer) {
+    showToast('Selecione um jogador para ser sua nova senha.', 'red');
+    return;
+  }
+  
+  if (!currentUser) {
+    showToast('Usuário não encontrado.', 'red');
+    return;
+  }
+  
+  const users = await loadUsers();
+  const userIndex = users.findIndex(u => u.id === currentUser.id);
+  
+  if (userIndex === -1) {
+    showToast('Usuário não encontrado.', 'red');
+    return;
+  }
+  
+  // Atualizar senha
+  users[userIndex].passwordPlayerId = newPasswordPlayer.id;
+  users[userIndex].passwordResetPending = false;
+  delete users[userIndex].tempPassword;
+  delete users[userIndex].passwordBackup;
+  
+  await saveUsers(users);
+  
+  // Atualizar currentUser
+  setCurrentUser(users[userIndex]);
+  localStorage.setItem('bc26_session', users[userIndex].id);
+  
+  showToast('Senha alterada com sucesso! ✅', 'green');
+  closeModal('modalChangePassword');
+  
+  // Limpar seleção
+  newPasswordPlayer = null;
+  document.getElementById('changePwdSelectedPlayer')?.classList.remove('show');
+  document.getElementById('changePwdPlayerSearch').value = '';
+}
+
+// Função que abre o modal (chamada pelo botão)
+window.changePassword = () => {
+  if (!currentUser) {
+    showToast('Você precisa estar logado', 'red');
+    return;
+  }
+  openModal('modalChangePassword');
+};
+
+// Registrar funções no window
+window.clearChangePwdSel = clearChangePwdSel;
+window.submitChangePassword = submitChangePassword;
 window.changeTempPassword = changeTempPassword;
 window.clearTempPlayerSel = clearTempPlayerSel;
 window.submitTempPasswordChange = submitTempPasswordChange;
@@ -842,7 +843,7 @@ function initAuth() {
   console.log('🚀 Inicializando autenticação...');
   initPlayerSearch('loginPlayerSearch', 'loginPlayerResults');
   initPlayerSearch('regPlayerSearch', 'regPlayerResults');
-  initProfilePlayerSearch();
+  initChangePasswordSearch();
 }
 
 initAuth();
