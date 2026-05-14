@@ -14,6 +14,7 @@ import { renderGames } from './gamemanager.js';
 import { renderRanking } from './ranking.js';
 import { renderBets } from './bets.js';
 import { renderCommunityBets } from './communityBets.js';
+import { GAMES_STATE } from './state.js';
 // renderWorldCupGames NÃO é exportada, mas está disponível em window (ver navigation.js)
 
 export function updateSidebar() {
@@ -42,10 +43,36 @@ window.updateSidebar = updateSidebar;
 // =============================================
 let autoUpdateInterval = null;
 
+function shouldFetchAutoUpdate() {
+  if (!Array.isArray(GAMES_STATE) || GAMES_STATE.length === 0) return true;
+
+  const now = Date.now();
+  const windowBeforeMs = 30 * 60 * 1000; // 30 min antes
+  const windowAfterMs  = 180 * 60 * 1000; // 3 h depois
+
+  return GAMES_STATE.some(game => {
+    if (!game.date || !game.time) return false;
+    const start = Date.parse(`${game.date}T${game.time}:00Z`);
+    if (Number.isNaN(start)) return false;
+
+    const status = String(game.status || '').toLowerCase();
+    if (status === 'live') return true;
+    if (status === 'upcoming') {
+      return now >= start - windowBeforeMs && now <= start + windowAfterMs;
+    }
+    return false;
+  });
+}
+
 export function startAutoResultUpdater() {
   if (autoUpdateInterval) clearInterval(autoUpdateInterval);
   autoUpdateInterval = setInterval(async () => {
     if (!currentUser) return;
+    if (!shouldFetchAutoUpdate()) {
+      console.log('⏸️ Sem jogos ativos/agendados no momento; pulando atualização automática');
+      return;
+    }
+
     try {
       const response = await fetch('/api/update-results', { method: 'POST' });
       const data = await response.json();

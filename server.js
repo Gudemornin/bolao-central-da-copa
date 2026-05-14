@@ -363,47 +363,92 @@ app.delete('/api/users/:id', async (req, res) => {
 
 
 /* =============================================
- ENDPOINT: FOOTBALL API ANTIGA
- =============================================
+ ENDPOINT: API-SPORTS (/api/football)
+ ============================================= */
 app.get('/api/football', async (req, res) => {
-  const { endpoint, team } = req.query;
-  
-  if (!endpoint) {
-    return res.status(400).json({ error: 'Endpoint obrigatório' });
-  }
-  
-  let url = '';
-  switch (endpoint) {
-    case 'standings':
-      url = 'https://api.football-data.org/v4/competitions/WC/standings';
-      break;
-    case 'fixtures':
-      url = 'https://api.football-data.org/v4/competitions/WC/matches';
-      if (team) url += `?team=${team}`;
-      break;
-      case 'laliga_fixtures':
-  url = 'https://api.football-data.org/v4/competitions/PD/matches'; // PD = Primera Division
-  break;
-    case 'topscorers':
-      url = 'https://api.football-data.org/v4/competitions/WC/scorers';
-      break;
-    default:
-      return res.status(400).json({ error: 'Endpoint não suportado' });
-  }
-  
-  try {
-    const response = await fetch(url, {
-      headers: { 'X-Auth-Token': process.env.API_KEY }
+  const API_KEY = process.env.API_FOOTBALL_KEY;
+  const BASE_URL = 'https://v3.football.api-sports.io';
+
+  if (!API_KEY) {
+    console.error('❌ API_FOOTBALL_KEY não está definida nas variáveis de ambiente');
+    return res.status(500).json({
+      error: 'API_FOOTBALL_KEY não configurada',
+      hint: 'Adicione API_FOOTBALL_KEY nas variáveis de ambiente do Railway'
     });
-    const data = await response.json();
-    res.json(data);
+  }
+
+  const { endpoint, ...params } = req.query;
+  const ROUTE_MAP = {
+    fixtures:       (p) => buildUrl('/fixtures', pick(p, ['league','season','date','team','status','from','to','timezone','id'])),
+    live:           (p) => buildUrl('/fixtures', { live: p.league || 'all', timezone: p.timezone }),
+    fixture_events: (p) => buildUrl('/fixtures/events', pick(p, ['fixture'])),
+    fixture_stats:  (p) => buildUrl('/fixtures/statistics', pick(p, ['fixture'])),
+    standings:      (p) => buildUrl('/standings', pick(p, ['league','season'])),
+    topscorers:     (p) => buildUrl('/players/topscorers', pick(p, ['league','season'])),
+    players:        (p) => buildUrl('/players', pick(p, ['team','season','page'])),
+  };
+
+  function pick(obj, keys) {
+    return Object.fromEntries(
+      keys
+        .filter(key => obj[key] !== undefined && obj[key] !== null && obj[key] !== '')
+        .map(key => [key, obj[key]])
+    );
+  }
+
+  function buildUrl(path, params) {
+    const query = new URLSearchParams(params).toString();
+    return `${BASE_URL}${path}${query ? `?${query}` : ''}`;
+  }
+
+  if (!endpoint || !ROUTE_MAP[endpoint]) {
+    return res.status(400).json({
+      error: `Endpoint inválido: "${endpoint}"`,
+      validos: Object.keys(ROUTE_MAP),
+    });
+  }
+
+  try {
+    const url = ROUTE_MAP[endpoint](params);
+    console.log(`📡 API-SPORTS proxy: ${url}`);
+
+    const apiRes = await fetch(url, {
+      headers: {
+        'x-apisports-key': API_KEY,
+        'x-rapidapi-key': API_KEY,
+        'x-rapidapi-host': 'v3.football.api-sports.io',
+      },
+    });
+
+    if (!apiRes.ok) {
+      const text = await apiRes.text();
+      console.error(`❌ API-SPORTS HTTP ${apiRes.status}:`, text.substring(0, 300));
+      return res.status(apiRes.status).json({ error: `API retornou HTTP ${apiRes.status}` });
+    }
+
+    const data = await apiRes.json();
+
+    if (data.errors) {
+      const errList = Array.isArray(data.errors)
+        ? data.errors
+        : Object.entries(data.errors).map(([k, v]) => `${k}: ${v}`);
+      if (errList.length > 0) {
+        console.error('❌ Erros da API-SPORTS:', errList);
+        return res.status(429).json({ error: 'Erro na API-SPORTS', detalhes: errList });
+      }
+    }
+
+    const remaining = apiRes.headers.get('x-ratelimit-requests-remaining');
+    if (remaining !== null) {
+      console.log(`ℹ️ Créditos API restantes: ${remaining}`);
+    }
+
+    return res.status(200).json(data);
   } catch (error) {
     console.error('❌ Erro no proxy football:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
-
-*/
 
 // =============================================
 // ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
