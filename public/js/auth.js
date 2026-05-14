@@ -6,6 +6,7 @@ import { filterPlayers, getPlayer } from './exportplayer.js';
 import { loadUsers, saveUsers } from './storage.js';
 import { currentUser, setCurrentUser } from './state.js';
 import { send2FACodeByEmail, sendPasswordResetEmail, sendAdminResetNotification } from './emailService.js';
+import { stopAutoResultUpdater } from './app.js'; 
 
 // =============================================
 // VARIÁVEIS DE ESTADO DA AUTENTICAÇÃO
@@ -366,7 +367,7 @@ function logout() {
   localStorage.removeItem('bc26_session');
   document.getElementById('appLayout').classList.remove('show');
   document.getElementById('authScreen').style.display = '';
-  
+  if (typeof stopAutoResultUpdater === 'function') stopAutoResultUpdater();
   document.getElementById('loginName').value = '';
   document.getElementById('loginPlayerSearch').value = '';
   selPlayerLogin = null;

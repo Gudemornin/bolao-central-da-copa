@@ -354,18 +354,19 @@
       </div>
       <div class="ranking-wrap">
         <table class="ranking-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Jogador</th>
-              <th class="center" style="color:var(--blue-l)">PTS</th>
-              <th class="center">JP</th>
-              <th class="center" style="color:var(--gold)">C</th>
-              <th class="center">MC</th>
-            </tr>
-          </thead>
-          <tbody id="rankingBody"></tbody>
-        </table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Jogador</th>
+      <th class="center" style="color:var(--blue-l)">PTS</th>
+      <th class="center">JP</th>
+      <th class="center">VIT</th>
+      <th class="center" style="color:var(--gold)">PE</th>
+      <th class="center">MOTM</th>
+    </tr>
+  </thead>
+  <tbody id="rankingBody"></tbody>
+</table>
       </div>
       <div class="tiebreak-note">
         ⚖️ <strong>Critério de desempate:</strong> Pontos → Craques (C) → Marcadores Certos (MC) → Média de pontos por palpite
@@ -385,11 +386,11 @@
           <div class="info-card-title">⚡ Pontuação</div>
           <div class="score-rule">
             <span>Placar Exato</span>
-            <span class="pts pts-gold">7 pts</span>
+            <span class="pts pts-gold">10 pts</span>
           </div>
           <div class="score-rule">
             <span>Vencedor / Empate Certo</span>
-            <span class="pts pts-green">5 pts</span>
+            <span class="pts pts-green">6 pts</span>
           </div>
           <div class="score-rule">
             <span>Marcador (1º gol)</span>
@@ -397,7 +398,7 @@
           </div>
           <div class="score-rule">
             <span>+1 por cada gol adicional</span>
-            <span class="pts pts-blue">+1 pt</span>
+            <span class="pts pts-blue">+2 pt</span>
           </div>
           <div class="score-rule">
             <span>Craque do Jogo</span>
@@ -439,9 +440,12 @@
           <div class="info-card-title">📜 Regras Gerais</div>
           <div class="rule-item"><strong>Prazo de palpite:</strong> Palpites devem ser feitos antes do horário de início da partida. Após o início, o palpite é bloqueado automaticamente.</div>
           <div class="rule-item"><strong>Jogador representante:</strong> Cada palpite inclui a seleção de um jogador dentre as duas seleções em campo. Este jogador compete tanto como Marcador quanto como Craque do Jogo.</div>
-          <div class="rule-item"><strong>Marcador:</strong> Pontua 3 pts base se o jogador selecionado marcar um gol, +1 pt por gol adicional do mesmo jogador (ex: 2 gols = 4 pts, 3 gols = 5 pts).</div>
+          <div class="rule-item"><strong>Marcador:</strong> Pontua 3 pts base se o jogador selecionado marcar um gol, +2 pt por gol adicional do mesmo jogador (ex: 2 gols = 4 pts, 3 gols = 5 pts).</div>
+          <div class="rule-item"><strong>Pênalti Salvo:</strong> Goleiros Pontuam + 5 por pênalti defendido </div>
+          <div class="rule-item"><strong>Clean Sheet:</strong> Goleiros e Defensores Pontuam + 2 em caso de Clean Sheet </div>
           <div class="rule-item"><strong>Craque do Jogo:</strong> Pontua 4 pts se o jogador selecionado for eleito o Craque da Partida pelo organizador.</div>
-          <div class="rule-item"><strong>Placar vs. Resultado:</strong> Acertar o placar exato vale 7 pts. Acertar apenas o vencedor ou empate vale 5 pts (não acumula com o placar exato).</div>
+          <div class="rule-item"><strong>Cartões:</strong> Cartão amarelo -2 Pts pro jogador, Cartão Vermelho -5 Pts </div>
+          <div class="rule-item"><strong>Placar vs. Resultado:</strong> Acertar o placar exato vale 10 pts. Acertar apenas o vencedor ou empate vale 6 pts (não acumula com o placar exato).</div>
           <div class="rule-item"><strong>Desempate:</strong> Pontos → Craques → Marcadores Certos → Média de pontos por palpite.</div>
           <div class="rule-item"><strong>Tabela de Rankings:</strong> JP = Jogos Palpitados | MC = Marcadores Certos | C = Craques do Jogo acertados.</div>
         </div>

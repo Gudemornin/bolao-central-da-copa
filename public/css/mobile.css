@@ -613,4 +613,143 @@
   .rank-name {
     font-size: 13px;
   }
+
+    /* Container principal dos jogos */
+  .games-list {
+    gap: 16px;
+    padding: 0 4px;
+  }
+
+  /* Card de cada jogo */
+  .game-card {
+    margin: 0;
+    width: 100%;
+    border-radius: 14px;
+  }
+
+  /* Cabeçalho do card */
+  .game-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .game-card-header-left {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Times e placar - empilhar verticalmente */
+  .game-teams {
+    flex-direction: column !important;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .team-home, .team-away {
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+  }
+
+  .team-flag img {
+    width: 40px;
+    height: 32px;
+    margin: 0;
+  }
+
+  .team-name {
+    flex: 1;
+    font-size: 14px;
+    text-align: left;
+  }
+
+  /* Área do placar */
+  .game-score {
+    order: -1; /* placa antes dos times */
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .score-box {
+    justify-content: center;
+  }
+
+  .score-input {
+    width: 65px;
+    height: 55px;
+    font-size: 22px;
+  }
+
+  .score-separator {
+    font-size: 24px;
+  }
+
+  /* Seção do jogador */
+  .player-section {
+    padding-top: 12px;
+  }
+
+  .player-label {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+
+  .player-search-input {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .selected-player-badge {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .player-name {
+    font-size: 12px;
+    word-break: break-word;
+  }
+
+  .save-bet-area {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .save-bet-btn {
+    width: 100%;
+    text-align: center;
+    padding: 10px;
+  }
+
+  .saved-indicator {
+    text-align: center;
+  }
+
+  /* Seletor de datas */
+  .date-selector {
+    gap: 6px;
+    padding: 8px 4px 12px;
+  }
+
+  .date-btn {
+    min-width: 58px;
+    padding: 6px 8px;
+  }
+
+  .date-btn .dnum {
+    font-size: 16px;
+  }
+  .date-btn .dname {
+    font-size: 9px;
+  }
+  .date-btn .dmonth {
+    font-size: 8px;
+  }
 }
+

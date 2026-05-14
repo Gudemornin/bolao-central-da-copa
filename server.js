@@ -362,9 +362,9 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 
-// =============================================
-// ENDPOINT: FOOTBALL API (PROXY)
-// =============================================
+/* =============================================
+ ENDPOINT: FOOTBALL API ANTIGA
+ =============================================
 app.get('/api/football', async (req, res) => {
   const { endpoint, team } = req.query;
   
@@ -399,6 +399,151 @@ app.get('/api/football', async (req, res) => {
     res.json(data);
   } catch (error) {
     console.error('❌ Erro no proxy football:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+*/
+
+// =============================================
+// ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
+// =============================================
+// =============================================
+// PROXY PARA THESPORTSDB (CHAVE 123)
+// =============================================
+const THESPORTSDB_API_KEY = '123';
+const THESPORTSDB_BASE_URL = 'https://www.thesportsdb.com/api/v1/json';
+
+app.get('/api/tsdb', async (req, res) => {
+  const { endpoint, leagueId, id, date, teamId, season } = req.query;
+
+  let url = '';
+  switch (endpoint) {
+    case 'events_season':
+      url = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/eventsseason.php?id=${leagueId}`;
+      if (season) url += `&s=${season}`;
+      break;
+    case 'event_timeline':
+      url = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/lookuptimeline.php?id=${id}`;
+      break;
+    case 'event_details':
+      url = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/lookupevent.php?id=${id}`;
+      break;
+    default:
+      return res.status(400).json({ error: 'Endpoint não suportado' });
+  }
+
+  try {
+    console.log(`🌐 Chamando TheSportsDB: ${url}`);
+    const response = await fetch(url);
+    const text = await response.text();
+
+    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+      console.error(`❌ API retornou HTML. URL: ${url}`);
+      return res.status(502).json({ error: 'API retornou erro HTML. Verifique a chave e os parâmetros.' });
+    }
+
+    const data = JSON.parse(text);
+    res.json(data);
+  } catch (error) {
+    console.error('❌ Erro no proxy TheSportsDB:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
+// =============================================
+app.post('/api/update-results', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+
+  try {
+    // 1. Carregar jogos atuais
+    const gamesResult = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
+    let games = gamesResult.rows[0]?.data?.games || [];
+    if (!Array.isArray(games)) games = [];
+
+    const now = new Date();
+    let updatedCount = 0;
+    const updatedGames = [];
+
+    // 2. Filtrar jogos que podem ser atualizados
+    const gamesToUpdate = games.filter(g => {
+      if (g.status === 'completed') return false;      // já finalizado manualmente
+      if (!g.apiId) return false;                      // só atualiza se tiver ID da API
+      const gameStart = new Date(`${g.date}T${g.time}:00`);
+      return gameStart <= now;                          // já começou
+    });
+
+    console.log(`🔄 Verificando ${gamesToUpdate.length} jogos para atualização...`);
+
+    for (const game of gamesToUpdate) {
+      try {
+        // 3. Buscar detalhes do evento (placar)
+        const eventUrl = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/lookupevent.php?id=${game.apiId}`;
+        const eventRes = await fetch(eventUrl);
+        const eventData = await eventRes.json();
+        if (!eventData.events?.[0]) continue;
+        const ev = eventData.events[0];
+
+        const homeScore = ev.intHomeScore !== undefined ? parseInt(ev.intHomeScore) : null;
+        const awayScore = ev.intAwayScore !== undefined ? parseInt(ev.intAwayScore) : null;
+        if (homeScore === null || awayScore === null) continue; // sem placar ainda
+
+        // 4. Buscar timeline (gols, cartões)
+        const timelineUrl = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/lookuptimeline.php?id=${game.apiId}`;
+        const timelineRes = await fetch(timelineUrl);
+        const timelineData = await timelineRes.json();
+
+        const scorers = [];
+        if (timelineData.timeline) {
+          const goalMap = new Map();
+          for (const evt of timelineData.timeline) {
+            if (evt.type === 'Goal') {
+              const playerName = evt.player;
+              goalMap.set(playerName, (goalMap.get(playerName) || 0) + 1);
+            }
+          }
+          for (const [playerName, goals] of goalMap.entries()) {
+            scorers.push({ playerId: playerName, playerName, goals });
+          }
+        }
+
+        // 5. Definir status finalizado
+        const status = ev.strStatus;
+        const isCompleted = ['FT', 'AET', 'PEN'].includes(status);
+
+        // 6. Atualizar objeto do jogo
+        game.status = isCompleted ? 'completed' : 'in_progress';
+        if (!game.result) game.result = {};
+        game.result.homeScore = homeScore;
+        game.result.awayScore = awayScore;
+        game.result.scorers = scorers;
+        // craqueId mantém o que já existir (ou null)
+        if (!game.result.craqueId) game.result.craqueId = null;
+
+        updatedGames.push(game);
+        updatedCount++;
+        console.log(`✅ Jogo ${game.id} atualizado: ${homeScore}:${awayScore} (${scorers.length} goleadores)`);
+      } catch (err) {
+        console.error(`❌ Erro no jogo ${game.id}:`, err.message);
+      }
+    }
+
+    // 7. Salvar alterações
+    if (updatedCount > 0) {
+      const finalGames = games.map(g => updatedGames.find(ug => ug.id === g.id) || g);
+      await pool.query(
+        `INSERT INTO games (id, data) VALUES ($1, $2)
+         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+        ['games_data', { games: finalGames }]
+      );
+      console.log(`💾 ${updatedCount} jogos salvos automaticamente.`);
+    }
+
+    res.json({ success: true, updated: updatedCount });
+  } catch (error) {
+    console.error('❌ Erro no update automático:', error);
     res.status(500).json({ error: error.message });
   }
 });

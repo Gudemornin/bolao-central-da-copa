@@ -7,6 +7,7 @@ export let editingGameId = null
 export let editingPlayerSel = null
 
 export let GAMES_STATE = []
+window.GAMES_STATE = GAMES_STATE;
 
 // Inicializar GAMES_STATE de forma assíncrona
 export async function initGamesState() {

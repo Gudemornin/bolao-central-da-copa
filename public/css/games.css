@@ -678,3 +678,140 @@
     font-size: 14px;
   }
 }
+.player-select-group {
+  background: var(--navy-3);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.player-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-d);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.player-role-select {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--navy-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  width: 100%;
+}
+
+.community-stats {
+  background: rgba(0,0,0,0.2);
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+.community-stats div {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+@media (max-width: 768px) {
+  .community-stats {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+.status-inprogress {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+
+/* Destaque especial para o placar real no cabeçalho do card */
+.community-game-header .result-badge {
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 6px 14px;
+  border-radius: 40px;
+  background: rgba(255, 215, 0, 0.2);
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  font-family: 'Anton', sans-serif;
+  letter-spacing: 1px;
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+}
+
+/* Quando ainda não há resultado, mantém o estilo mais discreto */
+.community-game-header .result-badge.rb-loss {
+  background: rgba(200, 16, 46, 0.15);
+  color: var(--red-l);
+  border-color: var(--red-l);
+  font-size: 0.75rem;
+  font-weight: normal;
+  box-shadow: none;
+}
+
+.real-score-big {
+  margin-bottom: 8px;
+}
+.real-score {
+  display: inline-block;
+  background: linear-gradient(135deg, #1E3A5F, #0A1628);
+  border: 2px solid var(--gold);
+  border-radius: 48px;
+  padding: 8px 24px;
+  font-family: 'Anton', sans-serif;
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--gold);
+  letter-spacing: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.no-result {
+  font-size: 14px;
+  color: var(--text-d);
+  background: rgba(0,0,0,0.3);
+  padding: 6px 16px;
+  border-radius: 30px;
+}
+
+/* Ajuste geral para o badge de status */
+.result-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;      /* tamanho da fonte */
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 30px;
+  white-space: nowrap;
+  background: rgba(200, 16, 46, 0.15);
+  color: var(--red-l);
+}
+
+/* Especificamente quando está "Aguardando" (ou qualquer status não finalizado) */
+.result-badge.rb-loss {
+  background: rgba(200, 16, 46, 0.2);
+  color: #ff6b6b;
+  font-size: 0.5rem;     /* pode ser menor */
+  letter-spacing: 0.5px;
+}
+
+/* Ajuste de posicionamento dentro do header do card (para alinhar com horário) */
+.community-game-meta .result-badge,
+.game-card-header .result-badge {
+  margin-left: 8px;       /* espaçamento à esquerda */
+  vertical-align: middle;
+  transform: translateY(-1px); /* ajuste fino vertical */
+}
+
+/* Em telas pequenas, reduz o padding e a fonte */
+@media (max-width: 768px) {
+  .result-badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+  }
+  .result-badge.rb-loss {
+    font-size: 0.6rem;
+  }
+}

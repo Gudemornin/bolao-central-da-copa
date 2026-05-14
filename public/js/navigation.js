@@ -19,35 +19,30 @@ import { renderCommunityBets } from './communityBets.js';
 async function renderWorldCupGames() {
   const container = document.getElementById('worldcupGamesList');
   if (!container) return;
-  
-  // Garantir que temos os jogos carregados
+
   let games = GAMES_STATE;
   if (!games || !games.length) {
     games = await loadGames();
     if (games.length) setGamesState(games);
   }
-  
+
   if (!games || !games.length) {
     container.innerHTML = '<div class="empty-state">Nenhum jogo encontrado.</div>';
     return;
   }
 
-  // Filtrar apenas jogos da Copa (data em junho/2026)
   const worldCupGames = games.filter(g => g.date && g.date.startsWith('2026-06'));
-  
   if (worldCupGames.length === 0) {
     container.innerHTML = '<div class="empty-state">📅 Calendário da Copa do Mundo 2026 será publicado em breve.</div>';
     return;
   }
 
-  // Agrupar jogos por data
   const gamesByDate = {};
   worldCupGames.forEach(game => {
     if (!gamesByDate[game.date]) gamesByDate[game.date] = [];
     gamesByDate[game.date].push(game);
   });
 
-  // Ordenar as datas
   const sortedDates = Object.keys(gamesByDate).sort();
 
   let html = `
@@ -60,10 +55,7 @@ async function renderWorldCupGames() {
   for (const date of sortedDates) {
     const gamesOnDate = gamesByDate[date];
     const formattedDate = new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
 
     html += `
@@ -74,14 +66,13 @@ async function renderWorldCupGames() {
         <div style="display:flex;flex-direction:column;gap:12px;">
     `;
 
-    gamesOnDate.forEach(game => {
+    for (const game of gamesOnDate) {
       const t1 = TEAMS[game.home];
       const t2 = TEAMS[game.away];
       const result = game.result ? `${game.result.homeScore} : ${game.result.awayScore}` : '—';
       const statusClass = game.status === 'completed' ? 'status-completed' : 'status-upcoming';
       const statusText = game.status === 'completed' ? '✅ Finalizado' : '📅 Agendado';
-      
-      // Buscar nome do goleador se existir
+
       let scorerName = '—';
       if (game.result && game.result.scorers && game.result.scorers.length) {
         const scorerNames = game.result.scorers.map(s => {
@@ -90,7 +81,7 @@ async function renderWorldCupGames() {
         }).join(', ');
         scorerName = scorerNames;
       }
-      
+
       html += `
         <div class="game-card" style="background:var(--navy-2);border-radius:var(--r);overflow:hidden;">
           <div class="game-card-header" style="padding:12px 16px;background:var(--navy-3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -103,23 +94,16 @@ async function renderWorldCupGames() {
           </div>
           <div style="padding:20px 16px;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;">
-              <!-- Time Mandante -->
               <div style="flex:1;text-align:center;min-width:100px;">
                 <div style="margin-bottom:8px;">
                   ${t1?.flag ? `<img src="${t1.flag}" alt="${t1.name}" style="width:56px;height:42px;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">` : '🏆'}
                 </div>
                 <div style="font-weight:600;font-size:14px;">${t1?.name || game.home}</div>
               </div>
-              
-              <!-- Placar -->
               <div style="text-align:center;min-width:100px;">
-                <div style="font-family:Anton;font-size:36px;color:var(--gold);letter-spacing:4px;">
-                  ${result}
-                </div>
+                <div style="font-family:Anton;font-size:36px;color:var(--gold);letter-spacing:4px;">${result}</div>
                 <div style="font-size:11px;color:var(--text-d);margin-top:4px;">VS</div>
               </div>
-              
-              <!-- Time Visitante -->
               <div style="flex:1;text-align:center;min-width:100px;">
                 <div style="margin-bottom:8px;">
                   ${t2?.flag ? `<img src="${t2.flag}" alt="${t2.name}" style="width:56px;height:42px;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">` : '🏆'}
@@ -127,8 +111,6 @@ async function renderWorldCupGames() {
                 <div style="font-weight:600;font-size:14px;">${t2?.name || game.away}</div>
               </div>
             </div>
-            
-            <!-- Detalhes adicionais -->
             <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:center;gap:24px;font-size:12px;color:var(--text-d);flex-wrap:wrap;">
               ${game.result && game.result.scorers && game.result.scorers.length ? `<span>⚽ Goleador(es): ${scorerName}</span>` : ''}
               ${game.result && game.result.craqueId ? `<span>⭐ Craque: ${getPlayer(game.result.craqueId)?.name || '—'}</span>` : ''}
@@ -136,14 +118,9 @@ async function renderWorldCupGames() {
           </div>
         </div>
       `;
-    });
-
-    html += `
-        </div>
-      </div>
-    `;
+    }
+    html += `</div></div>`;
   }
-
   container.innerHTML = html;
 }
 

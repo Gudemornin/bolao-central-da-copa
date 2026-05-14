@@ -5,9 +5,16 @@ import './gamemanager.js';
 import './ranking.js';
 import './bets.js';
 import { getUserPoints } from './ranking.js';
-import { initModalClosers } from './ui.js';
+import { initModalClosers, showToast } from './ui.js';
 import { switchTab } from './navigation.js';
 import './auth.js';
+
+// Importar funções necessárias para a atualização automática (que são exportadas)
+import { renderGames } from './gamemanager.js';
+import { renderRanking } from './ranking.js';
+import { renderBets } from './bets.js';
+import { renderCommunityBets } from './communityBets.js';
+// renderWorldCupGames NÃO é exportada, mas está disponível em window (ver navigation.js)
 
 export function updateSidebar() {
   if (!currentUser) {
@@ -30,6 +37,54 @@ export function updateSidebar() {
 
 window.updateSidebar = updateSidebar;
 
+// =============================================
+// ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
+// =============================================
+let autoUpdateInterval = null;
+
+export function startAutoResultUpdater() {
+  if (autoUpdateInterval) clearInterval(autoUpdateInterval);
+  autoUpdateInterval = setInterval(async () => {
+    if (!currentUser) return;
+    try {
+      const response = await fetch('/api/update-results', { method: 'POST' });
+      const data = await response.json();
+      if (data.success && data.updated > 0) {
+        console.log(`🔄 ${data.updated} jogos atualizados automaticamente`);
+        
+        const activeTab = document.querySelector('.tab-content.active')?.id;
+        if (activeTab === 'tabGames') await renderGames();
+        if (activeTab === 'tabCommunity') await renderCommunityBets();
+        if (activeTab === 'tabRanking') await renderRanking();
+        // Agora usa window (já que a função está global)
+        if (activeTab === 'tabWorldcup' && typeof window.renderWorldCupGames === 'function') {
+          await window.renderWorldCupGames();
+        }
+        if (activeTab === 'tabBets') await renderBets();
+        
+        if (typeof updateSidebar === 'function') updateSidebar();
+        showToast(`${data.updated} jogo(s) atualizado(s)`, 'green');
+      }
+    } catch (err) {
+      console.error('Erro na atualização automática:', err);
+    }
+  }, 300000);
+}
+
+export function stopAutoResultUpdater() {
+  if (autoUpdateInterval) {
+    clearInterval(autoUpdateInterval);
+    autoUpdateInterval = null;
+  }
+}
+
+// Disponibilizar globalmente para ser chamado pelo auth.js
+window.stopAutoResultUpdater = stopAutoResultUpdater;
+window.startAutoResultUpdater = startAutoResultUpdater;
+
+// =============================================
+// INICIALIZAÇÃO
+// =============================================
 async function init() {
   initModalClosers();
   
@@ -38,18 +93,15 @@ async function init() {
   
   if (sid) {
     try {
-      // Carregar usuários do localStorage PRIMEIRO (fallback rápido)
       let users = [];
       const localUsers = localStorage.getItem('bc26_users');
       if (localUsers) {
         users = JSON.parse(localUsers);
       }
       
-      // Se não achou no localStorage, tenta da API
       if (!users.length) {
         users = await loadUsers();
       } else {
-        // Atualiza em background com a API (opcional)
         loadUsers().then(apiUsers => {
           if (apiUsers.length) {
             localStorage.setItem('bc26_users', JSON.stringify(apiUsers));
@@ -61,7 +113,6 @@ async function init() {
       
       let user = users.find(u => u.id === sid);
       
-      // Fallback para admin
       if (!user && sid === 'admin_default') {
         user = users.find(u => u.profileName === 'eVagabundoTaLa11223' || u.profile_name === 'eVagabundoTaLa11223');
       }
@@ -70,20 +121,20 @@ async function init() {
       
       if (user) {
         setCurrentUser(user);
-        // Renova a sessão
         localStorage.setItem('bc26_session', user.id);
         
-        // Esconder auth e mostrar app
         document.getElementById('authScreen').style.display = 'none';
         document.getElementById('appLayout').classList.add('show');
         
-        // Mostrar admin se for admin
         const navAdmin = document.getElementById('navAdmin');
         if (navAdmin) navAdmin.style.display = user.isAdmin ? 'flex' : 'none';
         
         updateSidebar();
         if (typeof updateMobileMenu === 'function') updateMobileMenu();
         switchTab('games');
+        
+        // ✅ INICIAR ATUALIZAÇÃO AUTOMÁTICA APÓS LOGIN
+        startAutoResultUpdater();
         return;
       }
     } catch (error) {
@@ -114,7 +165,6 @@ export function updateMobileMenu() {
   }
 }
 
-// Função para marcar o item ativo no menu inferior
 export function updateMobileActiveTab(tab) {
   const mobileItems = document.querySelectorAll('.mobile-bottom-nav .nav-item');
   mobileItems.forEach(item => {
@@ -124,7 +174,6 @@ export function updateMobileActiveTab(tab) {
       item.classList.remove('active');
     }
   });
-
 }
 
 window.updateMobileMenu = updateMobileMenu;
