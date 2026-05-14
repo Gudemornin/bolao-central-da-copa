@@ -299,12 +299,14 @@
 
 .date-selector {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   overflow-x: auto;
-  padding: 8px 0 12px 0;
+  overflow-y: hidden;
+  padding: 8px 4px 16px 4px;
   margin-bottom: 20px;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
 }
 
 .date-selector::-webkit-scrollbar {
@@ -323,36 +325,36 @@
 
 .date-btn {
   flex-shrink: 0;
-  padding: 10px 16px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--navy-2);
   color: var(--text-d);
   cursor: pointer;
   font-family: 'Outfit', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   transition: all 0.2s;
   text-align: center;
-  min-width: 70px;
+  min-width: 65px;
 }
 
 .date-btn .dnum {
   font-family: 'Anton', sans-serif;
-  font-size: 20px;
+  font-size: 18px;
   display: block;
   line-height: 1.2;
 }
 
 .date-btn .dname {
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   display: block;
 }
 
 .date-btn .dmonth {
-  font-size: 9px;
+  font-size: 8px;
   color: var(--text-m);
   margin-top: 2px;
   display: block;
@@ -372,4 +374,107 @@
 
 .date-btn.active .dmonth {
   color: rgba(255, 255, 255, 0.7);
+}
+
+.date-selector {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 4px 16px 4px;
+  margin-bottom: 20px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+}
+
+.date-selector::-webkit-scrollbar {
+  height: 4px;
+}
+
+.date-selector::-webkit-scrollbar-track {
+  background: var(--navy-3);
+  border-radius: 4px;
+}
+
+.date-selector::-webkit-scrollbar-thumb {
+  background: var(--blue);
+  border-radius: 4px;
+}
+
+.date-btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--navy-2);
+  color: var(--text-d);
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+  text-align: center;
+  min-width: 65px;
+}
+
+.date-btn .dnum {
+  font-family: 'Anton', sans-serif;
+  font-size: 18px;
+  display: block;
+  line-height: 1.2;
+}
+
+.date-btn .dname {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+}
+
+.date-btn .dmonth {
+  font-size: 8px;
+  color: var(--text-m);
+  margin-top: 2px;
+  display: block;
+}
+
+.date-btn:hover {
+  border-color: var(--blue);
+  color: var(--text);
+  background: rgba(27, 79, 216, 0.1);
+}
+
+.date-btn.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+.date-btn.active .dmonth {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@media (max-width: 768px) {
+  .date-selector {
+    gap: 6px;
+    padding: 8px 4px 12px 4px;
+  }
+  
+  .date-btn {
+    padding: 6px 10px;
+    min-width: 58px;
+  }
+  
+  .date-btn .dnum {
+    font-size: 16px;
+  }
+  
+  .date-btn .dname {
+    font-size: 8px;
+  }
+  
+  .date-btn .dmonth {
+    font-size: 7px;
+  }
 }
