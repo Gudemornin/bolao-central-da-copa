@@ -193,14 +193,8 @@ img[src*="flagcdn"] {
   }
 }
 
-@media (max-width: 768px) {
-  .mobile-top-bar {
-    display: flex !important;
-  }
-}
-
 @media (min-width: 769px) {
-  .mobile-top-bar {
+  .mobile-bottom-nav {
     display: none !important;
   }
 }
