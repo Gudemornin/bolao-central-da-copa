@@ -73,47 +73,7 @@ export async function loadUsers() {
     }
   }
   
-  // 🔽 CORREÇÃO: este código deve estar DENTRO da função
-  users = (users || []).filter(u => u && u.id).map(u => ({
-    ...u,
-    profileName: u.profileName || u.profile_name || (u.email?.split('@')[0]) || `Jogador_${u.id.substring(0, 6)}`
-  }))
-  
-  // Garantir admin padrão (opcional)
-  const hasAdmin = users.some(u => u.id === 'admin_default')
-  if (!hasAdmin && users.length === 0) {
-    const adminUser = {
-      id: 'admin_default',
-      profileName: 'eVagabundoTaLa11223',
-      passwordPlayerId: 'de04',
-      isAdmin: true,
-      isHidden: true,
-      email: 'riozgu@gmail.com',
-      secureAuth: true,
-      twoFaCode: '000000',
-      createdAt: Date.now()
-    }
-    users.push(adminUser)
-    await saveUsers(users)
-  }
-  
-  console.log('✅ loadUsers:', users.length, 'usuários')
-  return users
-}
-
-async function loadUsersFromAPI() {
-  if (USE_API) {
-    const result = await apiRequest('/users');
-    if (result && result.users && Array.isArray(result.users)) {
-      const users = result.users;
-      localStorage.setItem('bc26_users', JSON.stringify(users));
-      return users;
-    }
-  }
-  return [];
-}
-  
-  // Garantir que users é array e corrigir nomes
+  // Normalizar nomes (dentro da função)
   users = (users || []).filter(u => u && u.id).map(u => ({
     ...u,
     profileName: u.profileName || u.profile_name || (u.email?.split('@')[0]) || `Jogador_${u.id.substring(0, 6)}`
@@ -136,6 +96,10 @@ async function loadUsersFromAPI() {
     users.push(adminUser)
     await saveUsers(users)
   }
+  
+  console.log('✅ loadUsers:', users.length, 'usuários')
+  return users
+}
 
 // =============================================
 // PALPITES (BETS)
