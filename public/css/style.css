@@ -194,7 +194,10 @@ img[src*="flagcdn"] {
 }
 
 @media (min-width: 769px) {
-  .mobile-bottom-nav {
-    display: none !important;
+    .mobile-bottom-nav {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
   }
-}
