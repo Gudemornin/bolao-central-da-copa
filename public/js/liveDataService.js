@@ -1,140 +1,73 @@
-// js/liveDataService.js — Cliente para API-SPORTS via proxy /api/football
-//
-// Ligas:
-//   La Liga (teste): league=140, season=2024
-//   Copa 2026:       league=1,   season=2026
+// js/liveDataService.js
+const BASE_URL = '/api/tsdb';
 
-const PROXY = '/api/football';
-
-// ── Utilitário central ────────────────────────────────────────────────────────
-
-/**
- * Chama o proxy /api/football com os parâmetros fornecidos.
- * Retorna o array `response` da API-SPORTS ou null em caso de erro.
- */
 export async function fetchFromAPI(endpoint, params = {}) {
-  const qs  = new URLSearchParams({ endpoint, ...params }).toString();
-  const url = `${PROXY}?${qs}`;
-
+  const query = new URLSearchParams({ endpoint, ...params }).toString();
+  const url = `${BASE_URL}?${query}`;
+  
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-
-    if (json.error) {
-      console.error(`❌ API-SPORTS (${endpoint}):`, json.error);
-      return null;
-    }
-
-    // A API-SPORTS sempre retorna { response: [...], results: N, ... }
-    return json.response ?? null;
-
-  } catch (err) {
-    console.error(`❌ fetchFromAPI(${endpoint}):`, err.message);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('❌ Erro na API:', error);
     return null;
   }
 }
 
-// ── Fixtures / Jogos ──────────────────────────────────────────────────────────
+// =============================================
+// ESPECÍFICOS PARA COPA DO MUNDO
+// =============================================
 
-/**
- * Busca fixtures de uma liga/temporada.
- * @param {number} league  - ID da liga (140 = La Liga, 1 = Copa do Mundo)
- * @param {number} season  - Ano da temporada (2024, 2026)
- * @param {string} [date]  - Filtrar por data 'YYYY-MM-DD' (opcional)
- * @param {string} [status]- 'NS' | 'FT' | 'LIVE' (opcional)
- */
-export async function getFixtures(league, season, date = null, status = null) {
-  const params = { league, season };
-  if (date)   params.date   = date;
-  if (status) params.status = status;
-  return await fetchFromAPI('fixtures', params);
-}
-
-/**
- * Busca jogos ao vivo de uma liga.
- */
-export async function getLiveFixtures(league) {
-  return await fetchFromAPI('live', { league });
-}
-
-/**
- * Busca eventos (gols, cartões, substituições) de um fixture específico.
- * @param {number|string} fixtureId - ID do fixture na API-SPORTS (game.apiId)
- */
-export async function getFixtureEvents(fixtureId) {
-  return await fetchFromAPI('fixture_events', { fixture: fixtureId });
-}
-
-/**
- * Busca estatísticas de um fixture (posse, chutes, etc.).
- */
-export async function getFixtureStats(fixtureId) {
-  return await fetchFromAPI('fixture_stats', { fixture: fixtureId });
-}
-
-// ── Classificação ─────────────────────────────────────────────────────────────
-
-/**
- * Busca a tabela de classificação.
- * @param {number} league - 140 (La Liga) ou 1 (Copa)
- * @param {number} season - 2024, 2026
- */
-export async function getStandings(league, season) {
-  const response = await fetchFromAPI('standings', { league, season });
-  // API-SPORTS retorna [{ league: { standings: [[...]] } }]
-  return response?.[0]?.league ?? null;
-}
-
-// ── Artilheiros ───────────────────────────────────────────────────────────────
-
-/**
- * Busca os maiores artilheiros da competição.
- * @param {number} league
- * @param {number} season
- */
-export async function getTopScorers(league, season) {
-  return await fetchFromAPI('topscorers', { league, season });
-}
-
-// ── Auto-update ───────────────────────────────────────────────────────────────
-
-/**
- * Inicia polling periódico de uma função de fetch.
- * @param {string}   key        - Label para log
- * @param {Function} fetchFn    - Função async sem args que busca os dados
- * @param {number}   intervalMs - Intervalo em ms (padrão: 5 min)
- * @returns {Function} - Função para cancelar o intervalo
- */
-export function startAutoUpdate(key, fetchFn, intervalMs = 300_000) {
-  console.log(`⏰ Auto-update "${key}" a cada ${intervalMs / 1000}s`);
-
-  fetchFn().catch(console.error);
-
-  const id = setInterval(() => {
-    fetchFn().catch(err => console.error(`Auto-update "${key}":`, err));
-  }, intervalMs);
-
-  return () => {
-    clearInterval(id);
-    console.log(`⏹  Auto-update "${key}" cancelado`);
+// Classificação dos grupos (TheSportsDB não tem para Copa 2026 ainda)
+// Vamos retornar dados mockados ou usar fallback
+export async function getStandings() {
+  try {
+    // Tentar buscar da API se existir leagueId para Copa 2026
+    // ID da Copa do Mundo na TheSportsDB é 4625 (usar se disponível)
+    const data = await fetchFromAPI('league_table', { leagueId: 4625, season: '2026' });
+    if (data && data.table) {
+      return data;
+    }
+  } catch (e) {
+    console.warn('Não foi possível carregar classificação da API, usando dados locais');
+  }
+  // Fallback: dados mockados (para não quebrar a interface)
+  return {
+    standings: [
+      { group: 'A', table: [] },
+      { group: 'B', table: [] }
+    ]
   };
 }
 
-// ── Constantes de liga para uso externo ──────────────────────────────────────
-// Nota: apenas a Copa do Mundo usa a temporada 2026 diretamente.
-// Campeonatos de clubes atuais usam a temporada 2024 na API-SPORTS (temporada 2024-25).
+// Partidas (fixtures) - usando events_season
+export async function getFixtures(team = null, date = null) {
+  const params = { endpoint: 'events_season', leagueId: 4625 }; // ID da Copa
+  if (date) params.date = date;
+  const data = await fetchFromAPI('events_season', { leagueId: 4625 });
+  return data;
+}
 
-export const LEAGUES = {
-  LA_LIGA:    { id: 140, season: 2024, name: 'La Liga'        },
-  PREMIER:    { id: 39,  season: 2024, name: 'Premier League' },
-  BUNDESLIGA: { id: 78,  season: 2024, name: 'Bundesliga'     },
-  SERIE_A:    { id: 135, season: 2024, name: 'Serie A'        },
-  LIGUE_1:    { id: 61,  season: 2024, name: 'Ligue 1'        },
-  WORLD_CUP:  { id: 1,   season: 2026, name: 'Copa do Mundo'  },
-};
+// Artilheiros (topscorers) - TheSportsDB não tem endpoint direto
+// Vamos retornar vazio ou simular
+export async function getTopScorers() {
+  console.log('⚽ Artilharia: dados serão carregados quando disponíveis');
+  return { scorers: [] };
+}
 
-// ── Constantes de liga para uso externo ──────────────────────────────────────
-// Nota: apenas a Copa do Mundo usa a temporada 2026 diretamente.
-// Campeonatos de clubes atuais usam a temporada 2024 na API-SPORTS (temporada 2024-25).
-
+export function startAutoUpdate(key, fetchFn, intervalMs = 300000) {
+  console.log(`⏰ Auto-update iniciado para "${key}" a cada ${intervalMs / 1000}s`);
+  fetchFn().then(data => {
+    console.log(`✅ Dados iniciais de "${key}" carregados`);
+  }).catch(console.error);
+  
+  const interval = setInterval(() => {
+    fetchFn().then(data => {
+      console.log(`🔄 Auto-update de "${key}" executado`);
+    }).catch(console.error);
+  }, intervalMs);
+  
+  return () => clearInterval(interval);
+}

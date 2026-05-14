@@ -339,6 +339,16 @@ export async function syncResultsFrontend(codes = AUTO_SYNC_COMPETITIONS) {
     console.log(`🔄 syncResultsFrontend: ${updated} jogos atualizados`);
   }
 
+  // Compatibilidade global para o admin e scripts antigos
+  window.syncGamesWithAPI = syncResultsFrontend;
+  window.syncFootballData = {
+    syncResultsFrontend,
+    syncResultsFromServer,
+    fetchFdMatches,
+    fetchFdStandings,
+    fetchFdScorers,
+  };
+
   return updated;
 }
 
@@ -565,6 +575,16 @@ window.verArtilheiros = async (code = 'WC') => {
   } catch (err) {
     console.error('Erro:', err.message);
   }
+};
+
+window.syncGamesWithAPI = syncResultsFrontend;
+window.syncTodas = () => _syncAndReload(Object.keys(FD_COMPETITIONS), 'Todas as competições');
+window.syncFootballData = {
+  syncResultsFrontend,
+  syncResultsFromServer,
+  fetchFdMatches,
+  fetchFdStandings,
+  fetchFdScorers,
 };
 
 console.log('✅ syncFootballData.js carregado');

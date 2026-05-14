@@ -1,43 +1,3 @@
-// ╔══════════════════════════════════════════════════════════════════════════════╗
-// ║  INSTRUÇÕES DE INSTALAÇÃO                                                   ║
-// ║                                                                              ║
-// ║  1. Acesse https://www.football-data.org/client/register                    ║
-// ║     Cadastro gratuito, API key chega no e-mail na hora.                     ║
-// ║                                                                              ║
-// ║  2. No Railway, adicione a variável de ambiente:                             ║
-// ║       FD_API_KEY = <sua chave do football-data.org>                          ║
-// ║                                                                              ║
-// ║  3. Cole este bloco dentro do seu server.js, ANTES da linha:                ║
-// ║       app.get('*', ...)   ← fallback do SPA                                 ║
-// ║                                                                              ║
-// ║  4. Dentro de initDatabase(), adicione a criação da tabela de cache:         ║
-// ║     (cole o bloco marcado com "ADICIONE NO initDatabase()" abaixo)           ║
-// ║                                                                              ║
-// ║  Ligas suportadas (football-data.org):                                       ║
-// ║    WC  = Copa do Mundo 2026  (season=2026)                                  ║
-// ║    PD  = La Liga             (season=2024)                                  ║
-// ║    PL  = Premier League      (season=2024)                                  ║
-// ║    BL1 = Bundesliga          (season=2024)                                  ║
-// ║    SA  = Serie A             (season=2024)                                  ║
-// ║    FL1 = Ligue 1             (season=2024)                                  ║
-// ║    CL  = Champions League    (season=2024)                                  ║
-// ║                                                                              ║
-// ║  Limites gratuitos: 10 requisições/minuto, sem limite diário.               ║
-// ╚══════════════════════════════════════════════════════════════════════════════╝
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ADICIONE NO initDatabase()  (dentro do try existente)
-// ─────────────────────────────────────────────────────────────────────────────
-/*
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS api_cache (
-      cache_key  TEXT PRIMARY KEY,
-      data       JSONB NOT NULL,
-      fetched_at BIGINT NOT NULL
-    )
-  `);
-*/
-
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -53,6 +13,10 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// =============================================
+// CONEXÃO COM POSTGRESQL
+// =============================================
 let pool = null;
 
 if (process.env.DATABASE_URL) {
@@ -62,534 +26,673 @@ if (process.env.DATABASE_URL) {
   });
   console.log('✅ PostgreSQL conectado');
 } else {
-  console.warn('⚠️ DATABASE_URL não encontrada. Cache em DB desabilitado.');
+  console.error('❌ DATABASE_URL não encontrada! Banco de dados não disponível.');
 }
 
+// =============================================
+// CRIAÇÃO DAS TABELAS
+// =============================================
+async function initDatabase() {
+  if (!pool) return;
+  
+  try {
+    // Primeiro, drop da constraint UNIQUE se existir (para evitar conflitos)
+    try {
+      await pool.query(`ALTER TABLE users DROP CONSTRAINT users_profile_name_key;`);
+      console.log('✅ Constraint UNIQUE removida (se existia)');
+    } catch (e) {
+      // Constraint não existia, ignorar erro
+    }
+    
+    // Recriar tabela users sem UNIQUE
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        profile_name TEXT,
+        password_player_id TEXT,
+        password_backup TEXT,
+        password_reset_pending BOOLEAN DEFAULT FALSE,
+        temp_password JSONB,
+        reset_by_admin BOOLEAN DEFAULT FALSE,
+        is_admin BOOLEAN DEFAULT FALSE,
+        is_hidden BOOLEAN DEFAULT FALSE,
+        email TEXT,
+        secure_auth BOOLEAN DEFAULT FALSE,
+        two_fa_code TEXT,
+        admin_overrides JSONB,
+        created_at BIGINT
+      )
+    `);
+    
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_backup TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_pending BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_password JSONB;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_by_admin BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_overrides JSONB;
+    `);
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS bets (
+        user_id TEXT,
+        game_id TEXT,
+        home_score INT,
+        away_score INT,
+        player_id TEXT,
+        saved_at BIGINT,
+        PRIMARY KEY (user_id, game_id)
+      )
+    `);
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS games (
+        id TEXT PRIMARY KEY,
+        data JSONB
+      )
+    `);
+    
+    console.log('✅ Tabelas verificadas/criadas com sucesso');
+  } catch (error) {
+    console.error('❌ Erro ao criar tabelas:', error);
+  }
+}
+
+await initDatabase();
+
+// =============================================
+// MIDDLEWARE
+// =============================================
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAPEAMENTO: nome da API → chave local do TEAMS
-// ─────────────────────────────────────────────────────────────────────────────
-const FD_TEAM_MAP = {
-  // ── Seleções Copa do Mundo ──────────────────────────────────────────────
-  'Mexico':                  'mexico',
-  'South Africa':            'south_africa',
-  'Korea Republic':          'south_korea',
-  'South Korea':             'south_korea',
-  'Czech Republic':          'czech_republic',
-  'Canada':                  'canada',
-  'Bosnia and Herzegovina':  'bosnia',
-  'Qatar':                   'qatar',
-  'Switzerland':             'switzerland',
-  'Brazil':                  'brazil',
-  'Morocco':                 'morocco',
-  'Haiti':                   'haiti',
-  'Scotland':                'scotland',
-  'United States':           'usa',
-  'USA':                     'usa',
-  'Paraguay':                'paraguay',
-  'Australia':               'australia',
-  'Turkey':                  'turkey',
-  'Türkiye':                 'turkey',
-  'Germany':                 'germany',
-  'Curacao':                 'curacao',
-  "Côte d'Ivoire":           'ivory_coast',
-  'Ivory Coast':             'ivory_coast',
-  'Ecuador':                 'ecuador',
-  'Netherlands':             'netherlands',
-  'Japan':                   'japan',
-  'Sweden':                  'sweden',
-  'Tunisia':                 'tunisia',
-  'Belgium':                 'belgium',
-  'Egypt':                   'egypt',
-  'Iran':                    'iran',
-  'New Zealand':             'new_zealand',
-  'Spain':                   'spain',
-  'Cape Verde':              'cape_verde',
-  'Saudi Arabia':            'saudi_arabia',
-  'Uruguay':                 'uruguay',
-  'France':                  'france',
-  'Senegal':                 'senegal',
-  'Iraq':                    'iraq',
-  'Norway':                  'norway',
-  'Argentina':               'argentina',
-  'Algeria':                 'algeria',
-  'Austria':                 'austria',
-  'Jordan':                  'jordan',
-  'Portugal':                'portugal',
-  'DR Congo':                'dr_congo',
-  'Congo DR':                'dr_congo',
-  'Uzbekistan':              'uzbekistan',
-  'Colombia':                'colombia',
-  'England':                 'england',
-  'Croatia':                 'croatia',
-  'Ghana':                   'ghana',
-  'Panama':                  'panama',
-  'Poland':                  'poland',
-  'Serbia':                  'serbia',
-  'Denmark':                 'denmark',
-  'Wales':                   'wales',
-  'Ukraine':                 'ukraine',
-  'Nigeria':                 'nigeria',
-  'Cameroon':                'cameroon',
+// =============================================
+// ENDPOINT: USUÁRIOS (GET)
+// =============================================
+app.get('/api/users', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id, 
+        profile_name as "profileName", 
+        password_player_id as "passwordPlayerId", 
+        password_backup as "passwordBackup", 
+        password_reset_pending as "passwordResetPending", 
+        temp_password as "tempPassword", 
+        reset_by_admin as "resetByAdmin", 
+        email, 
+        is_admin as "isAdmin", 
+        is_hidden as "isHidden", 
+        secure_auth as "secureAuth", 
+        two_fa_code as "twoFaCode", 
+        admin_overrides as "adminOverrides", 
+        created_at as "createdAt"
+      FROM users 
+      ORDER BY created_at DESC
+    `);
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('❌ GET /api/users erro:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
-  // ── La Liga ─────────────────────────────────────────────────────────────
-  'Valencia CF':             'valencia',
-  'Valencia':                'valencia',
-  'Rayo Vallecano':          'rayo_vallecano',
-  'Rayo Vallecano de Madrid':'rayo_vallecano',
-  'Girona FC':               'girona',
-  'Girona':                  'girona',
-  'Real Sociedad':           'real_sociedad',
-  'Real Madrid CF':          'real_madrid',
-  'Real Madrid':             'real_madrid',
-  'Real Oviedo':             'oviedo',
-  'FC Barcelona':            'barcelona',
-  'Barcelona':               'barcelona',
-  'Club Atlético de Madrid': 'atletico_madrid',
-  'Atlético Madrid':         'atletico_madrid',
-  'Atletico Madrid':         'atletico_madrid',
-  'Athletic Club':           'athletic_bilbao',
-  'Athletic Bilbao':         'athletic_bilbao',
-  'Sevilla FC':              'sevilla',
-  'Sevilla':                 'sevilla',
-  'Villarreal CF':           'villarreal',
-  'Villarreal':              'villarreal',
-  'Real Betis Balompié':     'betis',
-  'Real Betis':              'betis',
-  'Celta Vigo':              'celta_vigo',
-  'RC Celta de Vigo':        'celta_vigo',
-  'CA Osasuna':              'osasuna',
-  'Osasuna':                 'osasuna',
-  'Getafe CF':               'getafe',
-  'Getafe':                  'getafe',
-  'RCD Mallorca':            'mallorca',
-  'Mallorca':                'mallorca',
-  'RCD Espanyol':            'espanyol',
-  'Espanyol':                'espanyol',
-  'Deportivo Alavés':        'alaves',
-  'Alavés':                  'alaves',
-  'CD Leganés':              'leganes',
-  'Leganés':                 'leganes',
-  'UD Las Palmas':           'las_palmas',
-  'Las Palmas':              'las_palmas',
-  'Real Valladolid':         'valladolid',
-  'Valladolid':              'valladolid',
+// =============================================
+// ENDPOINT: USUÁRIOS (POST)
+// =============================================
+app.post('/api/users', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
+  const { users } = req.body;
+  
+  if (!users || !Array.isArray(users)) {
+    return res.status(400).json({ error: 'Dados inválidos' });
+  }
+  
+  try {
+    for (const user of users) {
+      const query = `
+        INSERT INTO users (
+          id, profile_name, password_player_id, password_backup, password_reset_pending, temp_password, reset_by_admin, email, 
+          is_admin, is_hidden, secure_auth, two_fa_code, admin_overrides, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (id) DO UPDATE SET
+          profile_name = EXCLUDED.profile_name,
+          password_player_id = EXCLUDED.password_player_id,
+          password_backup = EXCLUDED.password_backup,
+          password_reset_pending = EXCLUDED.password_reset_pending,
+          temp_password = EXCLUDED.temp_password,
+          reset_by_admin = EXCLUDED.reset_by_admin,
+          email = EXCLUDED.email,
+          is_admin = EXCLUDED.is_admin,
+          is_hidden = EXCLUDED.is_hidden,
+          secure_auth = EXCLUDED.secure_auth,
+          two_fa_code = EXCLUDED.two_fa_code,
+          admin_overrides = EXCLUDED.admin_overrides,
+          created_at = EXCLUDED.created_at
+      `;
+      
+      await pool.query(query, [
+        user.id,
+        user.profileName,
+        user.passwordPlayerId,
+        user.passwordBackup || null,
+        user.passwordResetPending || false,
+        user.tempPassword || null,
+        user.resetByAdmin || false,
+        user.email || null,
+        user.isAdmin || false,
+        user.isHidden || false,
+        user.secureAuth || false,
+        user.twoFaCode || null,
+        user.adminOverrides || null,
+        user.createdAt || Date.now()
+      ]);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ POST /api/users erro:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// ENDPOINT: PALPITES (GET)
+// =============================================
+app.get('/api/bets', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
+  try {
+    const result = await pool.query('SELECT * FROM bets');
+    const bets = {};
+    for (const row of result.rows) {
+      if (!bets[row.user_id]) bets[row.user_id] = {};
+      bets[row.user_id][row.game_id] = {
+        homeScore: row.home_score,
+        awayScore: row.away_score,
+        playerId: row.player_id,
+        savedAt: row.saved_at
+      };
+    }
+    res.json({ bets });
+  } catch (error) {
+    console.error('❌ GET /api/bets erro:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// ENDPOINT: PALPITES (POST)
+// =============================================
+app.post('/api/bets', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
+  const { bets } = req.body;
+  
+  if (!bets) {
+    return res.json({ success: true });
+  }
+  
+  try {
+    for (const [userId, userBets] of Object.entries(bets)) {
+      for (const [gameId, bet] of Object.entries(userBets)) {
+        await pool.query(
+          `INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (user_id, game_id) DO UPDATE SET
+             home_score = EXCLUDED.home_score,
+             away_score = EXCLUDED.away_score,
+             player_id = EXCLUDED.player_id,
+             saved_at = EXCLUDED.saved_at`,
+          [userId, gameId, bet.homeScore, bet.awayScore, bet.playerId, bet.savedAt || Date.now()]
+        );
+      }
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ POST /api/bets erro:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// ENDPOINT: JOGOS (GET)
+// =============================================
+app.get('/api/games', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
+  try {
+    const result = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
+    if (result.rows.length > 0) {
+      res.json({ games: result.rows[0].data });
+    } else {
+      res.json({ games: null });
+    }
+  } catch (error) {
+    console.error('❌ GET /api/games erro:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// ENDPOINT: JOGOS (POST)
+// =============================================
+app.post('/api/games', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
+  const { games } = req.body;
+  
+  if (!games) {
+    return res.json({ success: true });
+  }
+  
+  try {
+    await pool.query(
+      `INSERT INTO games (id, data) VALUES ($1, $2)
+       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+      ['games_data', { games }]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ POST /api/games erro:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// ENDPOINT: LIMPAR DADOS
+// =============================================
+app.delete('/api/clear', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+  
+  try {
+    await pool.query('DELETE FROM users');
+    await pool.query('DELETE FROM bets');
+    await pool.query('DELETE FROM games');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ DELETE /api/clear erro:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    // Impedir remoção do admin padrão
+    if (id === 'admin_default') {
+      return res.status(403).json({ error: 'Não é possível remover o administrador padrão' });
+    }
+
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Também remover palpites do usuário (opcional, mas recomendado)
+    await pool.query('DELETE FROM bets WHERE user_id = $1', [id]);
+
+    res.json({ success: true, message: 'Usuário removido com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao deletar usuário:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+/* =============================================
+ ENDPOINT: FOOTBALL API ANTIGA
+ =============================================
+app.get('/api/football', async (req, res) => {
+  const { endpoint, team } = req.query;
+  
+  if (!endpoint) {
+    return res.status(400).json({ error: 'Endpoint obrigatório' });
+  }
+  
+  let url = '';
+  switch (endpoint) {
+    case 'standings':
+      url = 'https://api.football-data.org/v4/competitions/WC/standings';
+      break;
+    case 'fixtures':
+      url = 'https://api.football-data.org/v4/competitions/WC/matches';
+      if (team) url += `?team=${team}`;
+      break;
+      case 'laliga_fixtures':
+  url = 'https://api.football-data.org/v4/competitions/PD/matches'; // PD = Primera Division
+  break;
+    case 'topscorers':
+      url = 'https://api.football-data.org/v4/competitions/WC/scorers';
+      break;
+    default:
+      return res.status(400).json({ error: 'Endpoint não suportado' });
+  }
+  
+  try {
+    const response = await fetch(url, {
+      headers: { 'X-Auth-Token': process.env.API_KEY }
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('❌ Erro no proxy football:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+*/
+
+// =============================================
+// ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
+// =============================================
+// =============================================
+// PROXY PARA THESPORTSDB (CHAVE 123)
+// =============================================
+const THESPORTSDB_API_KEY = '123';
+const THESPORTSDB_BASE_URL = 'https://www.thesportsdb.com/api/v1/json';
+
+const FOOTBALL_DATA_API_KEY = process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_DATA_KEY || process.env.FOOTBALL_DATA_ORG_KEY;
+const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
+
+const FD_TEAM_MAP = {
+  'Mexico': 'mexico', 'South Africa': 'south_africa', 'Korea Republic': 'south_korea',
+  'South Korea': 'south_korea', 'Czech Republic': 'czech_republic', 'Canada': 'canada',
+  'Bosnia and Herzegovina': 'bosnia', 'Brazil': 'brazil', 'Morocco': 'morocco',
+  'United States': 'usa', 'USA': 'usa', 'Paraguay': 'paraguay', 'Australia': 'australia',
+  'Turkey': 'turkey', 'Türkiye': 'turkey', 'Germany': 'germany', 'Curacao': 'curacao',
+  'Côte d\'Ivoire': 'ivory_coast', 'Ivory Coast': 'ivory_coast', 'Ecuador': 'ecuador',
+  'Netherlands': 'netherlands', 'Japan': 'japan', 'Sweden': 'sweden', 'Tunisia': 'tunisia',
+  'Belgium': 'belgium', 'Egypt': 'egypt', 'Iran': 'iran', 'New Zealand': 'new_zealand',
+  'Spain': 'spain', 'Cape Verde': 'cape_verde', 'Saudi Arabia': 'saudi_arabia',
+  'Uruguay': 'uruguay', 'France': 'france', 'Senegal': 'senegal', 'Iraq': 'iraq',
+  'Norway': 'norway', 'Argentina': 'argentina', 'Algeria': 'algeria', 'Austria': 'austria',
+  'Jordan': 'jordan', 'Portugal': 'portugal', 'DR Congo': 'dr_congo', 'Congo DR': 'dr_congo',
+  'Uzbekistan': 'uzbekistan', 'Colombia': 'colombia', 'England': 'england',
+  'Croatia': 'croatia', 'Ghana': 'ghana', 'Panama': 'panama', 'Poland': 'poland',
+  'Serbia': 'serbia', 'Denmark': 'denmark', 'Wales': 'wales', 'Ukraine': 'ukraine',
+  'Nigeria': 'nigeria', 'Cameroon': 'cameroon',
+  'Valencia CF': 'valencia', 'Valencia': 'valencia',
+  'Rayo Vallecano': 'rayo_vallecano', 'Rayo Vallecano de Madrid': 'rayo_vallecano',
+  'Girona FC': 'girona', 'Girona': 'girona',
+  'Real Sociedad': 'real_sociedad', 'Real Sociedad de Fútbol': 'real_sociedad',
+  'Real Madrid CF': 'real_madrid', 'Real Madrid': 'real_madrid',
+  'FC Barcelona': 'barcelona', 'Barcelona': 'barcelona',
+  'Club Atlético de Madrid': 'atletico_madrid', 'Atlético Madrid': 'atletico_madrid',
+  'Athletic Club': 'athletic_bilbao', 'Athletic Bilbao': 'athletic_bilbao',
+  'Sevilla FC': 'sevilla', 'Sevilla': 'sevilla',
+  'Villarreal CF': 'villarreal', 'Villarreal': 'villarreal',
+  'Real Betis Balompié': 'betis', 'Real Betis': 'betis',
+  'Celta Vigo': 'celta_vigo', 'RC Celta de Vigo': 'celta_vigo',
+  'CA Osasuna': 'osasuna', 'Osasuna': 'osasuna',
+  'Getafe CF': 'getafe', 'Getafe': 'getafe',
+  'RCD Mallorca': 'mallorca', 'Mallorca': 'mallorca',
+  'RCD Espanyol': 'espanyol', 'Espanyol': 'espanyol',
+  'Deportivo Alavés': 'alaves', 'Alavés': 'alaves',
+  'CD Leganés': 'leganes', 'Leganés': 'leganes',
+  'UD Las Palmas': 'las_palmas', 'Las Palmas': 'las_palmas',
+  'Real Valladolid': 'valladolid', 'Valladolid': 'valladolid'
 };
 
-function mapFdTeam(name) {
+function normalizeTeamName(name) {
   if (!name) return null;
-  if (FD_TEAM_MAP[name]) return FD_TEAM_MAP[name];
-  // Fallback: slug simples
-  return name
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return name.toString().toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 }
 
+function mapFdTeam(name) {
+  if (!name) return null;
+  if (FD_TEAM_MAP[name]) return FD_TEAM_MAP[name];
+  return normalizeTeamName(name);
+}
+
 function mapFdStatus(status) {
-  const finished = ['FINISHED', 'AWARDED'];
-  const live = ['IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'];
-  if (finished.includes(status)) return 'completed';
-  if (live.includes(status)) return 'live';
-  return 'upcoming';
+  if (!status) return 'upcoming';
+  const finished = ['FINISHED', 'AWARDED'].includes(status);
+  const live = ['IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'].includes(status);
+  return finished ? 'completed' : live ? 'live' : 'upcoming';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// UTILITÁRIOS DE CACHE
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function getCachedFD(pool, cacheKey, ttlMs) {
-  if (!pool) return null;
-  try {
-    const r = await pool.query(
-      'SELECT data, fetched_at FROM api_cache WHERE cache_key = $1',
-      [cacheKey]
-    );
-    if (!r.rows.length) return null;
-    const { data, fetched_at } = r.rows[0];
-    return (Date.now() - Number(fetched_at) < ttlMs) ? data : null;
-  } catch {
-    return null;
+async function fetchFootballData(path, params = {}) {
+  if (!FOOTBALL_DATA_API_KEY) {
+    throw new Error('Football Data API key não configurada');
   }
+  const url = new URL(`${FOOTBALL_DATA_BASE_URL}${path}`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value != null) url.searchParams.set(key, value);
+  });
+
+  const response = await fetch(url.toString(), {
+    headers: { 'X-Auth-Token': FOOTBALL_DATA_API_KEY }
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Football Data ${path} → HTTP ${response.status} ${text}`);
+  }
+  return response.json();
 }
 
-async function setCachedFD(pool, cacheKey, data) {
-  if (!pool) return;
-  try {
-    await pool.query(
-      `INSERT INTO api_cache (cache_key, data, fetched_at)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (cache_key) DO UPDATE SET data = $2, fetched_at = $3`,
-      [cacheKey, JSON.stringify(data), Date.now()]
-    );
-  } catch (e) {
-    console.warn('⚠️ Cache write error:', e.message);
-  }
+function getCompetitionCode(game) {
+  if (!game?.group) return null;
+  const group = game.group.toString();
+  if (group === 'La Liga' || group === 'PD') return 'PD';
+  if (group === 'Premier League' || group === 'PL') return 'PL';
+  if (group === 'Bundesliga' || group === 'BL1') return 'BL1';
+  if (group === 'Serie A' || group === 'SA') return 'SA';
+  if (group === 'Ligue 1' || group === 'FL1') return 'FL1';
+  if (group === 'Champions League' || group === 'CL') return 'CL';
+  if (/^[A-L]$/.test(group)) return 'WC';
+  return null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROXY: /api/fd   (football-data.org com cache automático)
-//
-// Parâmetros via query string:
-//   path  - caminho da API, ex: /competitions/WC/matches
-//   ttl   - tempo de cache em segundos (default: 300 = 5 min)
-//   ...   - demais params são passados como query string para a API
-//
-// Exemplos de uso no frontend:
-//   /api/fd?path=/competitions/WC/matches&status=FINISHED
-//   /api/fd?path=/competitions/PD/standings&season=2024&ttl=900
-//   /api/fd?path=/competitions/WC/scorers&season=2026
-// ─────────────────────────────────────────────────────────────────────────────
-app.get('/api/fd', async (req, res) => {
-  const FD_KEY = process.env.FD_API_KEY;
-  const { path: apiPath, ttl = '300', ...params } = req.query;
+function matchTeamsToLocal(game, match) {
+  const homeKey = mapFdTeam(match.homeTeam?.name);
+  const awayKey = mapFdTeam(match.awayTeam?.name);
+  if (!homeKey || !awayKey) return false;
+  return (game.home === homeKey && game.away === awayKey) || (game.home === awayKey && game.away === homeKey);
+}
 
-  if (!apiPath) {
-    return res.status(400).json({ error: 'Parâmetro "path" é obrigatório' });
+async function resolveFootballDataMatch(game) {
+  const competition = getCompetitionCode(game);
+  if (!competition) return null;
+  const date = game.date;
+  if (!date) return null;
+
+  const data = await fetchFootballData(`/competitions/${competition}/matches`, {
+    dateFrom: date,
+    dateTo: date,
+  });
+
+  const matches = Array.isArray(data.matches) ? data.matches : [];
+  const candidates = matches.filter(match => matchTeamsToLocal(game, match));
+  if (candidates.length === 1) return candidates[0];
+  if (candidates.length > 1) {
+    const normalizedTime = game.time ? game.time.replace(':', '') : null;
+    return candidates.find(match => {
+      const matchTime = match.utcDate?.substring(11, 16);
+      return matchTime === game.time;
+    }) || candidates[0];
   }
+  return null;
+}
 
-  if (!FD_KEY) {
-    return res.status(500).json({
-      error: 'FD_API_KEY não configurada',
-      hint: 'Cadastre-se em football-data.org e adicione FD_API_KEY nas variáveis do Railway',
-    });
-  }
-
-  const qs = new URLSearchParams(params).toString();
-  const cacheKey = `fd:${apiPath}${qs ? ':' + qs : ''}`;
-  const ttlMs = Math.max(30, parseInt(ttl) || 300) * 1000;
-
-  // 1. Tenta cache
-  const cached = await getCachedFD(pool, cacheKey, ttlMs);
-  if (cached) {
-    return res.json({ ...cached, _cached: true });
-  }
-
-  // 2. Busca na API
-  const url = `https://api.football-data.org/v4${apiPath}${qs ? '?' + qs : ''}`;
-  console.log(`📡 football-data.org: GET ${url}`);
-
-  try {
-    const fdRes = await fetch(url, {
-      headers: { 'X-Auth-Token': FD_KEY },
-    });
-
-    // Rate limit: retorna cache antigo se disponível
-    if (fdRes.status === 429) {
-      console.warn('⚠️ football-data.org rate limit atingido');
-      const stale = await getCachedFD(pool, cacheKey, Infinity); // qualquer cache serve
-      if (stale) return res.json({ ...stale, _stale: true });
-      return res.status(429).json({ error: 'Rate limit atingido. Tente novamente em 1 minuto.' });
+function buildScorersFromMatch(match) {
+  if (!Array.isArray(match.goals)) return [];
+  const grouped = {};
+  for (const goal of match.goals) {
+    if (!goal || goal.type === 'OWN_GOAL') continue;
+    const playerName = goal.scorer?.name;
+    const teamKey = mapFdTeam(goal.team?.name);
+    if (!playerName) continue;
+    const key = `${playerName}::${teamKey}`;
+    if (!grouped[key]) {
+      grouped[key] = { playerName, playerId: null, goals: 0, team: teamKey, minutes: [] };
     }
-
-    if (!fdRes.ok) {
-      const text = await fdRes.text().catch(() => '');
-      console.error(`❌ football-data.org HTTP ${fdRes.status}:`, text.slice(0, 300));
-      return res.status(fdRes.status).json({ error: `API retornou HTTP ${fdRes.status}` });
-    }
-
-    const data = await fdRes.json();
-
-    // 3. Salva no cache
-    await setCachedFD(pool, cacheKey, data);
-
-    return res.json(data);
-  } catch (err) {
-    console.error('❌ Proxy /api/fd erro:', err.message);
-    // Tenta retornar cache antigo em caso de erro de rede
-    const stale = await getCachedFD(pool, cacheKey, Infinity);
-    if (stale) return res.json({ ...stale, _stale: true, _error: err.message });
-    return res.status(500).json({ error: err.message });
+    grouped[key].goals++;
+    if (goal.minute) grouped[key].minutes.push(goal.minute);
   }
-});
+  return Object.values(grouped);
+}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SYNC: /api/sync-results   (POST)
-//
-// Busca resultados, gols e cartões de uma ou mais competições e atualiza
-// o banco automaticamente. Chamado pelo frontend a cada 5 min ou manualmente.
-//
-// Body (JSON):
-//   { competitions: ['WC', 'PD'] }   ← padrão
-//
-// Response:
-//   { success: true, updated: N, details: [...] }
-// ─────────────────────────────────────────────────────────────────────────────
-app.post('/api/sync-results', async (req, res) => {
-  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+function buildEventsFromMatch(match) {
+  if (!Array.isArray(match.bookings)) return [];
+  return match.bookings.map(b => ({
+    type: b.card === 'YELLOW_CARD' ? 'yellow_card' : 'red_card',
+    playerName: b.player?.name ?? null,
+    playerId: null,
+    minute: b.minute ?? 0,
+    team: mapFdTeam(b.team?.name)
+  }));
+}
 
-  const FD_KEY = process.env.FD_API_KEY;
-  if (!FD_KEY) {
-    return res.status(500).json({
-      error: 'FD_API_KEY não configurada',
-      hint: 'Adicione FD_API_KEY nas variáveis de ambiente do Railway',
-    });
-  }
+async function syncFootballDataResults(competitions = ['WC', 'PD']) {
+  const result = { updated: 0, details: [] };
+  if (!pool) throw new Error('Banco não conectado');
 
-  const { competitions = ['WC', 'PD'] } = req.body;
+  const gamesRes = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
+  let games = gamesRes.rows[0]?.data?.games || [];
+  if (!Array.isArray(games)) games = [];
 
-  // Season por competição
-  const SEASON_MAP = {
-    WC: 2026, PD: 2025, PL: 2025,
-    BL1: 2025, SA: 2025, FL1: 2025, CL: 2025,
-  };
+  const now = new Date();
+  const candidates = games.filter(g => g.status !== 'completed' && g.home && g.away && getCompetitionCode(g));
 
-  try {
-    // Carregar jogos atuais do banco
-    const gamesResult = await pool.query(
-      'SELECT data FROM games WHERE id = $1',
-      ['games_data']
-    );
-    let games = gamesResult.rows[0]?.data?.games ?? [];
-    if (!Array.isArray(games)) games = [];
+  for (const game of candidates) {
+    const competition = getCompetitionCode(game);
+    if (!competition) continue;
 
-    let totalUpdated = 0;
-    const details = [];
+    try {
+      const existingFdId = game.fdId;
+      const match = game.fdId ?
+        (await fetchFootballData(`/matches/${game.fdId}`)).match :
+        await resolveFootballDataMatch(game);
 
-    for (const code of competitions) {
-      const season = SEASON_MAP[code] ?? 2024;
-
-      try {
-        // Buscar partidas da competição
-        const url = `https://api.football-data.org/v4/competitions/${code}/matches?season=${season}`;
-        const fdRes = await fetch(url, { headers: { 'X-Auth-Token': FD_KEY } });
-
-        if (fdRes.status === 429) {
-          details.push({ code, status: 'rate_limited' });
-          console.warn(`⚠️ Rate limit ao sincronizar ${code}`);
-          continue;
-        }
-
-        if (!fdRes.ok) {
-          details.push({ code, status: `http_${fdRes.status}` });
-          console.warn(`⚠️ HTTP ${fdRes.status} ao sincronizar ${code}`);
-          continue;
-        }
-
-        const fdData = await fdRes.json();
-        if (!fdData.matches?.length) {
-          details.push({ code, status: 'no_matches' });
-          continue;
-        }
-
-        let updatedInLeague = 0;
-
-        for (const match of fdData.matches) {
-          // Pular partidas ainda não iniciadas
-          if (['SCHEDULED', 'TIMED', 'POSTPONED', 'CANCELLED', 'SUSPENDED'].includes(match.status)) {
-            continue;
-          }
-
-          const homeKey  = mapFdTeam(match.homeTeam?.name);
-          const awayKey  = mapFdTeam(match.awayTeam?.name);
-          const matchDate = match.utcDate?.substring(0, 10);
-
-          if (!homeKey || !awayKey || !matchDate) continue;
-
-          // Encontrar jogo correspondente no banco (por data + times, em qualquer ordem)
-          const gameIdx = games.findIndex(g =>
-            g.date === matchDate &&
-            ((g.home === homeKey && g.away === awayKey) ||
-             (g.home === awayKey && g.away === homeKey))
-          );
-
-          if (gameIdx === -1) continue; // Jogo não cadastrado na plataforma
-
-          const game = games[gameIdx];
-
-          // Placar
-          const homeScore = match.score?.fullTime?.home;
-          const awayScore = match.score?.fullTime?.away;
-          if (homeScore == null || awayScore == null) continue;
-
-          // ── Goleadores (goals[]) ──────────────────────────────────────────
-          const scorers = [];
-          if (Array.isArray(match.goals)) {
-            const goalMap = {};
-            for (const goal of match.goals) {
-              if (goal.type === 'OWN_GOAL') continue; // gol contra não conta
-              const name = goal.scorer?.name;
-              if (!name) continue;
-              if (!goalMap[name]) {
-                goalMap[name] = {
-                  playerName: name,
-                  playerId:   null, // será resolvido no frontend via matchPlayer()
-                  goals:      0,
-                  team:       mapFdTeam(goal.team?.name) ?? goal.team?.name,
-                  minutes:    [],
-                };
-              }
-              goalMap[name].goals++;
-              if (goal.minute) goalMap[name].minutes.push(goal.minute);
-            }
-            scorers.push(...Object.values(goalMap));
-          }
-
-          // ── Eventos: cartões (bookings[]) ─────────────────────────────────
-          const events = [];
-          if (Array.isArray(match.bookings)) {
-            for (const b of match.bookings) {
-              events.push({
-                type:       b.card === 'YELLOW_CARD' ? 'yellow_card' : 'red_card',
-                playerName: b.player?.name ?? null,
-                playerId:   null, // resolvido no frontend
-                minute:     b.minute ?? 0,
-                team:       mapFdTeam(b.team?.name) ?? b.team?.name,
-              });
-            }
-          }
-
-          // ── Atualizar objeto do jogo ──────────────────────────────────────
-          const prevResult = game.result ?? {};
-
-          games[gameIdx] = {
-            ...game,
-            status: mapFdStatus(match.status),
-            fdId:   match.id,   // ID da fd.org para chamadas individuais futuras
-            result: {
-              homeScore,
-              awayScore,
-              scorers: scorers.length ? scorers : (prevResult.scorers ?? []),
-              events:  events.length  ? events  : (prevResult.events  ?? []),
-              craqueId: prevResult.craqueId ?? null, // preservar craque manual
-            },
-          };
-
-          updatedInLeague++;
-          totalUpdated++;
-        }
-
-        details.push({ code, status: 'ok', updated: updatedInLeague, total: fdData.matches.length });
-        console.log(`✅ ${code}: ${updatedInLeague} jogos atualizados`);
-
-        // Pequena pausa entre competições para respeitar 10 req/min
-        if (competitions.indexOf(code) < competitions.length - 1) {
-          await new Promise(r => setTimeout(r, 6500));
-        }
-
-      } catch (leagueErr) {
-        console.error(`❌ Erro ao sincronizar ${code}:`, leagueErr.message);
-        details.push({ code, status: 'error', error: leagueErr.message });
+      if (!match) {
+        result.details.push({ gameId: game.id, reason: 'não encontrado' });
+        continue;
       }
-    }
 
-    // Salvar apenas se algo mudou
-    if (totalUpdated > 0) {
-      await pool.query(
-        `INSERT INTO games (id, data) VALUES ($1, $2)
-         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
-        ['games_data', JSON.stringify({ games })]
+      if (!game.fdId) {
+        game.fdId = match.id?.toString();
+        game.apiId = game.fdId;
+      }
+
+      const status = mapFdStatus(match.status?.status);
+      const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
+      const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
+      const scorers = buildScorersFromMatch(match);
+      const events = buildEventsFromMatch(match);
+
+      const prevResult = game.result || {};
+      const hasNewId = !existingFdId && !!game.fdId;
+      const changed = hasNewId || (
+        game.status !== status ||
+        prevResult.homeScore !== homeScore ||
+        prevResult.awayScore !== awayScore ||
+        JSON.stringify(prevResult.scorers || []) !== JSON.stringify(scorers) ||
+        JSON.stringify(prevResult.events || []) !== JSON.stringify(events)
       );
-      console.log(`💾 ${totalUpdated} jogos salvos no banco.`);
+
+      game.status = status;
+      game.result = {
+        homeScore,
+        awayScore,
+        scorers: scorers.length ? scorers : (prevResult.scorers || []),
+        events: events.length ? events : (prevResult.events || []),
+        craqueId: prevResult.craqueId ?? null,
+      };
+
+      if (changed) {
+        result.updated++;
+        result.details.push({
+          gameId: game.id,
+          fdId: game.fdId,
+          status,
+          homeScore,
+          awayScore,
+          scorers: scorers.length,
+          events: events.length,
+          mergedId: hasNewId,
+        });
+      }
+    } catch (err) {
+      result.details.push({ gameId: game.id, error: err.message });
     }
-
-    res.json({ success: true, updated: totalUpdated, details });
-  } catch (err) {
-    console.error('❌ /api/sync-results:', err.message);
-    res.status(500).json({ error: err.message });
   }
-});
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ENDPOINT: /api/fd-standings   (GET)
-//
-// Atalho para buscar classificação com cache já configurado.
-// Query: ?competition=WC&season=2026&ttl=900
-// ─────────────────────────────────────────────────────────────────────────────
-app.get('/api/fd-standings', async (req, res) => {
-  const { competition = 'WC', season = '2026', ttl = '900' } = req.query;
-  const FD_KEY = process.env.FD_API_KEY;
-  if (!FD_KEY) return res.status(500).json({ error: 'FD_API_KEY não configurada' });
+  if (result.updated > 0) {
+    await pool.query(
+      `INSERT INTO games (id, data) VALUES ($1, $2)
+       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+      ['games_data', { games }]
+    );
+  }
 
-  const apiPath  = `/competitions/${competition}/standings`;
-  const qs       = `season=${season}`;
-  const cacheKey = `fd:${apiPath}:${qs}`;
-  const ttlMs    = parseInt(ttl) * 1000;
+  return result;
+}
 
-  const cached = await getCachedFD(pool, cacheKey, ttlMs);
-  if (cached) return res.json({ ...cached, _cached: true });
+app.get('/api/fd', async (req, res) => {
+  const { path, ttl, ...query } = req.query;
+  if (!path) return res.status(400).json({ error: 'Parametro path obrigatório' });
 
   try {
-    const r = await fetch(`https://api.football-data.org/v4${apiPath}?${qs}`, {
-      headers: { 'X-Auth-Token': FD_KEY },
-    });
-    if (!r.ok) return res.status(r.status).json({ error: `HTTP ${r.status}` });
-    const data = await r.json();
-    await setCachedFD(pool, cacheKey, data);
+    const data = await fetchFootballData(path, query);
     res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error('❌ Erro no proxy Football Data:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ENDPOINT: /api/fd-scorers   (GET)
-//
-// Top artilheiros com cache.
-// Query: ?competition=WC&season=2026&ttl=1800
-// ─────────────────────────────────────────────────────────────────────────────
-app.get('/api/fd-scorers', async (req, res) => {
-  const { competition = 'WC', season = '2026', ttl = '1800' } = req.query;
-  const FD_KEY = process.env.FD_API_KEY;
-  if (!FD_KEY) return res.status(500).json({ error: 'FD_API_KEY não configurada' });
-
-  const apiPath  = `/competitions/${competition}/scorers`;
-  const qs       = `season=${season}`;
-  const cacheKey = `fd:${apiPath}:${qs}`;
-
-  const cached = await getCachedFD(pool, cacheKey, parseInt(ttl) * 1000);
-  if (cached) return res.json({ ...cached, _cached: true });
-
+app.post('/api/sync-results', async (req, res) => {
+  const competitions = Array.isArray(req.body?.competitions) ? req.body.competitions : ['WC', 'PD'];
   try {
-    const r = await fetch(`https://api.football-data.org/v4${apiPath}?${qs}`, {
-      headers: { 'X-Auth-Token': FD_KEY },
-    });
-    if (!r.ok) return res.status(r.status).json({ error: `HTTP ${r.status}` });
-    const data = await r.json();
-    await setCachedFD(pool, cacheKey, data);
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const result = await syncFootballDataResults(competitions);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('❌ Erro /api/sync-results:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ENDPOINT: /api/fd-match/:id   (GET)
-//
-// Detalhes de uma partida específica: gols + cartões.
-// Usado para buscar eventos quando o sync geral não os incluiu.
-// Cache permanente para jogos finalizados.
-// ─────────────────────────────────────────────────────────────────────────────
-app.get('/api/fd-match/:id', async (req, res) => {
-  const { id } = req.params;
-  const FD_KEY = process.env.FD_API_KEY;
-  if (!FD_KEY) return res.status(500).json({ error: 'FD_API_KEY não configurada' });
-
-  const cacheKey = `fd:/matches/${id}`;
-  const cached = await getCachedFD(pool, cacheKey, Infinity); // cache permanente
-  if (cached?.match?.status === 'FINISHED') {
-    return res.json({ ...cached, _cached: true });
-  }
-
-  // Para jogos em andamento, TTL de 60 segundos
-  const liveCache = await getCachedFD(pool, cacheKey, 60_000);
-  if (liveCache) return res.json({ ...liveCache, _cached: true });
-
+app.post('/api/update-results', async (req, res) => {
   try {
-    const r = await fetch(`https://api.football-data.org/v4/matches/${id}`, {
-      headers: { 'X-Auth-Token': FD_KEY },
-    });
-    if (!r.ok) return res.status(r.status).json({ error: `HTTP ${r.status}` });
-    const data = await r.json();
-    await setCachedFD(pool, cacheKey, data);
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const result = await syncFootballDataResults(['WC', 'PD']);
+    res.json({ success: true, updated: result.updated, details: result.details });
+  } catch (error) {
+    console.error('❌ Erro no update automático:', error);
+    res.status(500).json({ error: error.message });
   }
 });
+
+// =============================================
+// FALLBACK
+// =============================================
 app.get('*', (req, res) => {
   if (req.path.match(/\.\w+$/)) {
     return res.status(404).send('Arquivo não encontrado');

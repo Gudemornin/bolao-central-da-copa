@@ -8,17 +8,12 @@ import { getUserPoints } from './ranking.js';
 import { initModalClosers, showToast } from './ui.js';
 import { switchTab } from './navigation.js';
 import './auth.js';
-import {
-  startFdAutoUpdate,
-  stopFdAutoUpdate,
-} from './syncFootballData.js';
 
 // Importar funções necessárias para a atualização automática (que são exportadas)
 import { renderGames } from './gamemanager.js';
 import { renderRanking } from './ranking.js';
 import { renderBets } from './bets.js';
 import { renderCommunityBets } from './communityBets.js';
-import { GAMES_STATE } from './state.js';
 // renderWorldCupGames NÃO é exportada, mas está disponível em window (ver navigation.js)
 
 export function updateSidebar() {
@@ -47,46 +42,40 @@ window.updateSidebar = updateSidebar;
 // =============================================
 let autoUpdateInterval = null;
 
-function shouldFetchAutoUpdate() {
-  if (!Array.isArray(GAMES_STATE) || GAMES_STATE.length === 0) return true;
-
-  const now = Date.now();
-  const windowBeforeMs = 30 * 60 * 1000; // 30 min antes
-  const windowAfterMs  = 180 * 60 * 1000; // 3 h depois
-
-  return GAMES_STATE.some(game => {
-    if (!game.date || !game.time) return false;
-    const start = Date.parse(`${game.date}T${game.time}:00Z`);
-    if (Number.isNaN(start)) return false;
-
-    const status = String(game.status || '').toLowerCase();
-    if (status === 'live') return true;
-    if (status === 'upcoming') {
-      return now >= start - windowBeforeMs && now <= start + windowAfterMs;
-    }
-    return false;
-  });
-}
-
 export function startAutoResultUpdater() {
-  startFdAutoUpdate(['WC', 'PD']); // Copa + La Liga (ajuste conforme necessário)
-
-  // Reagir a resultados atualizados (atualiza as abas abertas sem reload)
-  window.addEventListener('fd:results-updated', async ({ detail }) => {
-    console.log(`🔔 ${detail.updated} resultado(s) atualizado(s)`);
-    const activeTab = document.querySelector('.tab-content.active')?.id;
-    if (activeTab === 'tabGames')    await renderGames();
-    if (activeTab === 'tabRanking')  await renderRanking();
-    if (activeTab === 'tabBets')     await renderBets();
-    if (activeTab === 'tabWorldcup' && typeof window.renderWorldCupGames === 'function') {
-      await window.renderWorldCupGames();
+  if (autoUpdateInterval) clearInterval(autoUpdateInterval);
+  autoUpdateInterval = setInterval(async () => {
+    if (!currentUser) return;
+    try {
+      const response = await fetch('/api/update-results', { method: 'POST' });
+      const data = await response.json();
+      if (data.success && data.updated > 0) {
+        console.log(`🔄 ${data.updated} jogos atualizados automaticamente`);
+        
+        const activeTab = document.querySelector('.tab-content.active')?.id;
+        if (activeTab === 'tabGames') await renderGames();
+        if (activeTab === 'tabCommunity') await renderCommunityBets();
+        if (activeTab === 'tabRanking') await renderRanking();
+        // Agora usa window (já que a função está global)
+        if (activeTab === 'tabWorldcup' && typeof window.renderWorldCupGames === 'function') {
+          await window.renderWorldCupGames();
+        }
+        if (activeTab === 'tabBets') await renderBets();
+        
+        if (typeof updateSidebar === 'function') updateSidebar();
+        showToast(`${data.updated} jogo(s) atualizado(s)`, 'green');
+      }
+    } catch (err) {
+      console.error('Erro na atualização automática:', err);
     }
-    if (typeof updateSidebar === 'function') updateSidebar();
-  });
+  }, 300000);
 }
 
 export function stopAutoResultUpdater() {
-  stopFdAutoUpdate();
+  if (autoUpdateInterval) {
+    clearInterval(autoUpdateInterval);
+    autoUpdateInterval = null;
+  }
 }
 
 // Disponibilizar globalmente para ser chamado pelo auth.js
