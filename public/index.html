@@ -116,6 +116,8 @@
       <div class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Criar Conta</div>
     </div>
 
+    
+
     <!-- LOGIN FORM -->
     <div id="loginForm">
       <div class="form-group">
@@ -198,6 +200,10 @@
     <span class="nav-tab-logo">📋</span>
     <span>Palpites</span>
   </div>
+  <div class="nav-item" data-tab="community" onclick="switchTab('community')">
+  <span class="nav-tab-logo">👥</span>
+  <span>Galera</span>
+</div>
   <div class="nav-item" data-tab="ranking" onclick="switchTab('ranking')">
     <span class="nav-tab-logo">🏆</span>
     <span>Ranking</span>
@@ -259,6 +265,10 @@
       <div class="nav-item" data-tab="bets" onclick="switchTab('bets')">
         <span class="nav-tab-logo">📋</span>
         <span>Palpites Ativos</span>
+      </div>
+      <div class="nav-item" data-tab="community" onclick="switchTab('community')">
+      <span class="nav-tab-logo">👥</span>
+      <span>Palpites da Galera</span>
       </div>
       <div class="nav-item" data-tab="ranking" onclick="switchTab('ranking')">
         <span class="nav-tab-logo">🏆</span>
@@ -328,6 +338,10 @@
       <div class="page-footer">
         <button class="btn-ghost" onclick="openFinalizedModal()">📁 Palpites Finalizados</button>
       </div>
+    </div>
+
+    <div class="tab-content" id="tabCommunity">
+    <div id="communityBetsContainer"></div>
     </div>
 
     <!-- ─── RANKING ─── -->

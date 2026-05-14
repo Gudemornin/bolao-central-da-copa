@@ -459,3 +459,222 @@
 .date-selector:active {
   cursor: grabbing;
 }
+
+.community-bets-header {
+  margin-bottom: 24px;
+}
+
+.community-date-selector {
+  margin-top: 16px;
+}
+
+.community-games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Card de jogo na comunidade */
+.community-game-card {
+  background: var(--navy-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.community-game-header {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.community-game-header:hover {
+  background: var(--glass);
+}
+
+.community-game-info {
+  flex: 1;
+}
+
+.community-teams {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.community-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.community-team img {
+  width: 30px;
+  height: 22px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.community-team-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.community-vs {
+  font-size: 12px;
+  color: var(--text-d);
+  font-weight: 700;
+}
+
+.community-game-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-d);
+}
+
+.community-game-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bets-count {
+  font-size: 12px;
+  color: var(--blue-l);
+  font-weight: 600;
+}
+
+.expand-icon {
+  font-size: 12px;
+  transition: transform 0.2s;
+  color: var(--text-d);
+}
+
+/* Corpo expansível */
+.community-game-body {
+  border-top: 1px solid var(--border);
+  padding: 16px;
+  background: var(--navy-3);
+}
+
+/* Tabela de palpites */
+.community-bets-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.community-bets-table th {
+  text-align: left;
+  padding: 10px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-d);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.community-bets-table td {
+  padding: 10px 8px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.community-bets-table tr:last-child td {
+  border-bottom: none;
+}
+
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-avatar-small {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue), var(--green));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.user-name {
+  font-weight: 500;
+}
+
+.current-user-bet {
+  background: rgba(27, 79, 216, 0.08);
+}
+
+.score-cell strong {
+  font-family: 'Anton', sans-serif;
+  font-size: 16px;
+  color: var(--gold);
+}
+
+.player-cell {
+  color: var(--text-d);
+}
+
+.pts-cell .pts-value {
+  font-family: 'Anton', sans-serif;
+  font-size: 16px;
+  color: var(--blue-l);
+  font-weight: 700;
+}
+
+.no-bets-msg {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-d);
+  font-size: 13px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .community-teams {
+    gap: 8px;
+  }
+  
+  .community-team-name {
+    font-size: 11px;
+  }
+  
+  .community-bets-table th,
+  .community-bets-table td {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+  
+  .score-cell strong {
+    font-size: 14px;
+  }
+  
+  .user-avatar-small {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+  
+  .user-name {
+    font-size: 11px;
+  }
+  
+  .pts-cell .pts-value {
+    font-size: 14px;
+  }
+}

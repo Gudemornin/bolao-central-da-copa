@@ -11,6 +11,7 @@ import { GAMES_STATE, setGamesState } from './state.js';
 import { loadGames } from './storage.js';
 import { getPlayer } from './exportplayer.js';
 import { updateMobileActiveTab, updateMobileMenu } from './app.js';
+import { renderCommunityBets } from './communityBets.js';
 
 // =============================================
 // FUNÇÃO PARA EXIBIR "JOGOS DA COPA"
@@ -234,6 +235,7 @@ export async function switchTab(tab) {
   // Outras abas
   if (tab === 'games') await renderGames();
   if (tab === 'bets') await renderBets();
+  if (tab === 'community') await renderCommunityBets();
   if (tab === 'ranking') await renderRanking();
   if (tab === 'worldcup') await renderWorldCupGames();
   if (tab === 'standings') await renderStandings();
