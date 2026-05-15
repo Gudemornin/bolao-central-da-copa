@@ -583,14 +583,43 @@ function buildMatchEvents(match) {
 }
 
 function buildEventsFromMatch(match) {
-  if (!Array.isArray(match.bookings)) return [];
-  return match.bookings.map(b => ({
-    type: b.card === 'YELLOW_CARD' ? 'yellow_card' : 'red_card',
-    playerName: b.player?.name ?? null,
-    playerId: null,
-    minute: b.minute ?? 0,
-    team: mapFdTeam(b.team?.name)
-  }));
+  const events = [];
+  // Gols e assistências
+  if (Array.isArray(match.goals)) {
+    for (const goal of match.goals) {
+      if (goal.scorer) {
+        events.push({
+          type: 'goal',
+          playerId: goal.scorer?.id,
+          playerName: goal.scorer?.name,
+          minute: goal.minute,
+          team: mapFdTeam(goal.team?.name)
+        });
+      }
+      if (goal.assist) {
+        events.push({
+          type: 'assist',
+          playerId: goal.assist?.id,
+          playerName: goal.assist?.name,
+          minute: goal.minute,
+          team: mapFdTeam(goal.team?.name)
+        });
+      }
+    }
+  }
+  // Cartões (bookings)
+  if (Array.isArray(match.bookings)) {
+    for (const card of match.bookings) {
+      events.push({
+        type: card.card === 'YELLOW' ? 'yellow_card' : 'red_card',
+        playerId: card.player?.id,
+        playerName: card.player?.name,
+        minute: card.minute,
+        team: mapFdTeam(card.team?.name)
+      });
+    }
+  }
+  return events;
 }
 
 async function syncFootballDataResults(competitions = ['WC', 'PD']) {

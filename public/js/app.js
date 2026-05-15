@@ -8,6 +8,7 @@ import { getUserPoints } from './ranking.js';
 import { initModalClosers, showToast } from './ui.js';
 import { switchTab } from './navigation.js';
 import './auth.js';
+import { loadGames, setGamesState } from './storage.js';
 
 // Importar funções necessárias para a atualização automática (que são exportadas)
 import { renderGames } from './gamemanager.js';
@@ -52,6 +53,10 @@ export function startAutoResultUpdater() {
       if (data.success && data.updated > 0) {
         console.log(`🔄 ${data.updated} jogos atualizados automaticamente`);
         
+        const freshGames = await loadGames();
+        setGamesState(freshGames);
+
+
         const activeTab = document.querySelector('.tab-content.active')?.id;
         if (activeTab === 'tabGames') await renderGames();
         if (activeTab === 'tabCommunity') await renderCommunityBets();
