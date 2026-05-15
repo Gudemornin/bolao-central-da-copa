@@ -679,15 +679,65 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
 }
 
 app.get('/api/fd', async (req, res) => {
-  const { path, ttl, ...query } = req.query;
-  if (!path) return res.status(400).json({ error: 'Parametro path obrigatório' });
+  const apiKey = process.env.API_FOOTBALL_KEY;
+  
+  // VALIDAÇÃO: chave existe?
+  if (!apiKey) {
+    console.error('❌ API_FOOTBALL_KEY não configurada');
+    return res.status(500).json({ 
+      error: 'API_FOOTBALL_KEY não configurada. Adicione a variável de ambiente no Railway.',
+      status: 'missing_api_key'
+    });
+  }
+
+  const { path, ttl, season, dateFrom, dateTo, ...filters } = req.query;
+  if (!path) {
+    return res.status(400).json({ error: 'Parâmetro "path" obrigatório' });
+  }
+
+  // Constrói a URL completa
+  let url = `https://api.football-data.org/v4${path}`;
+  const params = new URLSearchParams();
+  if (season) params.append('season', season);
+  if (dateFrom) params.append('dateFrom', dateFrom);
+  if (dateTo) params.append('dateTo', dateTo);
+  Object.entries(filters).forEach(([k, v]) => params.append(k, v));
+  if (params.toString()) url += `?${params.toString()}`;
 
   try {
-    const data = await fetchFootballData(path, query);
+    console.log(`🌐 [FD] ${url}`);
+    const response = await fetch(url, {
+      headers: { 'X-Auth-Token': apiKey }
+    });
+
+    const text = await response.text();
+    
+    // Verifica se a resposta é JSON válido
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error(`❌ Resposta não é JSON: ${text.substring(0, 200)}`);
+      return res.status(502).json({ 
+        error: 'API retornou resposta inválida (não é JSON)',
+        status: response.status,
+        preview: text.substring(0, 200)
+      });
+    }
+
+    // Se a API retornou erro, repassa com o status correto
+    if (!response.ok) {
+      console.error(`❌ [FD] HTTP ${response.status}: ${JSON.stringify(data)}`);
+      return res.status(response.status).json(data);
+    }
+
     res.json(data);
   } catch (error) {
-    console.error('❌ Erro no proxy Football Data:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Erro no proxy football-data:', error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
