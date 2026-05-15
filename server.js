@@ -626,21 +626,21 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
   const result = { updated: 0, details: [] };
   if (!pool) throw new Error('Banco não conectado');
 
+  // Carregar jogos atuais
   const gamesRes = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
   let games = gamesRes.rows[0]?.data?.games || [];
   if (!Array.isArray(games)) games = [];
 
-  const now = new Date();
-  const candidates = games.filter(g => g.status !== 'completed' && g.home && g.away && getCompetitionCode(g));
-
-  for (const game of candidates) {
+  for (const game of games) {
+    // Só atualiza jogos que ainda não foram finalizados manualmente
+    if (game.status === 'completed') continue;
     const competition = getCompetitionCode(game);
     if (!competition) continue;
 
     try {
       let match = null;
+      // Tenta buscar pelo fdId se existir, senão resolve pelo nome/data
       if (game.fdId) {
-        // Busca por ID direto
         const matchData = await fetchFootballData(`/matches/${game.fdId}`);
         match = matchData.match;
       } else {
@@ -648,56 +648,91 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
       }
 
       if (!match) {
-        result.details.push({ gameId: game.id, reason: 'match não encontrado' });
+        result.details.push({ gameId: game.id, reason: 'não encontrado' });
         continue;
       }
 
+      // Atualiza o fdId se ainda não tiver
       if (!game.fdId && match.id) {
         game.fdId = match.id.toString();
         game.apiId = game.fdId;
       }
 
-      // Status do jogo
-      const isFinished = match.status === 'FINISHED';
+      // Status FINISHED? Marca como 'completed'
+      const isFinished = (match.status === 'FINISHED');
       const localStatus = isFinished ? 'completed' : (match.status === 'IN_PLAY' ? 'live' : 'upcoming');
 
-      // Placar
+      // Placar (prioriza fullTime, depois halfTime)
       const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
       const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
 
-      // Eventos (gols, assistências, cartões)
-      const allEvents = buildEventsFromMatch(match);
+      // Se não tem placar ainda, pula (jogo não começou ou não disponível)
+      if (homeScore === null || awayScore === null) continue;
 
-      // Goleadores (formato antigo para compatibilidade)
-      const scorers = [];
+      // Extrair eventos (gols, assistências, cartões)
+      const events = [];
       if (Array.isArray(match.goals)) {
-        const goalMap = new Map();
         for (const goal of match.goals) {
-          if (!goal.scorer) continue;
-          const name = goal.scorer.name;
-          if (!goalMap.has(name)) goalMap.set(name, { playerName: name, playerId: null, goals: 0 });
-          goalMap.get(name).goals++;
+          if (goal.type === 'OWN_GOAL') continue; // ignorar gols contra
+          if (goal.scorer) {
+            events.push({
+              type: 'goal',
+              playerId: goal.scorer.id?.toString(),
+              playerName: goal.scorer.name,
+              minute: goal.minute,
+              team: mapFdTeam(goal.team?.name)
+            });
+          }
+          if (goal.assist) {
+            events.push({
+              type: 'assist',
+              playerId: goal.assist.id?.toString(),
+              playerName: goal.assist.name,
+              minute: goal.minute,
+              team: mapFdTeam(goal.team?.name)
+            });
+          }
         }
-        for (const data of goalMap.values()) scorers.push(data);
+      }
+      if (Array.isArray(match.bookings)) {
+        for (const card of match.bookings) {
+          events.push({
+            type: card.card === 'YELLOW' ? 'yellow_card' : 'red_card',
+            playerId: card.player?.id?.toString(),
+            playerName: card.player?.name,
+            minute: card.minute,
+            team: mapFdTeam(card.team?.name)
+          });
+        }
       }
 
-      const prevResult = game.result || {};
-      const hasNewId = !game.fdId && !!match.id;
-      const changed = hasNewId ||
-        game.status !== localStatus ||
-        prevResult.homeScore !== homeScore ||
-        prevResult.awayScore !== awayScore ||
-        JSON.stringify(prevResult.scorers || []) !== JSON.stringify(scorers) ||
-        JSON.stringify(prevResult.events || []) !== JSON.stringify(allEvents);
+      // Construir lista de goleadores (para compatibilidade com o front-end)
+      const scorers = [];
+      const goalMap = new Map();
+      for (const ev of events) {
+        if (ev.type === 'goal') {
+          const key = ev.playerName;
+          if (!goalMap.has(key)) goalMap.set(key, { playerName: key, playerId: ev.playerId, goals: 0 });
+          goalMap.get(key).goals++;
+        }
+      }
+      for (const [, data] of goalMap.entries()) scorers.push(data);
+
+      // Verificar se houve mudança relevante
+      const prev = game.result || {};
+      const changed = (game.status !== localStatus) ||
+                      (prev.homeScore !== homeScore) ||
+                      (prev.awayScore !== awayScore) ||
+                      (JSON.stringify(prev.events || []) !== JSON.stringify(events));
 
       if (changed) {
         game.status = localStatus;
         game.result = {
           homeScore,
           awayScore,
-          scorers: scorers.length ? scorers : (prevResult.scorers || []),
-          events: allEvents.length ? allEvents : (prevResult.events || []),
-          craqueId: prevResult.craqueId ?? null,
+          scorers,
+          events,
+          craqueId: prev.craqueId ?? null
         };
         result.updated++;
         result.details.push({
@@ -707,8 +742,7 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
           homeScore,
           awayScore,
           scorers: scorers.length,
-          events: allEvents.length,
-          mergedId: hasNewId,
+          events: events.length
         });
       }
     } catch (err) {
@@ -717,13 +751,14 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
     }
   }
 
+  // Salvar se houve alterações
   if (result.updated > 0) {
     await pool.query(
       `INSERT INTO games (id, data) VALUES ($1, $2)
        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
       ['games_data', { games }]
     );
-    console.log(`✅ ${result.updated} jogos atualizados via syncFootballDataResults`);
+    console.log(`✅ syncFootballDataResults: ${result.updated} jogos atualizados`);
   }
 
   return result;
