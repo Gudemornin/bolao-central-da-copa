@@ -4,6 +4,7 @@ import { loadBets, loadUsers, loadGames } from './storage.js';
 import { GAMES_STATE, currentUser } from './state.js';
 import { formatDate, teamFlagImg } from './utils.js';
 import { getPlayer } from './exportplayer.js';
+import { sign } from './utils.js';
 
 let currentCommunityDate = null;
 
@@ -340,19 +341,17 @@ function calculateBetPoints(bet, game) {
   if (!game.result) return 0;
   const r = game.result;
   let pts = 0;
- const r = game.result;
-  let pts = 0;
   
   // 1. RESULTADO DA PARTIDA
-  const betWinner = sign(bet.homeScore - bet.awayScore);
-  const realWinner = sign(r.homeScore - r.awayScore);
+  const betWinner = Math.sign(bet.homeScore - bet.awayScore);
+  const realWinner = Math.sign(r.homeScore - r.awayScore);
   if (betWinner === realWinner) pts += 6;
   
   // 2. PLACAR EXATO
   if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) pts += 4;
   
   // 3. EVENTOS (gols, assistências, cartões, etc.)
-  const events = gameEvents || r.events || [];
+  const events = r.events || [];
   
   // Jogadores do palpite (suporta até 2)
   const players = [
@@ -362,10 +361,7 @@ function calculateBetPoints(bet, game) {
   
   for (const player of players) {
     const p = getPlayer(player.id);
-    if (!p) {
-      console.warn(`Jogador não encontrado: ${player.id}`);
-      continue;
-    }
+    if (!p) continue;
     
     const playerEvents = events.filter(e => e.playerId === player.id);
     const isGoalkeeper = player.role === 'goleiro' || p.pos === 'GOL';
@@ -380,10 +376,7 @@ function calculateBetPoints(bet, game) {
     
     // ASSISTÊNCIAS
     const assists = playerEvents.filter(e => e.type === 'assist').length;
-    if (assists > 0) {
-      pts += assists * 1;             // 1 ponto por assistência
-      console.log(`✅ Assistência para ${p.name}: +${assists} ponto(s)`);
-    }
+    pts += assists * 1;               // 1 ponto por assistência
     
     // CARTÕES
     const yellowCards = playerEvents.filter(e => e.type === 'yellow_card').length;
@@ -409,9 +402,7 @@ function calculateBetPoints(bet, game) {
   if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 4;
   
   return pts;
-
 }
-
 // =============================================
 // FUNÇÕES GLOBAIS
 // =============================================
