@@ -538,22 +538,48 @@ async function resolveFootballDataMatch(game) {
   return null;
 }
 
-function buildScorersFromMatch(match) {
-  if (!Array.isArray(match.goals)) return [];
-  const grouped = {};
-  for (const goal of match.goals) {
-    if (!goal || goal.type === 'OWN_GOAL') continue;
-    const playerName = goal.scorer?.name;
-    const teamKey = mapFdTeam(goal.team?.name);
-    if (!playerName) continue;
-    const key = `${playerName}::${teamKey}`;
-    if (!grouped[key]) {
-      grouped[key] = { playerName, playerId: null, goals: 0, team: teamKey, minutes: [] };
+function buildMatchEvents(match) {
+  const scorers = [];
+  const assists = [];
+  if (Array.isArray(match.goals)) {
+    for (const goal of match.goals) {
+      if (!goal || goal.type === 'OWN_GOAL') continue;
+      // Goleador
+      const scorerName = goal.scorer?.name;
+      const teamKey = mapFdTeam(goal.team?.name);
+      if (scorerName) {
+        scorers.push({
+          playerName: scorerName,
+          playerId: null,
+          goals: 1,
+          team: teamKey,
+          minute: goal.minute
+        });
+      }
+      // Assistência (se houver)
+      const assistName = goal.assist?.name;
+      if (assistName) {
+        assists.push({
+          type: 'assist',
+          playerName: assistName,
+          playerId: null,
+          minute: goal.minute,
+          team: teamKey
+        });
+      }
     }
-    grouped[key].goals++;
-    if (goal.minute) grouped[key].minutes.push(goal.minute);
   }
-  return Object.values(grouped);
+  // Agrupar goleadores (mesmo jogador pode fazer mais de um gol)
+  const groupedScorers = {};
+  for (const s of scorers) {
+    const key = `${s.playerName}::${s.team}`;
+    if (!groupedScorers[key]) {
+      groupedScorers[key] = { ...s, goals: 0 };
+    }
+    groupedScorers[key].goals++;
+  }
+  const uniqueScorers = Object.values(groupedScorers);
+  return { scorers: uniqueScorers, assists };
 }
 
 function buildEventsFromMatch(match) {
@@ -677,12 +703,6 @@ app.post('/api/sync-results', async (req, res) => {
 });
 
 app.post('/api/update-results', async (req, res) => {
-  const gamesToUpdate = games.filter(g => {
-  if (g.status === 'completed') return false;  // ← já protegido
-  if (!g.apiId) return false;
-  const gameStart = new Date(`${g.date}T${g.time}:00`);
-  return gameStart <= now;
-});
   try {
     const result = await syncFootballDataResults(['WC', 'PD']);
     res.json({ success: true, updated: result.updated, details: result.details });
