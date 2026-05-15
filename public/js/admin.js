@@ -465,6 +465,9 @@ export function renderAdminPage() {
   renderAdmin();
 }
 
+window.filterAdminPlayers = filterAdminPlayers;
+window.showAdminPlayerResults = showAdminPlayerResults;
+window.selectAdminPlayer = selectAdminPlayer;
 window.getPlayer = getPlayer;
 window.getPlayersByTeams = getPlayersByTeams;
 window.TEAMS = TEAMS;
