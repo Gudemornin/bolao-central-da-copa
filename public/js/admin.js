@@ -460,14 +460,101 @@ window.adminAddScorer = (gameId) => {
   }
 };
 
+async function adminSaveGame(gameId) {
+  console.log('🔍 Salvando jogo:', gameId);
+  
+  const idx = GAMES_STATE.findIndex(g => g.id === gameId);
+  if (idx === -1) {
+    console.error('Jogo não encontrado em GAMES_STATE');
+    showToast('Erro: jogo não encontrado', 'red');
+    return;
+  }
+
+  // Pegar placar
+  const homeScoreInput = document.getElementById(`homeScore_${gameId}`);
+  const awayScoreInput = document.getElementById(`awayScore_${gameId}`);
+  
+  if (!homeScoreInput || !awayScoreInput) {
+    console.error('Campos de placar não encontrados');
+    showToast('Erro: campos de placar não encontrados', 'red');
+    return;
+  }
+
+  const homeScore = parseInt(homeScoreInput.value);
+  const awayScore = parseInt(awayScoreInput.value);
+  
+  if (isNaN(homeScore) || isNaN(awayScore)) {
+    showToast('Informe o placar do resultado.', 'red');
+    return;
+  }
+
+  // Pegar craque do jogo
+  const craqueSelect = document.getElementById(`craque_${gameId}`);
+  const craqueId = craqueSelect ? craqueSelect.value : null;
+
+  // Coletar goleadores
+  const scorersList = tempScorers[gameId] || [];
+  const updatedScorers = [];
+  for (let i = 0; i < scorersList.length; i++) {
+    const playerIdField = document.getElementById(`player_selected_${gameId}_scorer_${i}`);
+    const goalsField = document.getElementById(`scorer_goals_${gameId}_${i}`);
+    if (playerIdField && playerIdField.value) {
+      const goals = goalsField ? parseInt(goalsField.value) : 1;
+      updatedScorers.push({ playerId: playerIdField.value, goals: isNaN(goals) ? 1 : goals });
+    }
+  }
+
+  // Coletar eventos (assistências, cartões, pênaltis)
+  const updatedEvents = [];
+  const eventList = tempEvents[gameId] || [];
+  for (let i = 0; i < eventList.length; i++) {
+    const event = eventList[i];
+    const playerIdField = document.getElementById(`player_selected_${gameId}_${event.type}_${i}`);
+    if (playerIdField && playerIdField.value) {
+      const player = getPlayer(playerIdField.value);
+      if (player) {
+        updatedEvents.push({
+          type: event.type,
+          playerId: player.id,
+          playerName: player.name,
+          team: player.team
+        });
+      }
+    }
+  }
+
+  // Atualizar GAMES_STATE
+  GAMES_STATE[idx].status = 'completed';
+  GAMES_STATE[idx].result = {
+    homeScore,
+    awayScore,
+    scorers: updatedScorers,
+    craqueId: craqueId || null,
+    events: updatedEvents
+  };
+
+  try {
+    await saveGames(GAMES_STATE);
+    showToast('Resultado salvo com sucesso! ✅', 'green');
+    // Recarregar a interface de admin para refletir os dados salvos
+    renderAdminGames();
+  } catch (error) {
+    console.error('Erro ao salvar:', error);
+    showToast('Erro ao salvar: ' + error.message, 'red');
+  }
+}
+
 // Exportar função principal
 export function renderAdminPage() {
   renderAdmin();
 }
 
-window.filterAdminPlayers = filterAdminPlayers;
-window.showAdminPlayerResults = showAdminPlayerResults;
-window.selectAdminPlayer = selectAdminPlayer;
-window.getPlayer = getPlayer;
-window.getPlayersByTeams = getPlayersByTeams;
-window.TEAMS = TEAMS;
+window.adminSaveGame           = adminSaveGame;
+window.adminAddScorer          = adminAddScorer;
+window.adminRemoveScorer       = adminRemoveScorer;
+window.adminAddEvent           = adminAddEvent;
+window.adminRemoveEvent        = adminRemoveEvent;
+window.filterAdminPlayers      = filterAdminPlayers;
+window.showAdminPlayerResults  = showAdminPlayerResults;
+window.selectAdminPlayer       = selectAdminPlayer;
+window.showAdminTab            = showAdminTab; 
