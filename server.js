@@ -408,11 +408,7 @@ app.get('/api/football', async (req, res) => {
 // =============================================
 // ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
 // =============================================
-// =============================================
-// PROXY PARA THESPORTSDB (CHAVE 123)
-// =============================================
-const THESPORTSDB_API_KEY = '123';
-const THESPORTSDB_BASE_URL = 'https://www.thesportsdb.com/api/v1/json';
+
 
 const FOOTBALL_DATA_API_KEY = process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_DATA_KEY || process.env.FOOTBALL_DATA_ORG_KEY;
 const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
