@@ -2,6 +2,8 @@ import { loadBets, loadUsers } from './storage.js';
 import { GAMES_STATE, currentUser } from './state.js';
 import { sign } from './utils.js';
 import { updateSidebar } from './app.js';
+import { getPlayer } from './exportplayer.js';
+import { TEAMS } from './data/teams.js';
 
 export function calcBetPoints(bet, game, gameEvents = null) {
   if (!game.result) return 0;
