@@ -696,10 +696,13 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
     }
   }
 
+  const isFinished = match.status === 'FINISHED';
+  const localStatus = isFinished ? 'completed' : (match.status === 'IN_PLAY' ? 'live' : 'upcoming');
+
   if (result.updated > 0) {
     await pool.query(
       `INSERT INTO games (id, data) VALUES ($1, $2)
-       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
       ['games_data', { games }]
     );
   }

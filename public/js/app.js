@@ -134,14 +134,17 @@ async function init() {
         const navAdmin = document.getElementById('navAdmin');
         if (navAdmin) navAdmin.style.display = user.isAdmin ? 'flex' : 'none';
         
+        const games = await loadGames();
+        setGamesState(games);
+        console.log('✅ GAMES_STATE inicializado com', games.length, 'jogos');
+
         updateSidebar();
         if (typeof updateMobileMenu === 'function') updateMobileMenu();
         switchTab('games');
-        
-        // ✅ INICIAR ATUALIZAÇÃO AUTOMÁTICA APÓS LOGIN
         startAutoResultUpdater();
         return;
-      }
+  }
+
     } catch (error) {
       console.error('❌ Erro ao restaurar sessão:', error);
     }
