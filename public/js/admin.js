@@ -362,6 +362,165 @@ window.adminSaveGame = async (gameId) => {
     });
   }
   
+function createScorerItem(gameId, idx, scorer = { playerId: '', goals: 1 }) {
+  const game = GAMES_STATE.find(g => g.id === gameId);
+  const gamePlayers = getPlayersByTeams(game.home, game.away);
+  const div = document.createElement('div');
+  div.className = 'scorer-item';
+  div.style.cssText = 'display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;background:var(--navy-3);padding:8px;border-radius:6px;position:relative;';
+  div.innerHTML = `
+    <span style="font-weight:600;min-width:30px;margin-top:8px;">${idx + 1}º</span>
+    <div style="flex:1;min-width:220px;">
+      ${renderPlayerSearchControl(gameId, 'scorer', idx, scorer.playerId, gamePlayers, false)}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <input type="number" class="admin-input" id="scorer_goals_${gameId}_${idx}" value="${scorer.goals || 1}" min="1" max="9" style="width:60px;text-align:center;">
+      <span style="white-space:nowrap;">gol(s)</span>
+      <button class="admin-remove-btn" onclick="adminRemoveScorer('${gameId}', ${idx})" style="background:var(--red);color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">✕</button>
+    </div>
+  `;
+  return div;
+}
+
+function createEventItem(gameId, eventType, idx, event = { playerId: '' }) {
+  const game = GAMES_STATE.find(g => g.id === gameId);
+  const gamePlayers = getPlayersByTeams(game.home, game.away);
+  const onlyGoalkeepers = (eventType === 'penalty_saved');
+  const div = document.createElement('div');
+  div.className = 'event-item';
+  div.style.cssText = 'display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;background:var(--navy-3);padding:8px;border-radius:6px;position:relative;';
+  div.innerHTML = `
+    <span style="font-weight:600;min-width:30px;margin-top:8px;">${idx + 1}º</span>
+    <div style="flex:1;min-width:220px;">
+      ${renderPlayerSearchControl(gameId, eventType, idx, event.playerId, gamePlayers, onlyGoalkeepers)}
+    </div>
+    <button class="admin-remove-btn" onclick="adminRemoveEvent('${gameId}', '${eventType}', ${idx})" style="background:var(--red);color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">✕</button>
+  `;
+  return div;
+}
+
+window.adminAddScorer = (gameId) => {
+  if (!tempScorers[gameId]) tempScorers[gameId] = [];
+  const newIdx = tempScorers[gameId].length;
+  tempScorers[gameId].push({ playerId: '', goals: 1 });
+  const container = document.getElementById(`scorers-list-${gameId}`);
+  if (container) {
+    const newItem = createScorerItem(gameId, newIdx, { playerId: '', goals: 1 });
+    container.appendChild(newItem);
+    // Atualizar o número da posição de todos os itens (opcional, mas mantém a contagem)
+    const items = container.querySelectorAll('.scorer-item');
+    items.forEach((item, i) => {
+      const numSpan = item.querySelector('span:first-child');
+      if (numSpan) numSpan.textContent = `${i + 1}º`;
+    });
+  }
+};
+
+window.adminRemoveScorer = (gameId, index) => {
+  if (!tempScorers[gameId]) return;
+  tempScorers[gameId].splice(index, 1);
+  const container = document.getElementById(`scorers-list-${gameId}`);
+  if (container) {
+    // Remover o elemento visual correspondente
+    const items = container.querySelectorAll('.scorer-item');
+    if (items[index]) items[index].remove();
+    // Renumerar os restantes
+    const remaining = container.querySelectorAll('.scorer-item');
+    remaining.forEach((item, i) => {
+      const numSpan = item.querySelector('span:first-child');
+      if (numSpan) numSpan.textContent = `${i + 1}º`;
+      // Atualizar o id do input de gols e os event listeners (se necessário)
+      const goalsInput = item.querySelector(`input[id^="scorer_goals_${gameId}_"]`);
+      if (goalsInput) {
+        const oldId = goalsInput.id;
+        const newId = `scorer_goals_${gameId}_${i}`;
+        goalsInput.id = newId;
+      }
+      // Atualizar os campos de busca (player_search)
+      const searchDiv = item.querySelector('.player-search-wrapper');
+      if (searchDiv) {
+        const searchInput = searchDiv.querySelector('input[type="text"]');
+        const hiddenInput = searchDiv.querySelector('input[type="hidden"]');
+        if (searchInput) {
+          const oldId = searchInput.id;
+          const newId = `player_search_${gameId}_scorer_${i}`;
+          searchInput.id = newId;
+          searchInput.setAttribute('oninput', `filterAdminPlayers('${gameId}','scorer',${i}, false)`);
+          searchInput.setAttribute('onfocus', `showAdminPlayerResults('${gameId}','scorer',${i}, false)`);
+        }
+        if (hiddenInput) {
+          hiddenInput.id = `player_selected_${gameId}_scorer_${i}`;
+        }
+        const resultsDiv = searchDiv.querySelector('.player-search-results');
+        if (resultsDiv) {
+          resultsDiv.id = `player_results_${gameId}_scorer_${i}`;
+        }
+      }
+    });
+  }
+};
+
+window.adminAddEvent = (gameId, eventType) => {
+  if (!tempEvents[gameId]) tempEvents[gameId] = [];
+  const newIdx = tempEvents[gameId].filter(e => e.type === eventType).length;
+  tempEvents[gameId].push({ type: eventType, playerId: '' });
+  const container = document.getElementById(`event_section_${eventType}_${gameId}`);
+  if (container) {
+    const newItem = createEventItem(gameId, eventType, newIdx, { playerId: '' });
+    container.appendChild(newItem);
+    // Renumerar os itens do mesmo tipo
+    const items = container.querySelectorAll('.event-item');
+    items.forEach((item, i) => {
+      const numSpan = item.querySelector('span:first-child');
+      if (numSpan) numSpan.textContent = `${i + 1}º`;
+    });
+  }
+};
+
+window.adminRemoveEvent = (gameId, eventType, index) => {
+  if (!tempEvents[gameId]) return;
+  // Remover do array temporário
+  let filtered = [];
+  let currentIndex = -1;
+  for (const ev of tempEvents[gameId]) {
+    if (ev.type === eventType) {
+      currentIndex++;
+      if (currentIndex !== index) filtered.push(ev);
+    } else {
+      filtered.push(ev);
+    }
+  }
+  tempEvents[gameId] = filtered;
+  // Remover do DOM
+  const container = document.getElementById(`event_section_${eventType}_${gameId}`);
+  if (container) {
+    const items = container.querySelectorAll('.event-item');
+    if (items[index]) items[index].remove();
+    // Renumerar os restantes
+    const remaining = container.querySelectorAll('.event-item');
+    remaining.forEach((item, i) => {
+      const numSpan = item.querySelector('span:first-child');
+      if (numSpan) numSpan.textContent = `${i + 1}º`;
+      // Atualizar IDs dos campos
+      const searchDiv = item.querySelector('.player-search-wrapper');
+      if (searchDiv) {
+        const searchInput = searchDiv.querySelector('input[type="text"]');
+        const hiddenInput = searchDiv.querySelector('input[type="hidden"]');
+        if (searchInput) {
+          const oldId = searchInput.id;
+          const newId = `player_search_${gameId}_${eventType}_${i}`;
+          searchInput.id = newId;
+          searchInput.setAttribute('oninput', `filterAdminPlayers('${gameId}','${eventType}',${i}, ${eventType === 'penalty_saved'})`);
+          searchInput.setAttribute('onfocus', `showAdminPlayerResults('${gameId}','${eventType}',${i}, ${eventType === 'penalty_saved'})`);
+        }
+        if (hiddenInput) hiddenInput.id = `player_selected_${gameId}_${eventType}_${i}`;
+        const resultsDiv = searchDiv.querySelector('.player-search-results');
+        if (resultsDiv) resultsDiv.id = `player_results_${gameId}_${eventType}_${i}`;
+      }
+    });
+  }
+};
+
   // Atualizar GAMES_STATE
   GAMES_STATE[idx].status = 'completed';
   GAMES_STATE[idx].result = {
