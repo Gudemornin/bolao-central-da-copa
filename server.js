@@ -681,6 +681,12 @@ app.post('/api/sync-results', async (req, res) => {
 });
 
 app.post('/api/update-results', async (req, res) => {
+  const gamesToUpdate = games.filter(g => {
+  if (g.status === 'completed') return false;  // ← já protegido
+  if (!g.apiId) return false;
+  const gameStart = new Date(`${g.date}T${g.time}:00`);
+  return gameStart <= now;
+});
   try {
     const result = await syncFootballDataResults(['WC', 'PD']);
     res.json({ success: true, updated: result.updated, details: result.details });
