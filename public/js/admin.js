@@ -1,6 +1,6 @@
 import { TEAMS } from './data/teams.js';
 import { showToast } from './ui.js';
-import { getPlayer, getPlayersByTeams } from './exportplayer.js';
+import { getPlayer, getPlayersByTeams, filterPlayers} from './exportplayer.js';
 import { saveGames, loadGames, loadBets } from './storage.js';
 import { GAMES_STATE, setGamesState } from './state.js';
 import { formatDate, teamFlagImg } from './utils.js';
@@ -383,3 +383,8 @@ window.adminSaveGame = async (gameId) => {
 export function renderAdminPage() {
   renderAdmin();
 }
+
+window.filterPlayers = filterPlayers;
+window.getPlayer = getPlayer;
+window.getPlayersByTeams = getPlayersByTeams;
+window.TEAMS = TEAMS;
