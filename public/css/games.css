@@ -815,3 +815,10 @@
     font-size: 0.6rem;
   }
 }
+
+.player-search-results {
+  display: none !important;
+}
+.player-search-results[style*="display: block"] {
+  display: block !important;
+}
