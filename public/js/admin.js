@@ -245,6 +245,59 @@ function renderEventSection(gameId, eventType, label, gamePlayers, onlyGoalkeepe
   }).join('');
 }
 
+export function filterAdminPlayers(gameId, itemType, idx, onlyGoalkeepers) {
+  const game = GAMES_STATE.find(g => g.id === gameId);
+  if (!game) {
+    console.warn(`Jogo ${gameId} não encontrado em GAMES_STATE`);
+    return;
+  }
+  const input = document.getElementById(`player_search_${gameId}_${itemType}_${idx}`);
+  const results = document.getElementById(`player_results_${gameId}_${itemType}_${idx}`);
+  if (!input || !results) return;
+
+  const q = input.value.trim();
+  if (!q) {
+    results.style.display = 'none';
+    return;
+  }
+
+  let players = filterPlayers(q, [game.home, game.away]);
+  if (onlyGoalkeepers === true || onlyGoalkeepers === 'true') {
+    players = players.filter(p => p.pos === 'GOL');
+  }
+
+  results.innerHTML = players.map(p => `
+    <div class="player-search-item" onclick="selectAdminPlayer('${gameId}','${itemType}',${idx},'${p.id}')" style="padding:8px 10px;cursor:pointer;display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);">
+      <span>${p.name} (${TEAMS[p.team]?.name || p.team})</span>
+      <span style="opacity:0.7;">${p.pos}</span>
+    </div>
+  `).join('') || '<div style="padding:8px 12px;">Nenhum jogador encontrado</div>';
+
+  results.style.display = 'block';
+}
+
+export function showAdminPlayerResults(gameId, itemType, idx, onlyGoalkeepers) {
+  const results = document.getElementById(`player_results_${gameId}_${itemType}_${idx}`);
+  if (!results) return;
+  results.style.display = 'block';
+  filterAdminPlayers(gameId, itemType, idx, onlyGoalkeepers);
+}
+
+export function selectAdminPlayer(gameId, itemType, idx, playerId) {
+  const input = document.getElementById(`player_search_${gameId}_${itemType}_${idx}`);
+  const hidden = document.getElementById(`player_selected_${gameId}_${itemType}_${idx}`);
+  const results = document.getElementById(`player_results_${gameId}_${itemType}_${idx}`);
+  const player = getPlayer(playerId);
+  if (input) input.value = player ? `${player.name} (${TEAMS[player.team]?.name || player.team})` : '';
+  if (hidden) hidden.value = playerId;
+  if (results) results.style.display = 'none';
+}
+
+// Expor globalmente (para os eventos inline)
+window.filterAdminPlayers = filterAdminPlayers;
+window.showAdminPlayerResults = showAdminPlayerResults;
+window.selectAdminPlayer = selectAdminPlayer;
+
 function createScorerItem(gameId, idx, scorer = { playerId: '', goals: 1 }) {
   const game = GAMES_STATE.find(g => g.id === gameId);
   const gamePlayers = getPlayersByTeams(game.home, game.away);
@@ -390,12 +443,28 @@ window.adminRemoveEvent = (gameId, eventType, index) => {
   }
 };
 
+window.adminAddScorer = (gameId) => {
+  if (!tempScorers[gameId]) tempScorers[gameId] = [];
+  const newIdx = tempScorers[gameId].length;
+  tempScorers[gameId].push({ playerId: '', goals: 1 });
+  const container = document.getElementById(`scorers-list-${gameId}`);
+  if (container) {
+    const newItem = createScorerItem(gameId, newIdx, { playerId: '', goals: 1 });
+    container.appendChild(newItem);
+    // renumera
+    const items = container.querySelectorAll('.scorer-item');
+    items.forEach((item, i) => {
+      const numSpan = item.querySelector('span:first-child');
+      if (numSpan) numSpan.textContent = `${i + 1}º`;
+    });
+  }
+};
+
 // Exportar função principal
 export function renderAdminPage() {
   renderAdmin();
 }
 
-window.filterPlayers = filterPlayers;
 window.getPlayer = getPlayer;
 window.getPlayersByTeams = getPlayersByTeams;
 window.TEAMS = TEAMS;
