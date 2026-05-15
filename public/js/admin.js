@@ -248,19 +248,16 @@ function renderEventSection(gameId, eventType, label, gamePlayers, onlyGoalkeepe
 window.adminAddScorer = (gameId) => {
   if (!tempScorers[gameId]) tempScorers[gameId] = [];
   tempScorers[gameId].push({ playerId: '', goals: 1 });
-  renderAdminGames();
 };
 
 window.adminAddEvent = (gameId, eventType) => {
   if (!tempEvents[gameId]) tempEvents[gameId] = [];
   tempEvents[gameId].push({ type: eventType, playerId: '' });
-  renderAdminGames();
 };
 
 window.adminRemoveScorer = (gameId, index) => {
   if (tempScorers[gameId]) {
     tempScorers[gameId].splice(index, 1);
-    renderAdminGames();
   }
 };
 
@@ -272,7 +269,6 @@ window.adminRemoveEvent = (gameId, eventType, index) => {
     currentIndex += 1;
     return currentIndex !== index;
   });
-  renderAdminGames();
 };
 
 function normalizeBoolean(value) {
