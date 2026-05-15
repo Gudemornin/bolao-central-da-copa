@@ -638,30 +638,37 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
     if (!competition) continue;
 
     try {
-      const existingFdId = game.fdId;
-      const match = game.fdId
-        ? (await fetchFootballData(`/matches/${game.fdId}`)).match
-        : await resolveFootballDataMatch(game);
+      let match = null;
+      if (game.fdId) {
+        // Busca por ID direto
+        const matchData = await fetchFootballData(`/matches/${game.fdId}`);
+        match = matchData.match;
+      } else {
+        match = await resolveFootballDataMatch(game);
+      }
 
       if (!match) {
-        result.details.push({ gameId: game.id, reason: 'não encontrado' });
+        result.details.push({ gameId: game.id, reason: 'match não encontrado' });
         continue;
       }
 
-      if (!game.fdId) {
-        game.fdId = match.id?.toString();
+      if (!game.fdId && match.id) {
+        game.fdId = match.id.toString();
         game.apiId = game.fdId;
       }
 
-      // Status
-      const localStatus = mapFdStatus(match.status);
+      // Status do jogo
+      const isFinished = match.status === 'FINISHED';
+      const localStatus = isFinished ? 'completed' : (match.status === 'IN_PLAY' ? 'live' : 'upcoming');
+
+      // Placar
       const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
       const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
 
       // Eventos (gols, assistências, cartões)
       const allEvents = buildEventsFromMatch(match);
 
-      // Goleadores (apenas para compatibilidade com formato antigo)
+      // Goleadores (formato antigo para compatibilidade)
       const scorers = [];
       if (Array.isArray(match.goals)) {
         const goalMap = new Map();
@@ -671,20 +678,17 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
           if (!goalMap.has(name)) goalMap.set(name, { playerName: name, playerId: null, goals: 0 });
           goalMap.get(name).goals++;
         }
-        for (const [name, data] of goalMap.entries()) {
-          scorers.push(data);
-        }
+        for (const data of goalMap.values()) scorers.push(data);
       }
 
       const prevResult = game.result || {};
-      const hasNewId = !existingFdId && !!game.fdId;
-      const changed = hasNewId || (
+      const hasNewId = !game.fdId && !!match.id;
+      const changed = hasNewId ||
         game.status !== localStatus ||
         prevResult.homeScore !== homeScore ||
         prevResult.awayScore !== awayScore ||
         JSON.stringify(prevResult.scorers || []) !== JSON.stringify(scorers) ||
-        JSON.stringify(prevResult.events || []) !== JSON.stringify(allEvents)
-      );
+        JSON.stringify(prevResult.events || []) !== JSON.stringify(allEvents);
 
       if (changed) {
         game.status = localStatus;
@@ -719,6 +723,7 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
       ['games_data', { games }]
     );
+    console.log(`✅ ${result.updated} jogos atualizados via syncFootballDataResults`);
   }
 
   return result;
