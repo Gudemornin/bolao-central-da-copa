@@ -11,78 +11,70 @@ export function calcBetPoints(bet, game, gameEvents = null) {
   const r = game.result;
   let pts = 0;
   
-  // 1. RESULTADO DA PARTIDA (Vitória/Empate)
+  // 1. RESULTADO DA PARTIDA
   const betWinner = sign(bet.homeScore - bet.awayScore);
   const realWinner = sign(r.homeScore - r.awayScore);
+  if (betWinner === realWinner) pts += 6;
   
-  if (betWinner === realWinner) {
-    // Vitória = 6 pontos, Empate = 6 pontos também
-    pts += 6;
-  }
+  // 2. PLACAR EXATO
+  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) pts += 4;
   
-  // 2. PLACAR EXATO (+4 adicional, total 10)
-  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) {
-    pts += 4; // +4 em cima dos 6 do resultado = 10
-  }
+  // 3. EVENTOS (gols, assistências, cartões, etc.)
+  const events = gameEvents || r.events || [];
   
-  // 3. PONTUAÇÃO DOS JOGADORES ESCOLHIDOS
-  // Suporta até 2 jogadores (playerId e player2Id)
+  // Jogadores do palpite (suporta até 2)
   const players = [
     { id: bet.playerId, role: bet.playerRole || 'field' },
     { id: bet.player2Id, role: bet.player2Role || 'field' }
   ].filter(p => p.id);
   
-  // Buscar eventos do jogo (se fornecidos)
-  const events = gameEvents || r.events || [];
-  
   for (const player of players) {
     const p = getPlayer(player.id);
-    if (!p) continue;
+    if (!p) {
+      console.warn(`Jogador não encontrado: ${player.id}`);
+      continue;
+    }
     
     const playerEvents = events.filter(e => e.playerId === player.id);
     const isGoalkeeper = player.role === 'goleiro' || p.pos === 'GOL';
     const isDefender = player.role === 'zagueiro' || p.pos === 'DEF';
     
-    // Gols marcados
+    // GOLS
     const goals = playerEvents.filter(e => e.type === 'goal').length;
     if (goals > 0) {
-      pts += 3; // base por marcar
-      pts += (goals - 1) * 2; // +2 por cada gol adicional
+      pts += 3;                       // base
+      pts += (goals - 1) * 2;         // +2 por gol adicional
     }
     
-    // Assistências
+    // ASSISTÊNCIAS
     const assists = playerEvents.filter(e => e.type === 'assist').length;
-    pts += assists * 1;
+    if (assists > 0) {
+      pts += assists * 1;             // 1 ponto por assistência
+      console.log(`✅ Assistência para ${p.name}: +${assists} ponto(s)`);
+    }
     
-    // Cartões
+    // CARTÕES
     const yellowCards = playerEvents.filter(e => e.type === 'yellow_card').length;
     const redCards = playerEvents.filter(e => e.type === 'red_card').length;
     pts -= yellowCards * 2;
     pts -= redCards * 4;
     
-    // Goleiro: defesa de pênalti
+    // PÊNALTI DEFENDIDO (goleiro)
     if (isGoalkeeper) {
       const penaltiesSaved = playerEvents.filter(e => e.type === 'penalty_saved').length;
       pts += penaltiesSaved * 5;
     }
     
-    // Goleiro/Zagueiro: cleansheet
-    if ((isGoalkeeper || isDefender) && r.homeScore === 0 && r.awayScore === 0) {
-      pts += 2;
-    } else if ((isGoalkeeper || isDefender)) {
-      // Cleansheet individual (time não levou gol enquanto jogador estava em campo)
+    // CLEAN SHEET (goleiro/defensor)
+    if ((isGoalkeeper || isDefender)) {
       const minutesPlayed = playerEvents.find(e => e.type === 'minutes_played')?.value || 90;
-      const goalsConceded = player.team === game.home ? r.awayScore : r.homeScore;
-      if (goalsConceded === 0 && minutesPlayed >= 60) {
-        pts += 2;
-      }
+      const goalsConceded = p.team === game.home ? r.awayScore : r.homeScore;
+      if (goalsConceded === 0 && minutesPlayed >= 60) pts += 2;
     }
   }
   
-  // 4. MOTM (Man of the Match) - 4 pontos
-  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) {
-    pts += 4;
-  }
+  // 4. CRAQUE DO JOGO
+  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 4;
   
   return pts;
 }
