@@ -654,18 +654,14 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
       }
 
       // Status
-      const status = mapFdStatus(match.status);
-      const isFinished = match.status === 'FINISHED';
-      const localStatus = isFinished ? 'completed' : (match.status === 'IN_PLAY' ? 'live' : 'upcoming');
-
-      // Placar
+      const localStatus = mapFdStatus(match.status);
       const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
       const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
 
       // Eventos (gols, assistências, cartões)
       const allEvents = buildEventsFromMatch(match);
 
-      // Goleadores (apenas para compatibilidade com o formato antigo, se necessário)
+      // Goleadores (apenas para compatibilidade com formato antigo)
       const scorers = [];
       if (Array.isArray(match.goals)) {
         const goalMap = new Map();
@@ -691,7 +687,7 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
       );
 
       if (changed) {
-        game.status = localStatus;           // ← ATUALIZA O STATUS
+        game.status = localStatus;
         game.result = {
           homeScore,
           awayScore,
@@ -712,6 +708,7 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
         });
       }
     } catch (err) {
+      console.error(`Erro no jogo ${game.id}:`, err.message);
       result.details.push({ gameId: game.id, error: err.message });
     }
   }
