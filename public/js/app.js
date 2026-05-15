@@ -1,5 +1,5 @@
 import { loadUsers } from './storage.js';
-import { currentUser, setCurrentUser } from './state.js';
+import { currentUser, setCurrentUser, setGamesState} from './state.js';
 import './admin.js';
 import './gamemanager.js';
 import './ranking.js';
@@ -8,7 +8,7 @@ import { getUserPoints } from './ranking.js';
 import { initModalClosers, showToast } from './ui.js';
 import { switchTab } from './navigation.js';
 import './auth.js';
-import { loadGames, setGamesState } from './storage.js';
+import { loadGames } from './storage.js';
 
 // Importar funções necessárias para a atualização automática (que são exportadas)
 import { renderGames } from './gamemanager.js';
