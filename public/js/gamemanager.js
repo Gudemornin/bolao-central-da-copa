@@ -49,7 +49,7 @@ function getUniqueDates() {
   }
 
 export async function renderGames() {
-  await syncGamesWithAPI();
+  // await syncGamesWithAPI();
   
   const dates = getUniqueDates();
   if (!currentDate && dates.length) setCurrentDate(dates[0]);
