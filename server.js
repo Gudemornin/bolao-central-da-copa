@@ -627,8 +627,9 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
       const status = mapFdStatus(match.status?.status);
       const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
       const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
-      const scorers = buildScorersFromMatch(match);
-      const events = buildEventsFromMatch(match);
+      const { scorers, assists } = buildMatchEvents(match);
+      const cards = buildEventsFromMatch(match); // cartões
+      const allEvents = [...assists, ...cards];
 
       const prevResult = game.result || {};
       const hasNewId = !existingFdId && !!game.fdId;
@@ -640,14 +641,13 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
         JSON.stringify(prevResult.events || []) !== JSON.stringify(events)
       );
 
-      game.status = status;
       game.result = {
-        homeScore,
-        awayScore,
-        scorers: scorers.length ? scorers : (prevResult.scorers || []),
-        events: events.length ? events : (prevResult.events || []),
-        craqueId: prevResult.craqueId ?? null,
-      };
+  homeScore,
+  awayScore,
+  scorers: scorers.length ? scorers : (prevResult.scorers || []),
+  events: allEvents.length ? allEvents : (prevResult.events || []),
+  craqueId: prevResult.craqueId ?? null,
+};
 
       if (changed) {
         result.updated++;

@@ -193,6 +193,8 @@ window.forceSync = async () => {
   location.reload();
 };
 
+
+window.syncGamesWithAPI = syncGamesWithAPI;
 window.syncLaLiga = window.forceSync;
 window.syncWorldCup = window.forceSync;
 
