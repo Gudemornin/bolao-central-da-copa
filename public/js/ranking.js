@@ -137,36 +137,36 @@ function parseEventsFromTimeline(timeline) {
 async function getUserStats(userId) {
   const users = await loadUsers();
   const user = users.find(u => u && u.id === userId);
-  
   const bets = await loadBets();
   const userBets = bets[userId] || {};
   let pts = 0, jp = 0, victories = 0, exactScores = 0, motm = 0;
-  
+
   for (const [gid, bet] of Object.entries(userBets)) {
     const g = GAMES_STATE.find(x => x && x.id === gid);
     if (!g || !g.result) continue;
-    
+
     jp++;
-    const events = await fetchGameEvents(gid);
-    const p = calcBetPoints(bet, g, events);
-    pts += p;
-    
-    // Estatísticas adicionais
-    const betWinner = sign(bet.homeScore - bet.awayScore);
-    const realWinner = sign(g.result.homeScore - g.result.awayScore);
-    if (betWinner === realWinner) victories++;
-    
-    if (bet.homeScore === g.result.homeScore && bet.awayScore === g.result.awayScore) exactScores++;
-    if (bet.playerId === g.result.craqueId || bet.player2Id === g.result.craqueId) motm++;
+    try {
+      // Usar os eventos que já estão salvos no jogo (se existirem)
+      const events = g.result.events || [];
+      const p = calcBetPoints(bet, g, events);
+      pts += p;
+
+      const betWinner = sign(bet.homeScore - bet.awayScore);
+      const realWinner = sign(g.result.homeScore - g.result.awayScore);
+      if (betWinner === realWinner) victories++;
+      if (bet.homeScore === g.result.homeScore && bet.awayScore === g.result.awayScore) exactScores++;
+      if (bet.playerId === g.result.craqueId || bet.player2Id === g.result.craqueId) motm++;
+    } catch (err) {
+      console.error(`Erro ao calcular pontos para ${userId}, jogo ${gid}:`, err);
+    }
   }
-  
-  const avg = jp > 0 ? (pts / jp) : 0;
-  
+
+  const avg = jp > 0 ? pts / jp : 0;
   if (user && user.adminOverrides) {
     if (user.adminOverrides.manualPoints !== undefined) pts = user.adminOverrides.manualPoints;
     if (user.adminOverrides.manualCraques !== undefined) motm = user.adminOverrides.manualCraques;
   }
-  
   return { pts, jp, victories, exactScores, motm, avg };
 }
 
