@@ -521,6 +521,15 @@ async function adminSaveGame(gameId) {
         });
       }
     }
+
+    await saveGames(GAMES_STATE);
+showToast('Resultado salvo com sucesso! ✅', 'green');
+renderAdminGames();
+
+// Força atualização do ranking se estiver visível
+if (document.getElementById('tabRanking').classList.contains('active')) {
+  if (typeof renderRanking === 'function') await renderRanking();
+}
   }
 
   // Atualizar GAMES_STATE
