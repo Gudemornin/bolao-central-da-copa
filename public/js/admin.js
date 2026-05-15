@@ -245,119 +245,6 @@ function renderEventSection(gameId, eventType, label, gamePlayers, onlyGoalkeepe
   }).join('');
 }
 
-window.adminAddScorer = (gameId) => {
-  if (!tempScorers[gameId]) tempScorers[gameId] = [];
-  tempScorers[gameId].push({ playerId: '', goals: 1 });
-};
-
-window.adminAddEvent = (gameId, eventType) => {
-  if (!tempEvents[gameId]) tempEvents[gameId] = [];
-  tempEvents[gameId].push({ type: eventType, playerId: '' });
-};
-
-window.adminRemoveScorer = (gameId, index) => {
-  if (tempScorers[gameId]) {
-    tempScorers[gameId].splice(index, 1);
-  }
-};
-
-window.adminRemoveEvent = (gameId, eventType, index) => {
-  if (!tempEvents[gameId]) return;
-  let currentIndex = -1;
-  tempEvents[gameId] = tempEvents[gameId].filter(event => {
-    if (event.type !== eventType) return true;
-    currentIndex += 1;
-    return currentIndex !== index;
-  });
-};
-
-function normalizeBoolean(value) {
-  return value === true || value === 'true';
-}
-
-window.filterAdminPlayers = (gameId, itemType, idx, onlyGoalkeepers) => {
-  const game = GAMES_STATE.find(g => g.id === gameId);
-  if (!game) return;
-  const input = document.getElementById(`player_search_${gameId}_${itemType}_${idx}`);
-  const results = document.getElementById(`player_results_${gameId}_${itemType}_${idx}`);
-  if (!input || !results) return;
-
-  const q = input.value;
-  let players = filterPlayers(q, [game.home, game.away]);
-  if (normalizeBoolean(onlyGoalkeepers)) {
-    players = players.filter(p => p.pos === 'GOL');
-  }
-
-  results.innerHTML = players.map(p => `
-    <div class="player-search-item" onclick="selectAdminPlayer('${gameId}','${itemType}',${idx},'${p.id}')" style="padding:8px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);">
-      <span>${p.name} (${TEAMS[p.team]?.name || p.team})</span>
-      <span style="opacity:.7;font-size:12px;">${p.pos}</span>
-    </div>
-  `).join('') || '<div style="padding:8px 12px;font-size:12px;color:var(--text-d);">Nenhum resultado</div>';
-  results.style.display = 'block';
-};
-
-window.showAdminPlayerResults = (gameId, itemType, idx, onlyGoalkeepers) => {
-  const results = document.getElementById(`player_results_${gameId}_${itemType}_${idx}`);
-  if (!results) return;
-  results.style.display = 'block';
-  filterAdminPlayers(gameId, itemType, idx, onlyGoalkeepers);
-};
-
-window.selectAdminPlayer = (gameId, itemType, idx, playerId) => {
-  const input = document.getElementById(`player_search_${gameId}_${itemType}_${idx}`);
-  const hidden = document.getElementById(`player_selected_${gameId}_${itemType}_${idx}`);
-  const results = document.getElementById(`player_results_${gameId}_${itemType}_${idx}`);
-  const player = getPlayer(playerId);
-  if (input) input.value = player ? `${player.name} (${TEAMS[player.team]?.name || player.team})` : '';
-  if (hidden) hidden.value = playerId;
-  if (results) results.style.display = 'none';
-};
-
-window.adminSaveGame = async (gameId) => {
-  const idx = GAMES_STATE.findIndex(g => g.id === gameId);
-  if (idx === -1) return;
-  
-  // Pegar placar
-  const homeScore = parseInt(document.getElementById(`homeScore_${gameId}`)?.value);
-  const awayScore = parseInt(document.getElementById(`awayScore_${gameId}`)?.value);
-  
-  if (isNaN(homeScore) || isNaN(awayScore)) {
-    showToast('Informe o placar do resultado.', 'red');
-    return;
-  }
-  
-  // Pegar craque do jogo
-  const craqueId = document.getElementById(`craque_${gameId}`)?.value || null;
-  
-  // Pegar todos os goleadores - capturar valores atuais do DOM
-  const scorersList = tempScorers[gameId] || [];
-  const updatedScorers = [];
-  
-  for (let i = 0; i < scorersList.length; i++) {
-    const playerId = document.getElementById(`player_selected_${gameId}_scorer_${i}`)?.value;
-    const goals = parseInt(document.getElementById(`scorer_goals_${gameId}_${i}`)?.value);
-    if (playerId && playerId !== '') {
-      updatedScorers.push({ playerId, goals: goals || 1 });
-    }
-  }
-
-  const updatedEvents = [];
-  const eventList = tempEvents[gameId] || [];
-  for (let i = 0; i < eventList.length; i++) {
-    const event = eventList[i];
-    const playerId = document.getElementById(`player_selected_${gameId}_${event.type}_${i}`)?.value;
-    if (!playerId) continue;
-    const player = getPlayer(playerId);
-    if (!player) continue;
-    updatedEvents.push({
-      type: event.type,
-      playerId,
-      playerName: player.name,
-      team: player.team
-    });
-  }
-  
 function createScorerItem(gameId, idx, scorer = { playerId: '', goals: 1 }) {
   const game = GAMES_STATE.find(g => g.id === gameId);
   const gamePlayers = getPlayersByTeams(game.home, game.away);
@@ -403,7 +290,7 @@ window.adminAddScorer = (gameId) => {
   if (container) {
     const newItem = createScorerItem(gameId, newIdx, { playerId: '', goals: 1 });
     container.appendChild(newItem);
-    // Atualizar o número da posição de todos os itens (opcional, mas mantém a contagem)
+    // Atualizar os números de todos os itens
     const items = container.querySelectorAll('.scorer-item');
     items.forEach((item, i) => {
       const numSpan = item.querySelector('span:first-child');
@@ -417,40 +304,29 @@ window.adminRemoveScorer = (gameId, index) => {
   tempScorers[gameId].splice(index, 1);
   const container = document.getElementById(`scorers-list-${gameId}`);
   if (container) {
-    // Remover o elemento visual correspondente
     const items = container.querySelectorAll('.scorer-item');
     if (items[index]) items[index].remove();
-    // Renumerar os restantes
+    // Renumerar e atualizar IDs
     const remaining = container.querySelectorAll('.scorer-item');
     remaining.forEach((item, i) => {
       const numSpan = item.querySelector('span:first-child');
       if (numSpan) numSpan.textContent = `${i + 1}º`;
-      // Atualizar o id do input de gols e os event listeners (se necessário)
+      // Atualizar IDs dos inputs de gol
       const goalsInput = item.querySelector(`input[id^="scorer_goals_${gameId}_"]`);
-      if (goalsInput) {
-        const oldId = goalsInput.id;
-        const newId = `scorer_goals_${gameId}_${i}`;
-        goalsInput.id = newId;
-      }
-      // Atualizar os campos de busca (player_search)
+      if (goalsInput) goalsInput.id = `scorer_goals_${gameId}_${i}`;
+      // Atualizar IDs dos campos de busca
       const searchDiv = item.querySelector('.player-search-wrapper');
       if (searchDiv) {
         const searchInput = searchDiv.querySelector('input[type="text"]');
         const hiddenInput = searchDiv.querySelector('input[type="hidden"]');
         if (searchInput) {
-          const oldId = searchInput.id;
-          const newId = `player_search_${gameId}_scorer_${i}`;
-          searchInput.id = newId;
+          searchInput.id = `player_search_${gameId}_scorer_${i}`;
           searchInput.setAttribute('oninput', `filterAdminPlayers('${gameId}','scorer',${i}, false)`);
           searchInput.setAttribute('onfocus', `showAdminPlayerResults('${gameId}','scorer',${i}, false)`);
         }
-        if (hiddenInput) {
-          hiddenInput.id = `player_selected_${gameId}_scorer_${i}`;
-        }
+        if (hiddenInput) hiddenInput.id = `player_selected_${gameId}_scorer_${i}`;
         const resultsDiv = searchDiv.querySelector('.player-search-results');
-        if (resultsDiv) {
-          resultsDiv.id = `player_results_${gameId}_scorer_${i}`;
-        }
+        if (resultsDiv) resultsDiv.id = `player_results_${gameId}_scorer_${i}`;
       }
     });
   }
@@ -458,13 +334,13 @@ window.adminRemoveScorer = (gameId, index) => {
 
 window.adminAddEvent = (gameId, eventType) => {
   if (!tempEvents[gameId]) tempEvents[gameId] = [];
-  const newIdx = tempEvents[gameId].filter(e => e.type === eventType).length;
+  const currentOfType = tempEvents[gameId].filter(e => e.type === eventType).length;
   tempEvents[gameId].push({ type: eventType, playerId: '' });
   const container = document.getElementById(`event_section_${eventType}_${gameId}`);
   if (container) {
-    const newItem = createEventItem(gameId, eventType, newIdx, { playerId: '' });
+    const newItem = createEventItem(gameId, eventType, currentOfType, { playerId: '' });
     container.appendChild(newItem);
-    // Renumerar os itens do mesmo tipo
+    // Renumerar
     const items = container.querySelectorAll('.event-item');
     items.forEach((item, i) => {
       const numSpan = item.querySelector('span:first-child');
@@ -475,7 +351,7 @@ window.adminAddEvent = (gameId, eventType) => {
 
 window.adminRemoveEvent = (gameId, eventType, index) => {
   if (!tempEvents[gameId]) return;
-  // Remover do array temporário
+  // Remover do array
   let filtered = [];
   let currentIndex = -1;
   for (const ev of tempEvents[gameId]) {
@@ -492,20 +368,17 @@ window.adminRemoveEvent = (gameId, eventType, index) => {
   if (container) {
     const items = container.querySelectorAll('.event-item');
     if (items[index]) items[index].remove();
-    // Renumerar os restantes
     const remaining = container.querySelectorAll('.event-item');
     remaining.forEach((item, i) => {
       const numSpan = item.querySelector('span:first-child');
       if (numSpan) numSpan.textContent = `${i + 1}º`;
-      // Atualizar IDs dos campos
+      // Atualizar IDs
       const searchDiv = item.querySelector('.player-search-wrapper');
       if (searchDiv) {
         const searchInput = searchDiv.querySelector('input[type="text"]');
         const hiddenInput = searchDiv.querySelector('input[type="hidden"]');
         if (searchInput) {
-          const oldId = searchInput.id;
-          const newId = `player_search_${gameId}_${eventType}_${i}`;
-          searchInput.id = newId;
+          searchInput.id = `player_search_${gameId}_${eventType}_${i}`;
           searchInput.setAttribute('oninput', `filterAdminPlayers('${gameId}','${eventType}',${i}, ${eventType === 'penalty_saved'})`);
           searchInput.setAttribute('onfocus', `showAdminPlayerResults('${gameId}','${eventType}',${i}, ${eventType === 'penalty_saved'})`);
         }
@@ -515,23 +388,6 @@ window.adminRemoveEvent = (gameId, eventType, index) => {
       }
     });
   }
-};
-
-  // Atualizar GAMES_STATE
-  GAMES_STATE[idx].status = 'completed';
-  GAMES_STATE[idx].result = {
-    homeScore,
-    awayScore,
-    scorers: updatedScorers,
-    craqueId: craqueId || null,
-    events: updatedEvents
-  };
-  
-  // Salvar no localStorage via API
-  await saveGames(GAMES_STATE);
-  
-  showToast('Resultado salvo com sucesso! ✅', 'green');
-  renderAdminGames(); // ← mudou para renderAdminGames
 };
 
 // Exportar função principal
