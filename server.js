@@ -34,6 +34,20 @@ if (process.env.DATABASE_URL) {
 // =============================================
 async function initDatabase() {
   if (!pool) return;
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS games_structured (
+    id TEXT PRIMARY KEY,
+    date DATE NOT NULL,
+    time TEXT,
+    home_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
+    away_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
+    group_name TEXT,
+    venue TEXT,
+    status TEXT DEFAULT 'upcoming',
+    result JSONB
+  )
+`);
   
   try {
     // Primeiro, drop da constraint UNIQUE se existir (para evitar conflitos)
@@ -688,6 +702,132 @@ app.post('/api/update-results', async (req, res) => {
     res.json({ success: true, updated: result.updated, details: result.details });
   } catch (error) {
     console.error('❌ Erro no update automático:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/teams - listar todos os times
+app.get('/api/teams', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  try {
+    const result = await pool.query('SELECT * FROM teams ORDER BY name');
+    res.json({ teams: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/teams - criar novo time
+app.post('/api/teams', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { id, name, flag, color, group } = req.body;
+  if (!id || !name) return res.status(400).json({ error: 'id e name são obrigatórios' });
+  try {
+    await pool.query(
+      'INSERT INTO teams (id, name, flag, color, group_name, is_custom) VALUES ($1, $2, $3, $4, $5, $6)',
+      [id, name, flag || null, color || null, group || null, true]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/teams/:id - editar time
+app.put('/api/teams/:id', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { id } = req.params;
+  const { name, flag, color, group } = req.body;
+  try {
+    await pool.query(
+      'UPDATE teams SET name = $1, flag = $2, color = $3, group_name = $4 WHERE id = $5',
+      [name, flag, color, group, id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/teams/:id - remover time (somente se for custom e não usado em partidas)
+app.delete('/api/teams/:id', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { id } = req.params;
+  try {
+    // Verificar se o time está sendo usado em alguma partida
+    const check = await pool.query("SELECT 1 FROM games WHERE data->>'home' = $1 OR data->>'away' = $1 LIMIT 1", [id]);
+    if (check.rowCount > 0) {
+      return res.status(400).json({ error: 'Time está sendo usado em uma ou mais partidas. Remova as partidas primeiro.' });
+    }
+    await pool.query('DELETE FROM teams WHERE id = $1 AND is_custom = true', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/games-structured
+// GET /api/games-structured
+app.get('/api/games-structured', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  try {
+    const result = await pool.query('SELECT * FROM games_structured ORDER BY date, time');
+    res.json({ games: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/games-structured - criar nova partida
+app.post('/api/games-structured', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { id, date, time, home_team, away_team, group_name, venue } = req.body;
+  if (!id || !date || !home_team || !away_team) {
+    return res.status(400).json({ error: 'Campos obrigatórios: id, date, home_team, away_team' });
+  }
+  try {
+    await pool.query(
+      `INSERT INTO games_structured (id, date, time, home_team, away_team, group_name, venue, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'upcoming')`,
+      [id, date, time || '12:00', home_team, away_team, group_name || null, venue || null]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/games-structured/:id - editar partida
+app.put('/api/games-structured/:id', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { id } = req.params;
+  const { date, time, home_team, away_team, group_name, venue, status, result } = req.body;
+  try {
+    await pool.query(
+      `UPDATE games_structured
+       SET date = $1, time = $2, home_team = $3, away_team = $4, group_name = $5, venue = $6, status = $7, result = $8
+       WHERE id = $9`,
+      [date, time, home_team, away_team, group_name, venue, status, result, id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/games-structured/:id - remover partida
+app.delete('/api/games-structured/:id', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { id } = req.params;
+  try {
+    // Verificar se existem palpites associados
+    const betsCheck = await pool.query('SELECT 1 FROM bets WHERE game_id = $1 LIMIT 1', [id]);
+    if (betsCheck.rowCount > 0) {
+      return res.status(400).json({ error: 'Existem palpites para esta partida. Remova-os primeiro.' });
+    }
+    await pool.query('DELETE FROM games_structured WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

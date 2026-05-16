@@ -22,8 +22,10 @@ export async function renderAdmin() {
   
   container.innerHTML = `
     <div class="admin-tabs" style="display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid var(--border);">
-      <button class="admin-tab-btn active" onclick="showAdminTab('users', this)">👥 Usuários</button>
-      <button class="admin-tab-btn" onclick="showAdminTab('games', this)">⚽ Resultados</button>
+<button class="admin-tab-btn active" onclick="showAdminTab('users', this)">👥 Usuários</button>
+    <button class="admin-tab-btn" onclick="showAdminTab('games', this)">⚽ Resultados</button>
+    <button class="admin-tab-btn" onclick="showAdminTab('matches', this)">📅 Partidas</button>
+    <button class="admin-tab-btn" onclick="showAdminTab('teams', this)">🏷️ Equipes</button>
     </div>
     <div id="adminTabContent"></div>
   `;
@@ -216,6 +218,257 @@ export async function renderAdminGames() {
   
   renderGamesByDate('all');
 }
+
+async function renderAdminTeams() {
+  const container = document.getElementById('adminTabContent');
+  if (!container) return;
+
+  // Carregar times do backend
+  const response = await fetch('/api/teams');
+  const data = await response.json();
+  const teams = data.teams || [];
+
+  let html = `
+    <div style="margin-bottom: 20px;">
+      <button class="btn btn-blue" onclick="showCreateTeamModal()">+ Nova Equipe</button>
+    </div>
+    <div class="ranking-wrap">
+      <table class="ranking-table">
+        <thead><tr><th>ID</th><th>Nome</th><th>Bandeira</th><th>Grupo</th><th>Ações</th></tr></thead>
+        <tbody>
+          ${teams.map(team => `
+            <tr>
+              <td>${team.id}</td>
+              <td>${team.name}</td>
+              <td>${team.flag ? `<img src="${team.flag}" style="width:24px;height:18px;">` : '—'}</td>
+              <td>${team.group_name || '—'}</td>
+              <td>
+                <button class="admin-action-btn" onclick="editTeam('${team.id}')" style="background:var(--blue);">✏️ Editar</button>
+                <button class="admin-action-btn" onclick="deleteTeam('${team.id}')" style="background:var(--red);">🗑️ Remover</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <!-- Modais para criar/editar time -->
+    <div id="teamModal" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header"><span class="modal-title">Equipe</span><button class="modal-close" onclick="closeModal('teamModal')">✕</button></div>
+        <div class="modal-body">
+          <input type="hidden" id="teamId">
+          <div class="form-group"><label class="form-label">ID (ex: valencia)</label><input class="form-input" id="teamIdInput"></div>
+          <div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="teamName"></div>
+          <div class="form-group"><label class="form-label">URL da Bandeira</label><input class="form-input" id="teamFlag"></div>
+          <div class="form-group"><label class="form-label">Cor (opcional)</label><input class="form-input" id="teamColor"></div>
+          <div class="form-group"><label class="form-label">Grupo/Liga</label><input class="form-input" id="teamGroup"></div>
+          <button class="btn btn-green" onclick="saveTeam()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  container.innerHTML = html;
+}
+
+// Funções globais para times
+window.showCreateTeamModal = () => {
+  document.getElementById('teamId').value = '';
+  document.getElementById('teamIdInput').value = '';
+  document.getElementById('teamName').value = '';
+  document.getElementById('teamFlag').value = '';
+  document.getElementById('teamColor').value = '';
+  document.getElementById('teamGroup').value = '';
+  openModal('teamModal');
+};
+
+window.editTeam = async (teamId) => {
+  const res = await fetch('/api/teams');
+  const data = await res.json();
+  const team = data.teams.find(t => t.id === teamId);
+  if (team) {
+    document.getElementById('teamId').value = team.id;
+    document.getElementById('teamIdInput').value = team.id;
+    document.getElementById('teamName').value = team.name;
+    document.getElementById('teamFlag').value = team.flag || '';
+    document.getElementById('teamColor').value = team.color || '';
+    document.getElementById('teamGroup').value = team.group_name || '';
+    openModal('teamModal');
+  }
+};
+
+window.saveTeam = async () => {
+  const id = document.getElementById('teamId').value;
+  const newId = document.getElementById('teamIdInput').value;
+  const name = document.getElementById('teamName').value;
+  const flag = document.getElementById('teamFlag').value;
+  const color = document.getElementById('teamColor').value;
+  const group = document.getElementById('teamGroup').value;
+  if (!newId || !name) { showToast('ID e nome são obrigatórios', 'red'); return; }
+  const payload = { id: newId, name, flag, color, group };
+  if (id) {
+    // update
+    await fetch(`/api/teams/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    showToast('Equipe atualizada!', 'green');
+  } else {
+    // create
+    await fetch('/api/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    showToast('Equipe criada!', 'green');
+  }
+  closeModal('teamModal');
+  renderAdminTeams();
+};
+
+window.deleteTeam = async (teamId) => {
+  if (!confirm('Remover esta equipe permanentemente?')) return;
+  const res = await fetch(`/api/teams/${teamId}`, { method: 'DELETE' });
+  if (res.ok) {
+    showToast('Equipe removida', 'green');
+    renderAdminTeams();
+  } else {
+    const error = await res.json();
+    showToast(error.error || 'Erro ao remover', 'red');
+  }
+};
+
+async function renderAdminMatches() {
+  const container = document.getElementById('adminTabContent');
+  if (!container) return;
+
+  // Carregar times e partidas
+  const [teamsRes, gamesRes] = await Promise.all([
+    fetch('/api/teams'),
+    fetch('/api/games-structured')
+  ]);
+  const teamsData = await teamsRes.json();
+  const gamesData = await gamesRes.json();
+  const teams = teamsData.teams || [];
+  const games = gamesData.games || [];
+
+  let html = `
+    <div style="margin-bottom: 20px;">
+      <button class="btn btn-blue" onclick="showCreateMatchModal()">+ Nova Partida</button>
+    </div>
+    <div class="ranking-wrap">
+      <table class="ranking-table">
+        <thead><tr><th>Data</th><th>Horário</th><th>Mandante</th><th>Visitante</th><th>Grupo</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody>
+          ${games.map(game => {
+            const home = teams.find(t => t.id === game.home_team)?.name || game.home_team;
+            const away = teams.find(t => t.id === game.away_team)?.name || game.away_team;
+            return `
+              <tr>
+                <td>${game.date}</td>
+                <td>${game.time}</td>
+                <td>${home}</td>
+                <td>${away}</td>
+                <td>${game.group_name || '—'}</td>
+                <td>${game.status === 'completed' ? 'Finalizado' : 'Agendado'}</td>
+                <td>
+                  <button class="admin-action-btn" onclick="editMatch('${game.id}')" style="background:var(--blue);">✏️ Editar</button>
+                  <button class="admin-action-btn" onclick="deleteMatch('${game.id}')" style="background:var(--red);">🗑️ Remover</button>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <!-- Modal para criar/editar partida -->
+    <div id="matchModal" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header"><span class="modal-title">Partida</span><button class="modal-close" onclick="closeModal('matchModal')">✕</button></div>
+        <div class="modal-body">
+          <input type="hidden" id="matchId">
+          <div class="form-group"><label class="form-label">ID</label><input class="form-input" id="matchIdInput"></div>
+          <div class="form-group"><label class="form-label">Data (YYYY-MM-DD)</label><input class="form-input" id="matchDate"></div>
+          <div class="form-group"><label class="form-label">Horário (HH:MM)</label><input class="form-input" id="matchTime"></div>
+          <div class="form-group"><label class="form-label">Time Mandante</label>
+            <select class="form-input" id="matchHome">
+              <option value="">Selecione</option>
+              ${teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Time Visitante</label>
+            <select class="form-input" id="matchAway">
+              <option value="">Selecione</option>
+              ${teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Grupo/Liga</label><input class="form-input" id="matchGroup"></div>
+          <div class="form-group"><label class="form-label">Estádio</label><input class="form-input" id="matchVenue"></div>
+          <button class="btn btn-green" onclick="saveMatch()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  container.innerHTML = html;
+}
+
+window.showCreateMatchModal = () => {
+  document.getElementById('matchId').value = '';
+  document.getElementById('matchIdInput').value = '';
+  document.getElementById('matchDate').value = '';
+  document.getElementById('matchTime').value = '12:00';
+  document.getElementById('matchHome').value = '';
+  document.getElementById('matchAway').value = '';
+  document.getElementById('matchGroup').value = '';
+  document.getElementById('matchVenue').value = '';
+  openModal('matchModal');
+};
+
+window.editMatch = async (matchId) => {
+  const res = await fetch('/api/games-structured');
+  const data = await res.json();
+  const match = data.games.find(g => g.id === matchId);
+  if (match) {
+    document.getElementById('matchId').value = match.id;
+    document.getElementById('matchIdInput').value = match.id;
+    document.getElementById('matchDate').value = match.date;
+    document.getElementById('matchTime').value = match.time || '12:00';
+    document.getElementById('matchHome').value = match.home_team;
+    document.getElementById('matchAway').value = match.away_team;
+    document.getElementById('matchGroup').value = match.group_name || '';
+    document.getElementById('matchVenue').value = match.venue || '';
+    openModal('matchModal');
+  }
+};
+
+window.saveMatch = async () => {
+  const id = document.getElementById('matchId').value;
+  const newId = document.getElementById('matchIdInput').value;
+  const date = document.getElementById('matchDate').value;
+  const time = document.getElementById('matchTime').value;
+  const home_team = document.getElementById('matchHome').value;
+  const away_team = document.getElementById('matchAway').value;
+  const group_name = document.getElementById('matchGroup').value;
+  const venue = document.getElementById('matchVenue').value;
+  if (!newId || !date || !home_team || !away_team) {
+    showToast('Preencha ID, data e os dois times', 'red');
+    return;
+  }
+  const payload = { id: newId, date, time, home_team, away_team, group_name, venue };
+  if (id) {
+    await fetch(`/api/games-structured/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    showToast('Partida atualizada!', 'green');
+  } else {
+    await fetch('/api/games-structured', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    showToast('Partida criada!', 'green');
+  }
+  closeModal('matchModal');
+  renderAdminMatches();
+};
+
+window.deleteMatch = async (matchId) => {
+  if (!confirm('Remover esta partida? Todos os palpites associados também serão removidos.')) return;
+  const res = await fetch(`/api/games-structured/${matchId}`, { method: 'DELETE' });
+  if (res.ok) {
+    showToast('Partida removida', 'green');
+    renderAdminMatches();
+  } else {
+    const error = await res.json();
+    showToast(error.error || 'Erro ao remover', 'red');
+  }
+};
 
 function renderPlayerSearchControl(gameId, itemType, idx, selectedPlayerId, gamePlayers, onlyGoalkeepers = false) {
   const player = selectedPlayerId ? getPlayer(selectedPlayerId) : null;
@@ -607,4 +860,10 @@ window.adminRemoveEvent        = adminRemoveEvent;
 window.filterAdminPlayers      = filterAdminPlayers;
 window.showAdminPlayerResults  = showAdminPlayerResults;
 window.selectAdminPlayer       = selectAdminPlayer;
-window.showAdminTab            = showAdminTab; 
+window.showAdminTab = (tab, button) => {
+  // ... código existente ...
+  if (tab === 'users') renderAdminPanel();
+  else if (tab === 'games') renderAdminGames();
+  else if (tab === 'matches') renderAdminMatches();
+  else if (tab === 'teams') renderAdminTeams();
+};
