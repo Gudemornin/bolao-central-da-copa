@@ -34,31 +34,11 @@ if (process.env.DATABASE_URL) {
 // =============================================
 async function initDatabase() {
   if (!pool) return;
-
-  await pool.query(`
-  CREATE TABLE IF NOT EXISTS games_structured (
-    id TEXT PRIMARY KEY,
-    date DATE NOT NULL,
-    time TEXT,
-    home_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
-    away_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
-    group_name TEXT,
-    venue TEXT,
-    status TEXT DEFAULT 'upcoming',
-    result JSONB
-  )
-`);
   
   try {
-    // Primeiro, drop da constraint UNIQUE se existir (para evitar conflitos)
-    try {
-      await pool.query(`ALTER TABLE users DROP CONSTRAINT users_profile_name_key;`);
-      console.log('✅ Constraint UNIQUE removida (se existia)');
-    } catch (e) {
-      // Constraint não existia, ignorar erro
-    }
-    
-    // Recriar tabela users sem UNIQUE
+    // =============================================
+    // TABELA USERS (já existente)
+    // =============================================
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -77,15 +57,41 @@ async function initDatabase() {
         created_at BIGINT
       )
     `);
-    
+
+    // =============================================
+    // TABELA TEAMS (nova)
+    // =============================================
     await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_backup TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_pending BOOLEAN DEFAULT FALSE;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_password JSONB;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_by_admin BOOLEAN DEFAULT FALSE;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_overrides JSONB;
+      CREATE TABLE IF NOT EXISTS teams (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        flag TEXT,
+        color TEXT,
+        group_name TEXT,
+        is_custom BOOLEAN DEFAULT false
+      )
     `);
-    
+
+    // =============================================
+    // TABELA GAMES_STRUCTURED (nova)
+    // =============================================
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS games_structured (
+        id TEXT PRIMARY KEY,
+        date DATE NOT NULL,
+        time TEXT,
+        home_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
+        away_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
+        group_name TEXT,
+        venue TEXT,
+        status TEXT DEFAULT 'upcoming',
+        result JSONB
+      )
+    `);
+
+    // =============================================
+    // TABELA BETS (já existente)
+    // =============================================
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bets (
         user_id TEXT,
@@ -97,14 +103,17 @@ async function initDatabase() {
         PRIMARY KEY (user_id, game_id)
       )
     `);
-    
+
+    // =============================================
+    // TABELA GAMES (antiga, mantida para compatibilidade)
+    // =============================================
     await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
         data JSONB
       )
     `);
-    
+
     console.log('✅ Tabelas verificadas/criadas com sucesso');
   } catch (error) {
     console.error('❌ Erro ao criar tabelas:', error);
