@@ -210,6 +210,3 @@ export async function syncWithServer() {
   const games = await loadGames()
   return { users, bets, games }
 }
-
-window.loadGames = loadGames;
-window.saveGames = saveGames;

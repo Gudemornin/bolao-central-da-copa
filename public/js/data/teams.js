@@ -60,19 +60,42 @@ export const TEAMS = {
   ghana:            { name:'Gana',             flag:'https://flagcdn.com/gh.svg', color:'#006B3F', group:'L' },
   panama:           { name:'Panamá',           flag:'https://flagcdn.com/pa.svg', color:'#DA121A', group:'L' },
 
- // TESTES
-
-  chelsea: {
-    name: 'Chelsea',
-    flag: 'https://placehold.co/30x20/034694/white?text=CHE',
-    color: '#034694',
-    group: 'FA Cup Final'
-  },
-  manchester_city: {
-    name: 'Manchester City',
-    flag: 'https://placehold.co/30x20/6CABDD/white?text=MCI',
-    color: '#6CABDD',
-    group: 'FA Cup Final'
-  }
+ // La Liga - 14 de maio
+valencia: {
+  name: 'Valencia CF',
+  flag: 'https://flagcdn.com/ch.svg',     // Suíça (branco com vermelho) - remete ao branco/vermelho do Valencia
+  color: '#FFB200',
+  group: 'La Liga'
+},
+rayo_vallecano: {
+  name: 'Rayo Vallecano',
+  flag: 'https://flagcdn.com/pe.svg',     // Peru (branco com faixa vermelha) - lembra a faixa diagonal do Rayo
+  color: '#E30613',
+  group: 'La Liga'
+},
+girona: {
+  name: 'Girona FC',
+  flag: 'https://flagcdn.com/ca.svg',     // Canadá (vermelho e branco) - listras vermelhas e brancas
+  color: '#E30613',
+  group: 'La Liga'
+},
+real_sociedad: {
+  name: 'Real Sociedad',
+  flag: 'https://flagcdn.com/ar.svg',     // Argentina (azul e branco) - cores do clube
+  color: '#005A9C',
+  group: 'La Liga'
+},
+real_madrid: {
+  name: 'Real Madrid',
+  flag: 'https://flagcdn.com/gr.svg',     // Grécia (azul e branco) - branco com detalhes azuis
+  color: '#FFFFFF',
+  group: 'La Liga'
+},
+oviedo: {
+  name: 'Real Oviedo',
+  flag: 'https://flagcdn.com/fi.svg',     // Finlândia (azul e branco) - azul escuro e branco
+  color: '#004B8D',
+  group: 'La Liga'
+}
 
 };

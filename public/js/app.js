@@ -1,5 +1,5 @@
 import { loadUsers } from './storage.js';
-import { currentUser, setCurrentUser, setGamesState} from './state.js';
+import { currentUser, setCurrentUser } from './state.js';
 import './admin.js';
 import './gamemanager.js';
 import './ranking.js';
@@ -8,7 +8,6 @@ import { getUserPoints } from './ranking.js';
 import { initModalClosers, showToast } from './ui.js';
 import { switchTab } from './navigation.js';
 import './auth.js';
-import { loadGames } from './storage.js';
 
 // Importar funções necessárias para a atualização automática (que são exportadas)
 import { renderGames } from './gamemanager.js';
@@ -53,10 +52,6 @@ export function startAutoResultUpdater() {
       if (data.success && data.updated > 0) {
         console.log(`🔄 ${data.updated} jogos atualizados automaticamente`);
         
-        const freshGames = await loadGames();
-        setGamesState(freshGames);
-
-
         const activeTab = document.querySelector('.tab-content.active')?.id;
         if (activeTab === 'tabGames') await renderGames();
         if (activeTab === 'tabCommunity') await renderCommunityBets();
@@ -134,17 +129,14 @@ async function init() {
         const navAdmin = document.getElementById('navAdmin');
         if (navAdmin) navAdmin.style.display = user.isAdmin ? 'flex' : 'none';
         
-        const games = await loadGames();
-        setGamesState(games);
-        console.log('✅ GAMES_STATE inicializado com', games.length, 'jogos');
-
         updateSidebar();
         if (typeof updateMobileMenu === 'function') updateMobileMenu();
         switchTab('games');
+        
+        // ✅ INICIAR ATUALIZAÇÃO AUTOMÁTICA APÓS LOGIN
         startAutoResultUpdater();
         return;
-  }
-
+      }
     } catch (error) {
       console.error('❌ Erro ao restaurar sessão:', error);
     }

@@ -41,157 +41,43 @@ export function isGameLocked(game) {
 }
 
 function getUniqueDates() {
-  let games = GAMES_STATE;
+    let games = GAMES_STATE;
   if (!Array.isArray(games)) return [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  return [...new Set(games
-    .filter(g => new Date(g.date) >= today || g.status === 'upcoming')
-    .map(g => g.date))]
-    .sort();
-}
+  // Remove o filtro de yesterday – retorna todas as datas presentes
+  return [...new Set(games.map(g => g.date))].sort();
 
-async function renderGameList() {
-  let gamesState = GAMES_STATE;
-  
-  if (!Array.isArray(gamesState)) {
-    console.warn('⚠️ GAMES_STATE não é array, recarregando...', gamesState);
-    gamesState = await loadGames();
-    setGamesState(gamesState);
   }
-  
-  if (!Array.isArray(gamesState)) {
-    console.error('❌ gamesState ainda não é array');
-    return;
-  }
-  
-  const sortedGames = [...gamesState].sort((a, b) => {
-    const dateA = new Date(`${a.date}T${a.time}:00`);
-    const dateB = new Date(`${b.date}T${b.time}:00`);
-    return dateA - dateB;
-  });
 
-  const games = sortedGames.filter(g => g.date === currentDate);
-  const list = document.getElementById('gamesList');
-  if (!list) return;
+export async function renderGames() {
+  // await syncGamesWithAPI();
   
-  if (!games.length) {
-    list.innerHTML = '<div class="no-games-msg">📅 Nenhum jogo disponível para palpites nesta data.</div>';
-    return;
-  }
+  const dates = getUniqueDates();
+  if (!currentDate && dates.length) setCurrentDate(dates[0]);
   
-  const bets = await loadBets();
-  const userBets = bets[currentUser?.id] || {};
-
-  // 1. RENDERIZAR O HTML SEM OS ONINPUT/ONFOCUS
-  list.innerHTML = games.map(game => {
-    const t1 = TEAMS[game.home];
-    const t2 = TEAMS[game.away];
-    const locked = isGameLocked(game);
-    const bet = userBets[game.id] || {};
-    const selP = bet.playerId ? getPlayer(bet.playerId) : null;
-    const groupDisplay = game.group === 'Ligue 1' ? '🏆 Ligue 1' : game.group === 'La Liga' ? '🏆 La Liga' : `🌍 Copa do Mundo - Grupo ${game.group}`;
-    
+  const sel = document.getElementById('dateSelector');
+  if (!sel) return;
+  
+  sel.innerHTML = dates.map(d => {
+    const dt = new Date(d + 'T12:00:00');
+    const day = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').substring(0, 3);
+    const num = dt.getDate();
+    const mon = dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').substring(0, 3);
+    const isActive = d === currentDate;
     return `
-      <div class="game-card${locked ? ' locked' : ''}" id="gc_${game.id}">
-        <div class="game-card-header">
-          <div class="game-card-header-left">
-            <span class="game-badge">${groupDisplay}</span>
-            <span class="game-time">⏰ ${game.time}</span>
-            <span class="game-venue">📍 ${game.venue || 'Estádio'}</span>
-          </div>
-          <div class="game-card-header-right">
-            ${locked ? '<span class="locked-badge">🔒 Fechado</span>' : '<span class="game-badge-open">Aberto</span>'}
-          </div>
-        </div>
-        <div class="game-card-body">
-          <div class="game-teams">
-            <div class="team-home">
-              <div class="team-flag">${teamFlagImg(t1, 50)}</div>
-              <div class="team-name">${t1?.name || game.home}</div>
-            </div>
-            <div class="game-score">
-              <div class="score-box">
-                <input class="score-input" type="number" min="0" max="99" id="s1_${game.id}" 
-                  value="${bet.homeScore !== undefined ? bet.homeScore : ''}" 
-                  placeholder="0" ${locked ? 'disabled' : ''}>
-                <span class="score-separator">:</span>
-                <input class="score-input" type="number" min="0" max="99" id="s2_${game.id}" 
-                  value="${bet.awayScore !== undefined ? bet.awayScore : ''}" 
-                  placeholder="0" ${locked ? 'disabled' : ''}>
-              </div>
-              <div class="vs-text">VS</div>
-            </div>
-            <div class="team-away">
-              <div class="team-flag">${teamFlagImg(t2, 50)}</div>
-              <div class="team-name">${t2?.name || game.away}</div>
-            </div>
-          </div>
-          <div class="player-section">
-            <div class="player-label">⭐ SELECIONAR JOGADOR REPRESENTANTE</div>
-            ${locked ? 
-              `<div class="selected-player-display">${selP ? playerDisplayName(selP) : 'Nenhum jogador selecionado'}</div>` :
-              `
-                <div class="player-search-wrapper">
-                  <input type="text" class="player-search-input" 
-                    placeholder="Buscar jogador das duas seleções..." 
-                    id="gpinp_${game.id}">
-                  <div class="player-search-results" id="gpr_${game.id}"></div>
-                </div>
-                <div class="selected-player-badge${selP ? ' show' : ''}" id="spb_${game.id}">
-                  <span class="star-icon">⭐</span>
-                  <span id="spb_name_${game.id}" class="player-name">
-                    ${selP ? `<img src="${TEAMS[selP.team]?.flag}" class="player-flag"> ${selP.name} (${TEAMS[selP.team]?.name || selP.team})` : ''}
-                  </span>
-                  <button class="remove-player" onclick="clearGamePlayer('${game.id}')">✕</button>
-                </div>
-                <div class="save-bet-area">
-                  <button class="save-bet-btn" onclick="saveBet('${game.id}')">💾 SALVAR PALPITE</button>
-                  <span class="saved-indicator${bet.homeScore !== undefined ? ' show' : ''}" id="bsm_${game.id}">✓ Palpite salvo</span>
-                </div>
-              `
-            }
-          </div>
-        </div>
-      </div>
+      <button class="date-btn ${isActive ? 'active' : ''}" onclick="selectDate('${d}')">
+        <span class="dnum">${num}</span>
+        <span class="dname">${day}</span>
+        <span class="dmonth">${mon}</span>
+      </button>
     `;
   }).join('');
-
-  // 2. ADICIONAR OS EVENT LISTENERS PROGRAMATICAMENTE
-  for (const game of games) {
-    if (!isGameLocked(game)) {
-      const input = document.getElementById(`gpinp_${game.id}`);
-      if (input) {
-        // Remove listeners antigos para evitar duplicação
-        input.removeEventListener('input', window._handleInput);
-        input.removeEventListener('focus', window._handleFocus);
-        
-        // Cria handlers específicos para este jogo
-        const handleInput = () => filterGamePlayers(game.id);
-        const handleFocus = () => showGameResults(game.id);
-        
-        input.addEventListener('input', handleInput);
-        input.addEventListener('focus', handleFocus);
-        
-        // Guarda referências para poder remover depois se necessário
-        input._handleInput = handleInput;
-        input._handleFocus = handleFocus;
-      }
-    }
-  }
-
-  // Restaurar seleções anteriores
-  for (const game of games) {
-    if (!isGameLocked(game)) {
-      const bets = await loadBets();
-      const bet = (bets[currentUser?.id] || {})[game.id] || {};
-      if (bet.playerId) {
-        const p = getPlayer(bet.playerId);
-        if (p) setGamePlayerDisplay(game.id, p);
-      }
-    }
-  }
+  
+  sel.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    sel.scrollLeft += e.deltaY;
+  }, { passive: false });
+  
+  await renderGameList();
 }
 
 export async function selectDate(d) {
@@ -279,16 +165,6 @@ const games = sortedGames.filter(g => g.date === currentDate);
               </div>
               <div class="vs-text">VS</div>
             </div>
-
-${game.result && game.status === 'completed' ? `
-  <div class="real-score-info" style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px;">
-    <div>📊 Resultado real: <strong>${game.result.homeScore} : ${game.result.awayScore}</strong></div>
-    ${bet.homeScore !== undefined ? `
-      <div>🎯 Seus pontos: <strong>${calculateBetPoints(bet, game)}</strong> pts</div>
-    ` : ''}
-  </div>
-` : ''}
-
             <div class="team-away">
               <div class="team-flag">${teamFlagImg(t2, 50)}</div>
               <div class="team-name">${t2?.name || game.away}</div>
@@ -325,8 +201,6 @@ ${game.result && game.status === 'completed' ? `
       </div>
     `;
   }).join('');
-
-  
 
   // Restaurar seleções anteriores (para jogos não bloqueados)
   for (const game of games) {

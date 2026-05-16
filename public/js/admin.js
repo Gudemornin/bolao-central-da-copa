@@ -53,60 +53,11 @@ window.showAdminTab = (tab, button) => {
 };
 
 export async function renderAdminGames() {
-
   const el = document.getElementById('adminTabContent');
   if (!el) return;
 
-  const games = GAMES_STATE.length ? GAMES_STATE : await loadGames();
-  if (games.length && !GAMES_STATE.length) setGamesState(games);
-
-  // Agrupar jogos por data
-  const gamesByDate = {};
-  games.forEach(game => {
-    if (!gamesByDate[game.date]) gamesByDate[game.date] = [];
-    gamesByDate[game.date].push(game);
-  });
-  
-  const sortedDates = Object.keys(gamesByDate).sort();
-  
-  let html = `
-    <div class="admin-date-filter" style="margin-bottom:20px;">
-      <label class="form-label">Filtrar por data:</label>
-      <select id="adminDateFilter" class="form-input" style="width:auto;display:inline-block;margin-left:10px;">
-        <option value="all">Todas as datas</option>
-        ${sortedDates.map(d => `<option value="${d}">${d}</option>`).join('')}
-      </select>
-    </div>
-    <div id="adminGamesContainer"></div>
-  `;
-  el.innerHTML = html;
-  
-  // Função para renderizar jogos da data selecionada
-  const renderGamesByDate = (selectedDate) => {
-    const container = document.getElementById('adminGamesContainer');
-    const gamesToShow = selectedDate === 'all' ? games : games.filter(g => g.date === selectedDate);
-    
-    container.innerHTML = gamesToShow.map(game => renderAdminGameCard(game)).join('');
-    
-    // Reatribuir eventos após renderização
-    document.querySelectorAll('.admin-remove-btn, .admin-add-btn, .admin-save-btn').forEach(btn => {
-      btn.onclick = window[btn.getAttribute('onclick')?.split('(')[0]] || btn.onclick;
-    });
-  };
-  
-  document.getElementById('adminDateFilter').addEventListener('change', (e) => {
-    renderGamesByDate(e.target.value);
-  });
-  
-  renderGamesByDate('all');
-
-
-  if (!el) return;
-  
-  
-
-
   // Garantir que GAMES_STATE está atualizado
+  const games = GAMES_STATE.length ? GAMES_STATE : await loadGames();
   if (games.length && !GAMES_STATE.length) setGamesState(games);
 
   el.innerHTML = GAMES_STATE.map(g => {
@@ -124,7 +75,6 @@ export async function renderAdminGames() {
     
     // Lista de goleadores atuais
     const scorersList = tempScorers[g.id] || [];
-    
     
     return `
       <div class="admin-game-row" id="admin-game-${g.id}">

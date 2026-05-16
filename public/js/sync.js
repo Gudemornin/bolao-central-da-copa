@@ -6,9 +6,6 @@ import { GAMES as MANUAL_GAMES } from './data/games.js';
 
 // Mapeamento de nomes de times (já existentes no TEAMS)
 const teamNameMapping = {
-  'Chelsea' : 'chelsea',
-  'Chelsea FC': 'chelsea',
-  'Manchester City': 'manchester_city',
   'Valencia CF': 'valencia',
   'Valencia': 'valencia',
   'Rayo Vallecano': 'rayo_vallecano',
@@ -196,8 +193,6 @@ window.forceSync = async () => {
   location.reload();
 };
 
-
-window.syncGamesWithAPI = syncGamesWithAPI;
 window.syncLaLiga = window.forceSync;
 window.syncWorldCup = window.forceSync;
 

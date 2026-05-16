@@ -1,22 +1,39 @@
 export const GAMES = [
 
-// ═══════════════ TESTES ═══════════════
-
-
+// ═══════════════ LA LIGA - 14 DE MAIO ═══════════════
 {
-    id: 'g00',
-    date: '2026-05-16',
-    time: '11:10',
-    timezone: 'UTC-3',
-    home: 'chelsea',
-    away: 'manchester_city',
-    group: 'FA Cup Final',
-    venue: 'Wembley, Londres',
-    status: 'upcoming',
-    result: null,
-  },
-
-
+  id: 'valencia_rayo_14maio',
+  date: '2026-05-14',
+  time: '14:00',
+  home: 'valencia',
+  away: 'rayo_vallecano',
+  group: 'La Liga',
+  venue: 'Mestalla, Valencia',
+  status: 'upcoming',
+  result: null
+},
+{
+  id: 'girona_real_sociedad_14maio',
+  date: '2026-05-14',
+  time: '15:00',
+  home: 'girona',
+  away: 'real_sociedad',
+  group: 'La Liga',
+  venue: 'Estadi Montilivi, Girona',
+  status: 'upcoming',
+  result: null
+},
+{
+  id: 'real_madrid_oviedo_14maio',
+  date: '2026-05-14',
+  time: '17:30',
+  home: 'real_madrid',
+  away: 'oviedo',
+  group: 'La Liga',
+  venue: 'Santiago Bernabéu, Madrid',
+  status: 'upcoming',
+  result: null
+},
   // ═══════════════ MATCHDAY 1 - 11 Jun ═══════════════
   {id:'g01',date:'2026-06-11',time:'13:00',timezone:'UTC-6',home:'mexico',away:'south_africa',group:'A',venue:'Estadio Azteca, Cidade do México',status:'upcoming',result:null},
   {id:'g02',date:'2026-06-11',time:'20:00',timezone:'UTC-6',home:'south_korea',away:'czech_republic',group:'A',venue:'Estadio Akron, Zapopan',status:'upcoming',result:null},
@@ -124,3 +141,29 @@ export const GAMES = [
   {id:'g72',date:'2026-06-27',time:'21:00',timezone:'UTC-5',home:'jordan',away:'argentina',group:'J',venue:'AT&T Stadium, Dallas',status:'upcoming',result:null},
 ];
 
+export async function syncGamesFromAPI() {
+  const response = await fetch('/api/football?endpoint=competitions/WC/matches');
+  const data = await response.json();
+  
+  if (data.matches) {
+    const gamesFromAPI = data.matches.map(match => ({
+      id: match.id.toString(), // ← USA O ID DA API
+      date: match.utcDate.split('T')[0],
+      time: new Date(match.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      home: mapTeamName(match.homeTeam.name),
+      away: mapTeamName(match.awayTeam.name),
+      group: match.group || null,
+      venue: match.venue || 'Estádio',
+      status: mapStatus(match.status),
+      result: match.score.winner ? {
+        homeScore: match.score.fullTime.home,
+        awayScore: match.score.fullTime.away,
+        scorers: [] // Precisa de outro endpoint para detalhes
+      } : null
+    }));
+    
+    // Salvar no localStorage
+    localStorage.setItem('bc26_games', JSON.stringify(gamesFromAPI));
+    return gamesFromAPI;
+  }
+}

@@ -362,6 +362,49 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 
+/* =============================================
+ ENDPOINT: FOOTBALL API ANTIGA
+ =============================================
+app.get('/api/football', async (req, res) => {
+  const { endpoint, team } = req.query;
+  
+  if (!endpoint) {
+    return res.status(400).json({ error: 'Endpoint obrigatório' });
+  }
+  
+  let url = '';
+  switch (endpoint) {
+    case 'standings':
+      url = 'https://api.football-data.org/v4/competitions/WC/standings';
+      break;
+    case 'fixtures':
+      url = 'https://api.football-data.org/v4/competitions/WC/matches';
+      if (team) url += `?team=${team}`;
+      break;
+      case 'laliga_fixtures':
+  url = 'https://api.football-data.org/v4/competitions/PD/matches'; // PD = Primera Division
+  break;
+    case 'topscorers':
+      url = 'https://api.football-data.org/v4/competitions/WC/scorers';
+      break;
+    default:
+      return res.status(400).json({ error: 'Endpoint não suportado' });
+  }
+  
+  try {
+    const response = await fetch(url, {
+      headers: { 'X-Auth-Token': process.env.API_KEY }
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('❌ Erro no proxy football:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+*/
+
 // =============================================
 // ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
 // =============================================
@@ -495,88 +538,33 @@ async function resolveFootballDataMatch(game) {
   return null;
 }
 
-function buildMatchEvents(match) {
-  const scorers = [];
-  const assists = [];
-  if (Array.isArray(match.goals)) {
-    for (const goal of match.goals) {
-      if (!goal || goal.type === 'OWN_GOAL') continue;
-      // Goleador
-      const scorerName = goal.scorer?.name;
-      const teamKey = mapFdTeam(goal.team?.name);
-      if (scorerName) {
-        scorers.push({
-          playerName: scorerName,
-          playerId: null,
-          goals: 1,
-          team: teamKey,
-          minute: goal.minute
-        });
-      }
-      // Assistência (se houver)
-      const assistName = goal.assist?.name;
-      if (assistName) {
-        assists.push({
-          type: 'assist',
-          playerName: assistName,
-          playerId: null,
-          minute: goal.minute,
-          team: teamKey
-        });
-      }
+function buildScorersFromMatch(match) {
+  if (!Array.isArray(match.goals)) return [];
+  const grouped = {};
+  for (const goal of match.goals) {
+    if (!goal || goal.type === 'OWN_GOAL') continue;
+    const playerName = goal.scorer?.name;
+    const teamKey = mapFdTeam(goal.team?.name);
+    if (!playerName) continue;
+    const key = `${playerName}::${teamKey}`;
+    if (!grouped[key]) {
+      grouped[key] = { playerName, playerId: null, goals: 0, team: teamKey, minutes: [] };
     }
+    grouped[key].goals++;
+    if (goal.minute) grouped[key].minutes.push(goal.minute);
   }
-  // Agrupar goleadores (mesmo jogador pode fazer mais de um gol)
-  const groupedScorers = {};
-  for (const s of scorers) {
-    const key = `${s.playerName}::${s.team}`;
-    if (!groupedScorers[key]) {
-      groupedScorers[key] = { ...s, goals: 0 };
-    }
-    groupedScorers[key].goals++;
-  }
-  const uniqueScorers = Object.values(groupedScorers);
-  return { scorers: uniqueScorers, assists };
+  return Object.values(grouped);
 }
 
 function buildEventsFromMatch(match) {
-  const events = [];
-  // Gols e assistências
-  if (Array.isArray(match.goals)) {
-    for (const goal of match.goals) {
-      if (goal.scorer) {
-        events.push({
-          type: 'goal',
-          playerId: goal.scorer?.id,
-          playerName: goal.scorer?.name,
-          minute: goal.minute,
-          team: mapFdTeam(goal.team?.name)
-        });
-      }
-      if (goal.assist) {
-        events.push({
-          type: 'assist',
-          playerId: goal.assist?.id,
-          playerName: goal.assist?.name,
-          minute: goal.minute,
-          team: mapFdTeam(goal.team?.name)
-        });
-      }
-    }
-  }
-  // Cartões (bookings)
-  if (Array.isArray(match.bookings)) {
-    for (const card of match.bookings) {
-      events.push({
-        type: card.card === 'YELLOW' ? 'yellow_card' : 'red_card',
-        playerId: card.player?.id,
-        playerName: card.player?.name,
-        minute: card.minute,
-        team: mapFdTeam(card.team?.name)
-      });
-    }
-  }
-  return events;
+  if (!Array.isArray(match.bookings)) return [];
+  return match.bookings.map(b => ({
+    type: b.card === 'YELLOW_CARD' ? 'yellow_card' : 'red_card',
+    playerName: b.player?.name ?? null,
+    playerId: null,
+    minute: b.minute ?? 0,
+    team: mapFdTeam(b.team?.name)
+  }));
 }
 
 async function syncFootballDataResults(competitions = ['WC', 'PD']) {
@@ -587,111 +575,68 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
   let games = gamesRes.rows[0]?.data?.games || [];
   if (!Array.isArray(games)) games = [];
 
-  for (const game of games) {
-    if (game.status === 'completed') continue;
+  const now = new Date();
+  const candidates = games.filter(g => g.status !== 'completed' && g.home && g.away && getCompetitionCode(g));
+
+  for (const game of candidates) {
     const competition = getCompetitionCode(game);
     if (!competition) continue;
 
     try {
-      let match = null;
-      if (game.fdId) {
-        const matchData = await fetchFootballData(`/matches/${game.fdId}`);
-        match = matchData.match;
-      } else {
-        match = await resolveFootballDataMatch(game);
-      }
+      const existingFdId = game.fdId;
+      const match = game.fdId ?
+        (await fetchFootballData(`/matches/${game.fdId}`)).match :
+        await resolveFootballDataMatch(game);
+
       if (!match) {
         result.details.push({ gameId: game.id, reason: 'não encontrado' });
         continue;
       }
-      if (!game.fdId && match.id) {
-        game.fdId = match.id.toString();
+
+      if (!game.fdId) {
+        game.fdId = match.id?.toString();
         game.apiId = game.fdId;
       }
 
-      const isFinished = (match.status === 'FINISHED');
-      const localStatus = isFinished ? 'completed' : (match.status === 'IN_PLAY' ? 'live' : 'upcoming');
+      const status = mapFdStatus(match.status?.status);
       const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
       const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
-      if (homeScore === null || awayScore === null) continue;
+      const scorers = buildScorersFromMatch(match);
+      const events = buildEventsFromMatch(match);
 
-      // Extrair eventos
-      const events = [];
-      if (Array.isArray(match.goals)) {
-        for (const goal of match.goals) {
-          if (goal.type === 'OWN_GOAL') continue;
-          if (goal.scorer) {
-            events.push({
-              type: 'goal',
-              playerId: goal.scorer.id?.toString(),
-              playerName: goal.scorer.name,
-              minute: goal.minute,
-              team: mapFdTeam(goal.team?.name)
-            });
-          }
-          if (goal.assist) {
-            events.push({
-              type: 'assist',
-              playerId: goal.assist.id?.toString(),
-              playerName: goal.assist.name,
-              minute: goal.minute,
-              team: mapFdTeam(goal.team?.name)
-            });
-          }
-        }
-      }
-      if (Array.isArray(match.bookings)) {
-        for (const card of match.bookings) {
-          events.push({
-            type: card.card === 'YELLOW' ? 'yellow_card' : 'red_card',
-            playerId: card.player?.id?.toString(),
-            playerName: card.player?.name,
-            minute: card.minute,
-            team: mapFdTeam(card.team?.name)
-          });
-        }
-      }
+      const prevResult = game.result || {};
+      const hasNewId = !existingFdId && !!game.fdId;
+      const changed = hasNewId || (
+        game.status !== status ||
+        prevResult.homeScore !== homeScore ||
+        prevResult.awayScore !== awayScore ||
+        JSON.stringify(prevResult.scorers || []) !== JSON.stringify(scorers) ||
+        JSON.stringify(prevResult.events || []) !== JSON.stringify(events)
+      );
 
-      // Goleadores (agrupados)
-      const scorers = [];
-      const goalMap = new Map();
-      for (const ev of events) {
-        if (ev.type === 'goal') {
-          const key = ev.playerName;
-          if (!goalMap.has(key)) goalMap.set(key, { playerName: key, playerId: ev.playerId, goals: 0 });
-          goalMap.get(key).goals++;
-        }
-      }
-      for (const [, data] of goalMap.entries()) scorers.push(data);
-
-      const prev = game.result || {};
-      const changed = (game.status !== localStatus) ||
-                      (prev.homeScore !== homeScore) ||
-                      (prev.awayScore !== awayScore) ||
-                      (JSON.stringify(prev.events || []) !== JSON.stringify(events));
+      game.status = status;
+      game.result = {
+        homeScore,
+        awayScore,
+        scorers: scorers.length ? scorers : (prevResult.scorers || []),
+        events: events.length ? events : (prevResult.events || []),
+        craqueId: prevResult.craqueId ?? null,
+      };
 
       if (changed) {
-        game.status = localStatus;
-        game.result = {
-          homeScore,
-          awayScore,
-          scorers,
-          events,
-          craqueId: prev.craqueId ?? null
-        };
         result.updated++;
         result.details.push({
           gameId: game.id,
           fdId: game.fdId,
-          status: localStatus,
+          status,
           homeScore,
           awayScore,
           scorers: scorers.length,
-          events: events.length
+          events: events.length,
+          mergedId: hasNewId,
         });
       }
     } catch (err) {
-      console.error(`Erro no jogo ${game.id}:`, err.message);
       result.details.push({ gameId: game.id, error: err.message });
     }
   }
@@ -702,50 +647,20 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
       ['games_data', { games }]
     );
-    console.log(`✅ ${result.updated} jogos atualizados`);
   }
+
   return result;
 }
 
-// =============================================
-// PROXY PARA FOOTBALL-DATA.ORG
-// =============================================
 app.get('/api/fd', async (req, res) => {
-  const apiKey = process.env.API_FOOTBALL_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'Chave da API não configurada' });
-  }
-
-  const { path, season, dateFrom, dateTo, ...filters } = req.query;
-  if (!path) {
-    return res.status(400).json({ error: 'Parâmetro "path" obrigatório' });
-  }
-
-  // Constrói a URL
-  let url = `https://api.football-data.org/v4${path}`;
-  const params = new URLSearchParams();
-  if (season) params.append('season', season);
-  if (dateFrom) params.append('dateFrom', dateFrom);
-  if (dateTo) params.append('dateTo', dateTo);
-  Object.entries(filters).forEach(([k, v]) => params.append(k, v));
-  if (params.toString()) url += `?${params.toString()}`;
+  const { path, ttl, ...query } = req.query;
+  if (!path) return res.status(400).json({ error: 'Parametro path obrigatório' });
 
   try {
-    console.log(`🌐 [FD] Chamando: ${url}`);
-    const response = await fetch(url, {
-      headers: { 'X-Auth-Token': apiKey }
-    });
-
-    const data = await response.json();
-    
-    if (!response.ok) {
-      console.error(`❌ [FD] HTTP ${response.status}:`, data);
-      return res.status(response.status).json(data);
-    }
-
+    const data = await fetchFootballData(path, query);
     res.json(data);
   } catch (error) {
-    console.error('❌ Erro no proxy football-data:', error);
+    console.error('❌ Erro no proxy Football Data:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -762,69 +677,15 @@ app.post('/api/sync-results', async (req, res) => {
 });
 
 app.post('/api/update-results', async (req, res) => {
-  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
-  
+  const gamesToUpdate = games.filter(g => {
+  if (g.status === 'completed') return false;  // ← já protegido
+  if (!g.apiId) return false;
+  const gameStart = new Date(`${g.date}T${g.time}:00`);
+  return gameStart <= now;
+});
   try {
-    const gamesRes = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
-    let games = gamesRes.rows[0]?.data?.games || [];
-    if (!Array.isArray(games)) games = [];
-
-    let updatedCount = 0;
-    
-    for (const game of games) {
-      // Só atualiza jogos não finalizados manualmente
-      if (game.status === 'completed') continue;
-      if (!game.fdId) continue; // precisa ter o fdId (ID na API)
-      if (competition === 'WC') continue;
-      
-      try {
-        const response = await fetch(`https://api.football-data.org/v4/matches/${game.fdId}`, {
-          headers: { 'X-Auth-Token': process.env.API_FOOTBALL_KEY }
-        });
-        const data = await response.json();
-        const match = data.match;
-        
-        if (!match) continue;
-        
-        const isFinished = (match.status === 'FINISHED');
-        const localStatus = isFinished ? 'completed' : (match.status === 'IN_PLAY' ? 'live' : 'upcoming');
-        const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
-        const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
-        
-        if (homeScore === null || awayScore === null) continue;
-        
-        // Verifica se houve mudança
-        const changed = (game.status !== localStatus) ||
-                        (game.result?.homeScore !== homeScore) ||
-                        (game.result?.awayScore !== awayScore);
-        
-        if (changed) {
-          game.status = localStatus;
-          if (!game.result) game.result = {};
-          game.result.homeScore = homeScore;
-          game.result.awayScore = awayScore;
-          // Preserva eventos já inseridos manualmente
-          game.result.events = game.result.events || [];
-          game.result.scorers = game.result.scorers || [];
-          
-          updatedCount++;
-          console.log(`✅ Jogo ${game.id} atualizado: ${homeScore}:${awayScore} (${localStatus})`);
-        }
-      } catch (err) {
-        console.error(`Erro no jogo ${game.id}:`, err.message);
-      }
-    }
-    
-    if (updatedCount > 0) {
-      await pool.query(
-        `INSERT INTO games (id, data) VALUES ($1, $2)
-         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
-        ['games_data', { games }]
-      );
-      console.log(`💾 ${updatedCount} jogos atualizados`);
-    }
-    
-    res.json({ success: true, updated: updatedCount });
+    const result = await syncFootballDataResults(['WC', 'PD']);
+    res.json({ success: true, updated: result.updated, details: result.details });
   } catch (error) {
     console.error('❌ Erro no update automático:', error);
     res.status(500).json({ error: error.message });
