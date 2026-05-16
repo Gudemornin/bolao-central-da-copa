@@ -362,48 +362,35 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 
-/* =============================================
- ENDPOINT: FOOTBALL API ANTIGA
- =============================================
+// =============================================
+// PROXY PARA API-SPORTS
+// =============================================
 app.get('/api/football', async (req, res) => {
+  const apiKey = process.env.API_FOOTBALL_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'API_FOOTBALL_KEY não configurada' });
+  }
+
   const { endpoint, team } = req.query;
   
-  if (!endpoint) {
-    return res.status(400).json({ error: 'Endpoint obrigatório' });
-  }
-  
   let url = '';
-  switch (endpoint) {
-    case 'standings':
-      url = 'https://api.football-data.org/v4/competitions/WC/standings';
-      break;
-    case 'fixtures':
-      url = 'https://api.football-data.org/v4/competitions/WC/matches';
-      if (team) url += `?team=${team}`;
-      break;
-      case 'laliga_fixtures':
-  url = 'https://api.football-data.org/v4/competitions/PD/matches'; // PD = Primera Division
-  break;
-    case 'topscorers':
-      url = 'https://api.football-data.org/v4/competitions/WC/scorers';
-      break;
-    default:
-      return res.status(400).json({ error: 'Endpoint não suportado' });
+  if (endpoint === 'fixtures') {
+    url = `https://v3.football.api-sports.io/fixtures?team=${team}&season=2025`;
+  } else {
+    return res.status(400).json({ error: 'Endpoint não suportado' });
   }
-  
+
   try {
     const response = await fetch(url, {
-      headers: { 'X-Auth-Token': process.env.API_KEY }
+      headers: { 'x-apisports-key': apiKey }
     });
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    console.error('❌ Erro no proxy football:', error);
+    console.error('❌ Erro na API-SPORTS:', error);
     res.status(500).json({ error: error.message });
   }
 });
-
-*/
 
 // =============================================
 // ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
