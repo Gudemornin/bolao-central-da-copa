@@ -768,7 +768,6 @@ app.post('/api/update-results', async (req, res) => {
     const gamesRes = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
     let games = gamesRes.rows[0]?.data?.games || [];
     if (!Array.isArray(games)) games = [];
-    if (competition === 'WC') continue;
 
     let updatedCount = 0;
     
@@ -776,6 +775,7 @@ app.post('/api/update-results', async (req, res) => {
       // Só atualiza jogos não finalizados manualmente
       if (game.status === 'completed') continue;
       if (!game.fdId) continue; // precisa ter o fdId (ID na API)
+      if (competition === 'WC') continue;
       
       try {
         const response = await fetch(`https://api.football-data.org/v4/matches/${game.fdId}`, {

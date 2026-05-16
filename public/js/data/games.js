@@ -1,42 +1,7 @@
 export const GAMES = [
 
-// ═══════════════ LA LIGA - 14 DE MAIO ═══════════════
-{
-  id: 'valencia_rayo_14maio',
-  fdId: '544568',           // ← ADICIONADO
-  date: '2026-05-14',
-  time: '14:00',
-  home: 'valencia',
-  away: 'rayo_vallecano',
-  group: 'La Liga',
-  venue: 'Mestalla, Valencia',
-  status: 'upcoming',
-  result: null
-},
-{
-  id: 'girona_real_sociedad_14maio',
-  fdId: '544570',               // ← deixe null se não souber o ID
-  date: '2026-05-14',
-  time: '15:00',
-  home: 'girona',
-  away: 'real_sociedad',
-  group: 'La Liga',
-  venue: 'Estadi Montilivi, Girona',
-  status: 'upcoming',
-  result: null
-},
-{
-  id: 'real_madrid_oviedo_14maio',
-  fdId: '544224',               // ← deixe null se não souber o ID
-  date: '2026-05-14',
-  time: '17:30',
-  home: 'real_madrid',
-  away: 'oviedo',
-  group: 'La Liga',
-  venue: 'Santiago Bernabéu, Madrid',
-  status: 'upcoming',
-  result: null
-},
+// ═══════════════ TESTES ═══════════════
+
   // ═══════════════ MATCHDAY 1 - 11 Jun ═══════════════
   {id:'g01',date:'2026-06-11',time:'13:00',timezone:'UTC-6',home:'mexico',away:'south_africa',group:'A',venue:'Estadio Azteca, Cidade do México',status:'upcoming',result:null},
   {id:'g02',date:'2026-06-11',time:'20:00',timezone:'UTC-6',home:'south_korea',away:'czech_republic',group:'A',venue:'Estadio Akron, Zapopan',status:'upcoming',result:null},
