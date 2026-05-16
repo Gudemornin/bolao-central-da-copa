@@ -768,7 +768,8 @@ app.post('/api/update-results', async (req, res) => {
     const gamesRes = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
     let games = gamesRes.rows[0]?.data?.games || [];
     if (!Array.isArray(games)) games = [];
-    
+    if (competition === 'WC') continue;
+
     let updatedCount = 0;
     
     for (const game of games) {

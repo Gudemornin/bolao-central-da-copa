@@ -41,12 +41,16 @@ export function isGameLocked(game) {
 }
 
 function getUniqueDates() {
-    let games = GAMES_STATE;
+  let games = GAMES_STATE;
   if (!Array.isArray(games)) return [];
-  // Remove o filtro de yesterday – retorna todas as datas presentes
-  return [...new Set(games.map(g => g.date))].sort();
-
-  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  return [...new Set(games
+    .filter(g => new Date(g.date) >= today || g.status === 'upcoming')
+    .map(g => g.date))]
+    .sort();
+}
 
 export async function renderGames() {
   // await syncGamesWithAPI();
@@ -165,6 +169,16 @@ const games = sortedGames.filter(g => g.date === currentDate);
               </div>
               <div class="vs-text">VS</div>
             </div>
+
+${game.result && game.status === 'completed' ? `
+  <div class="real-score-info" style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px;">
+    <div>📊 Resultado real: <strong>${game.result.homeScore} : ${game.result.awayScore}</strong></div>
+    ${bet.homeScore !== undefined ? `
+      <div>🎯 Seus pontos: <strong>${calculateBetPoints(bet, game)}</strong> pts</div>
+    ` : ''}
+  </div>
+` : ''}
+
             <div class="team-away">
               <div class="team-flag">${teamFlagImg(t2, 50)}</div>
               <div class="team-name">${t2?.name || game.away}</div>
@@ -201,6 +215,8 @@ const games = sortedGames.filter(g => g.date === currentDate);
       </div>
     `;
   }).join('');
+
+  
 
   // Restaurar seleções anteriores (para jogos não bloqueados)
   for (const game of games) {

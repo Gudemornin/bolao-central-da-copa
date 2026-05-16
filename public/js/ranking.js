@@ -65,12 +65,6 @@ export function calcBetPoints(bet, game, gameEvents = null) {
       pts += penaltiesSaved * 5;
     }
     
-    // CLEAN SHEET (goleiro/defensor)
-    if ((isGoalkeeper || isDefender)) {
-      const minutesPlayed = playerEvents.find(e => e.type === 'minutes_played')?.value || 90;
-      const goalsConceded = p.team === game.home ? r.awayScore : r.homeScore;
-      if (goalsConceded === 0 && minutesPlayed >= 60) pts += 2;
-    }
   }
   
   // 4. CRAQUE DO JOGO
