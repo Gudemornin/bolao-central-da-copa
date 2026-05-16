@@ -3,6 +3,7 @@ export const GAMES = [
 // ═══════════════ LA LIGA - 14 DE MAIO ═══════════════
 {
   id: 'valencia_rayo_14maio',
+  fdId: '544568',           // ← ADICIONADO
   date: '2026-05-14',
   time: '14:00',
   home: 'valencia',
@@ -14,6 +15,7 @@ export const GAMES = [
 },
 {
   id: 'girona_real_sociedad_14maio',
+  fdId: null,               // ← deixe null se não souber o ID
   date: '2026-05-14',
   time: '15:00',
   home: 'girona',
@@ -25,6 +27,7 @@ export const GAMES = [
 },
 {
   id: 'real_madrid_oviedo_14maio',
+  fdId: null,               // ← deixe null se não souber o ID
   date: '2026-05-14',
   time: '17:30',
   home: 'real_madrid',
@@ -147,7 +150,8 @@ export async function syncGamesFromAPI() {
   
   if (data.matches) {
     const gamesFromAPI = data.matches.map(match => ({
-      id: match.id.toString(), // ← USA O ID DA API
+      id: match.id.toString(),
+      fdId: match.id.toString(), // ← ADICIONADO
       date: match.utcDate.split('T')[0],
       time: new Date(match.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       home: mapTeamName(match.homeTeam.name),
@@ -158,11 +162,10 @@ export async function syncGamesFromAPI() {
       result: match.score.winner ? {
         homeScore: match.score.fullTime.home,
         awayScore: match.score.fullTime.away,
-        scorers: [] // Precisa de outro endpoint para detalhes
+        scorers: []
       } : null
     }));
     
-    // Salvar no localStorage
     localStorage.setItem('bc26_games', JSON.stringify(gamesFromAPI));
     return gamesFromAPI;
   }
