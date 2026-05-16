@@ -100,7 +100,7 @@ export async function renderAdminGames() {
   
   renderGamesByDate('all');
 
-  const el = document.getElementById('adminTabContent');
+
   if (!el) return;
   
   
