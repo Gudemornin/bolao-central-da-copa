@@ -363,36 +363,6 @@ app.delete('/api/users/:id', async (req, res) => {
 
 
 // =============================================
-// PROXY PARA API-SPORTS
-// =============================================
-app.get('/api/football', async (req, res) => {
-  const apiKey = process.env.API_FOOTBALL_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'API_FOOTBALL_KEY não configurada' });
-  }
-
-  const { endpoint, team } = req.query;
-  
-  let url = '';
-  if (endpoint === 'fixtures') {
-    url = `https://v3.football.api-sports.io/fixtures?team=${team}&season=2025`;
-  } else {
-    return res.status(400).json({ error: 'Endpoint não suportado' });
-  }
-
-  try {
-    const response = await fetch(url, {
-      headers: { 'x-apisports-key': apiKey }
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error('❌ Erro na API-SPORTS:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
 // ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
 // =============================================
 
@@ -737,24 +707,21 @@ async function syncFootballDataResults(competitions = ['WC', 'PD']) {
   return result;
 }
 
+// =============================================
+// PROXY PARA FOOTBALL-DATA.ORG
+// =============================================
 app.get('/api/fd', async (req, res) => {
   const apiKey = process.env.API_FOOTBALL_KEY;
-  
-  // VALIDAÇÃO: chave existe?
   if (!apiKey) {
-    console.error('❌ API_FOOTBALL_KEY não configurada');
-    return res.status(500).json({ 
-      error: 'API_FOOTBALL_KEY não configurada. Adicione a variável de ambiente no Railway.',
-      status: 'missing_api_key'
-    });
+    return res.status(500).json({ error: 'Chave da API não configurada' });
   }
 
-  const { path, ttl, season, dateFrom, dateTo, ...filters } = req.query;
+  const { path, season, dateFrom, dateTo, ...filters } = req.query;
   if (!path) {
     return res.status(400).json({ error: 'Parâmetro "path" obrigatório' });
   }
 
-  // Constrói a URL completa
+  // Constrói a URL
   let url = `https://api.football-data.org/v4${path}`;
   const params = new URLSearchParams();
   if (season) params.append('season', season);
@@ -764,39 +731,22 @@ app.get('/api/fd', async (req, res) => {
   if (params.toString()) url += `?${params.toString()}`;
 
   try {
-    console.log(`🌐 [FD] ${url}`);
+    console.log(`🌐 [FD] Chamando: ${url}`);
     const response = await fetch(url, {
       headers: { 'X-Auth-Token': apiKey }
     });
 
-    const text = await response.text();
+    const data = await response.json();
     
-    // Verifica se a resposta é JSON válido
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      console.error(`❌ Resposta não é JSON: ${text.substring(0, 200)}`);
-      return res.status(502).json({ 
-        error: 'API retornou resposta inválida (não é JSON)',
-        status: response.status,
-        preview: text.substring(0, 200)
-      });
-    }
-
-    // Se a API retornou erro, repassa com o status correto
     if (!response.ok) {
-      console.error(`❌ [FD] HTTP ${response.status}: ${JSON.stringify(data)}`);
+      console.error(`❌ [FD] HTTP ${response.status}:`, data);
       return res.status(response.status).json(data);
     }
 
     res.json(data);
   } catch (error) {
     console.error('❌ Erro no proxy football-data:', error);
-    res.status(500).json({ 
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
