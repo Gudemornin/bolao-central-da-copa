@@ -762,9 +762,68 @@ app.post('/api/sync-results', async (req, res) => {
 });
 
 app.post('/api/update-results', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  
   try {
-    const result = await syncFootballDataResults(['WC', 'PD']);
-    res.json({ success: true, updated: result.updated, details: result.details });
+    const gamesRes = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
+    let games = gamesRes.rows[0]?.data?.games || [];
+    if (!Array.isArray(games)) games = [];
+    
+    let updatedCount = 0;
+    
+    for (const game of games) {
+      // Só atualiza jogos não finalizados manualmente
+      if (game.status === 'completed') continue;
+      if (!game.fdId) continue; // precisa ter o fdId (ID na API)
+      
+      try {
+        const response = await fetch(`https://api.football-data.org/v4/matches/${game.fdId}`, {
+          headers: { 'X-Auth-Token': process.env.API_FOOTBALL_KEY }
+        });
+        const data = await response.json();
+        const match = data.match;
+        
+        if (!match) continue;
+        
+        const isFinished = (match.status === 'FINISHED');
+        const localStatus = isFinished ? 'completed' : (match.status === 'IN_PLAY' ? 'live' : 'upcoming');
+        const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
+        const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
+        
+        if (homeScore === null || awayScore === null) continue;
+        
+        // Verifica se houve mudança
+        const changed = (game.status !== localStatus) ||
+                        (game.result?.homeScore !== homeScore) ||
+                        (game.result?.awayScore !== awayScore);
+        
+        if (changed) {
+          game.status = localStatus;
+          if (!game.result) game.result = {};
+          game.result.homeScore = homeScore;
+          game.result.awayScore = awayScore;
+          // Preserva eventos já inseridos manualmente
+          game.result.events = game.result.events || [];
+          game.result.scorers = game.result.scorers || [];
+          
+          updatedCount++;
+          console.log(`✅ Jogo ${game.id} atualizado: ${homeScore}:${awayScore} (${localStatus})`);
+        }
+      } catch (err) {
+        console.error(`Erro no jogo ${game.id}:`, err.message);
+      }
+    }
+    
+    if (updatedCount > 0) {
+      await pool.query(
+        `INSERT INTO games (id, data) VALUES ($1, $2)
+         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+        ['games_data', { games }]
+      );
+      console.log(`💾 ${updatedCount} jogos atualizados`);
+    }
+    
+    res.json({ success: true, updated: updatedCount });
   } catch (error) {
     console.error('❌ Erro no update automático:', error);
     res.status(500).json({ error: error.message });
