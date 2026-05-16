@@ -27,7 +27,7 @@ export const GAMES = [
 },
 {
   id: 'real_madrid_oviedo_14maio',
-  fdId: '544565',               // ← deixe null se não souber o ID
+  fdId: '544224',               // ← deixe null se não souber o ID
   date: '2026-05-14',
   time: '17:30',
   home: 'real_madrid',
