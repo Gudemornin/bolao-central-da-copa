@@ -134,10 +134,7 @@ async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
 const gameStart = new Date(`${game.date}T${game.time}:00`);
 const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
 
-// Na seção do card, condicione a exibição da tabela:
-<div class="community-game-body" id="community-game-${gameId}" style="display: none;">
-  ${hasStarted ? renderBetsList(gameBets, game) : '<div class="no-bets-msg">⏳ Palpites serão exibidos após o início da partida.</div>'}
-</div>
+
 
   if (games.length === 0) {
     return '<div class="empty-state">Nenhum jogo nesta data.</div>';
@@ -231,6 +228,9 @@ const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
 
     html += `
       <div class="community-game-card" data-game-id="${gameId}">
+      <div class="community-game-body" id="community-game-${gameId}" style="display: none;">
+  ${hasStarted ? renderBetsList(gameBets, game) : '<div class="no-bets-msg">⏳ Palpites serão exibidos após o início da partida.</div>'}
+</div>
         <div class="community-game-header" onclick="toggleCommunityGame('${gameId}')">
           <div class="community-game-info">
             <div class="community-teams">
