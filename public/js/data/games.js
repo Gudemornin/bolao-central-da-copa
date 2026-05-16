@@ -124,29 +124,3 @@ export const GAMES = [
   {id:'g72',date:'2026-06-27',time:'21:00',timezone:'UTC-5',home:'jordan',away:'argentina',group:'J',venue:'AT&T Stadium, Dallas',status:'upcoming',result:null},
 ];
 
-export async function syncGamesFromAPI() {
-  const response = await fetch('/api/football?endpoint=competitions/WC/matches');
-  const data = await response.json();
-  
-  if (data.matches) {
-    const gamesFromAPI = data.matches.map(match => ({
-      id: match.id.toString(),
-      fdId: match.id.toString(), // ← ADICIONADO
-      date: match.utcDate.split('T')[0],
-      time: new Date(match.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      home: mapTeamName(match.homeTeam.name),
-      away: mapTeamName(match.awayTeam.name),
-      group: match.group || null,
-      venue: match.venue || 'Estádio',
-      status: mapStatus(match.status),
-      result: match.score.winner ? {
-        homeScore: match.score.fullTime.home,
-        awayScore: match.score.fullTime.away,
-        scorers: []
-      } : null
-    }));
-    
-    localStorage.setItem('bc26_games', JSON.stringify(gamesFromAPI));
-    return gamesFromAPI;
-  }
-}

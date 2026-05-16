@@ -259,7 +259,9 @@ export const PLAYERS = [
 // =============================================
 
 
+   // =============================================
   // CHELSEA
+  // =============================================
   { id: 'che01', name: 'Robert Sánchez', team: 'chelsea', pos: 'GOL' },
   { id: 'che02', name: 'Filip Jørgensen', team: 'chelsea', pos: 'GOL' },
   { id: 'che03', name: 'Reece James', team: 'chelsea', pos: 'DEF' },
@@ -281,7 +283,9 @@ export const PLAYERS = [
   { id: 'che19', name: 'Liam Delap', team: 'chelsea', pos: 'ATA' },
   { id: 'che20', name: 'Alejandro Garnacho', team: 'chelsea', pos: 'ATA' },
 
+  // =============================================
   // MANCHESTER CITY
+  // =============================================
   { id: 'mci01', name: 'James Trafford', team: 'manchester_city', pos: 'GOL' },
   { id: 'mci02', name: 'Gianluigi Donnarumma', team: 'manchester_city', pos: 'GOL' },
   { id: 'mci03', name: 'Rúben Dias', team: 'manchester_city', pos: 'DEF' },
@@ -302,6 +306,5 @@ export const PLAYERS = [
   { id: 'mci18', name: 'Jérémy Doku', team: 'manchester_city', pos: 'ATA' },
   { id: 'mci19', name: 'Antoine Semenyo', team: 'manchester_city', pos: 'ATA' },
   { id: 'mci20', name: 'Savinho', team: 'manchester_city', pos: 'ATA' },
-
 
 ]; 
