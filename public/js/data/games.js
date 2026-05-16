@@ -15,7 +15,7 @@ export const GAMES = [
 },
 {
   id: 'girona_real_sociedad_14maio',
-  fdId: null,               // ← deixe null se não souber o ID
+  fdId: '544570',               // ← deixe null se não souber o ID
   date: '2026-05-14',
   time: '15:00',
   home: 'girona',
@@ -27,7 +27,7 @@ export const GAMES = [
 },
 {
   id: 'real_madrid_oviedo_14maio',
-  fdId: null,               // ← deixe null se não souber o ID
+  fdId: '544565',               // ← deixe null se não souber o ID
   date: '2026-05-14',
   time: '17:30',
   home: 'real_madrid',
