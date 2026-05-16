@@ -6,7 +6,7 @@ export const GAMES = [
 {
     id: 'g00',
     date: '2026-05-16',
-    time: '11:00',
+    time: '11:10',
     timezone: 'UTC-3',
     home: 'chelsea',
     away: 'manchester_city',
