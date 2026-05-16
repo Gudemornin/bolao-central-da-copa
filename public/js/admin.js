@@ -56,6 +56,9 @@ export async function renderAdminGames() {
   const el = document.getElementById('adminTabContent');
   if (!el) return;
 
+  const games = GAMES_STATE.length ? GAMES_STATE : await loadGames();
+  if (games.length && !GAMES_STATE.length) setGamesState(games);
+
 
    // Agrupar jogos por data
   const gamesByDate = {};
