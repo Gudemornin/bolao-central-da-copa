@@ -1,5 +1,6 @@
 // storage.js - Versão com suporte a PostgreSQL via API
 import { GAMES } from './data/games.js'
+import { GAMES as MANUAL_GAMES } from './data/games.js';
 
 // Configuração: usar API ou localStorage
 const USE_API = true
