@@ -131,6 +131,13 @@ function renderDateSelector(dates) {
 // =============================================
 async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
   const games = gamesByDate[date] || [];
+const gameStart = new Date(`${game.date}T${game.time}:00`);
+const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
+
+// Na seção do card, condicione a exibição da tabela:
+<div class="community-game-body" id="community-game-${gameId}" style="display: none;">
+  ${hasStarted ? renderBetsList(gameBets, game) : '<div class="no-bets-msg">⏳ Palpites serão exibidos após o início da partida.</div>'}
+</div>
 
   if (games.length === 0) {
     return '<div class="empty-state">Nenhum jogo nesta data.</div>';
@@ -390,12 +397,7 @@ function calculateBetPoints(bet, game) {
       pts += penaltiesSaved * 5;
     }
     
-    // CLEAN SHEET (goleiro/defensor)
-    if ((isGoalkeeper || isDefender)) {
-      const minutesPlayed = playerEvents.find(e => e.type === 'minutes_played')?.value || 90;
-      const goalsConceded = p.team === game.home ? r.awayScore : r.homeScore;
-      if (goalsConceded === 0 && minutesPlayed >= 60) pts += 2;
-    }
+
   }
   
   // 4. CRAQUE DO JOGO
