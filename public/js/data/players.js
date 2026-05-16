@@ -258,4 +258,50 @@ export const PLAYERS = [
 // TESTES
 // =============================================
 
+
+  // CHELSEA
+  { id: 'che01', name: 'Robert Sánchez', team: 'chelsea', pos: 'GOL' },
+  { id: 'che02', name: 'Filip Jørgensen', team: 'chelsea', pos: 'GOL' },
+  { id: 'che03', name: 'Reece James', team: 'chelsea', pos: 'DEF' },
+  { id: 'che04', name: 'Marc Cucurella', team: 'chelsea', pos: 'DEF' },
+  { id: 'che05', name: 'Levi Colwill', team: 'chelsea', pos: 'DEF' },
+  { id: 'che06', name: 'Malo Gusto', team: 'chelsea', pos: 'DEF' },
+  { id: 'che07', name: 'Wesley Fofana', team: 'chelsea', pos: 'DEF' },
+  { id: 'che08', name: 'Tosin Adarabioyo', team: 'chelsea', pos: 'DEF' },
+  { id: 'che09', name: 'Trevoh Chalobah', team: 'chelsea', pos: 'DEF' },
+  { id: 'che10', name: 'Josh Acheampong', team: 'chelsea', pos: 'DEF' },
+  { id: 'che11', name: 'Jorrel Hato', team: 'chelsea', pos: 'DEF' },
+  { id: 'che12', name: 'Enzo Fernández', team: 'chelsea', pos: 'MEI' },
+  { id: 'che13', name: 'Cole Palmer', team: 'chelsea', pos: 'MEI' },
+  { id: 'che14', name: 'Moises Caicedo', team: 'chelsea', pos: 'MEI' },
+  { id: 'che15', name: 'Dário Essugo', team: 'chelsea', pos: 'MEI' },
+  { id: 'che16', name: 'Andrey Santos', team: 'chelsea', pos: 'MEI' },
+  { id: 'che17', name: 'Pedro Neto', team: 'chelsea', pos: 'ATA' },
+  { id: 'che18', name: 'João Pedro', team: 'chelsea', pos: 'ATA' },
+  { id: 'che19', name: 'Liam Delap', team: 'chelsea', pos: 'ATA' },
+  { id: 'che20', name: 'Alejandro Garnacho', team: 'chelsea', pos: 'ATA' },
+
+  // MANCHESTER CITY
+  { id: 'mci01', name: 'James Trafford', team: 'manchester_city', pos: 'GOL' },
+  { id: 'mci02', name: 'Gianluigi Donnarumma', team: 'manchester_city', pos: 'GOL' },
+  { id: 'mci03', name: 'Rúben Dias', team: 'manchester_city', pos: 'DEF' },
+  { id: 'mci04', name: 'John Stones', team: 'manchester_city', pos: 'DEF' },
+  { id: 'mci05', name: 'Nathan Aké', team: 'manchester_city', pos: 'DEF' },
+  { id: 'mci06', name: 'Marc Guéhi', team: 'manchester_city', pos: 'DEF' },
+  { id: 'mci07', name: 'Abdukodir Khusanov', team: 'manchester_city', pos: 'DEF' },
+  { id: 'mci08', name: 'Matheus Nunes', team: 'manchester_city', pos: 'DEF' },
+  { id: 'mci09', name: 'Nico O\'Reilly', team: 'manchester_city', pos: 'DEF' },
+  { id: 'mci10', name: 'Rodri', team: 'manchester_city', pos: 'MEI' },
+  { id: 'mci11', name: 'Bernardo Silva', team: 'manchester_city', pos: 'MEI' },
+  { id: 'mci12', name: 'Mateo Kovacic', team: 'manchester_city', pos: 'MEI' },
+  { id: 'mci13', name: 'Tijjani Reijnders', team: 'manchester_city', pos: 'MEI' },
+  { id: 'mci14', name: 'Rayan Cherki', team: 'manchester_city', pos: 'MEI' },
+  { id: 'mci15', name: 'Phil Foden', team: 'manchester_city', pos: 'MEI' },
+  { id: 'mci16', name: 'Omar Marmoush', team: 'manchester_city', pos: 'ATA' },
+  { id: 'mci17', name: 'Erling Haaland', team: 'manchester_city', pos: 'ATA' },
+  { id: 'mci18', name: 'Jérémy Doku', team: 'manchester_city', pos: 'ATA' },
+  { id: 'mci19', name: 'Antoine Semenyo', team: 'manchester_city', pos: 'ATA' },
+  { id: 'mci20', name: 'Savinho', team: 'manchester_city', pos: 'ATA' },
+
+
 ]; 

@@ -2,6 +2,21 @@ export const GAMES = [
 
 // ═══════════════ TESTES ═══════════════
 
+
+{
+    id: 'g00',
+    date: '2026-05-16',
+    time: '11:00',
+    timezone: 'UTC-3',
+    home: 'chelsea',
+    away: 'manchester_city',
+    group: 'FA Cup Final',
+    venue: 'Wembley, Londres',
+    status: 'upcoming',
+    result: null,
+  },
+
+
   // ═══════════════ MATCHDAY 1 - 11 Jun ═══════════════
   {id:'g01',date:'2026-06-11',time:'13:00',timezone:'UTC-6',home:'mexico',away:'south_africa',group:'A',venue:'Estadio Azteca, Cidade do México',status:'upcoming',result:null},
   {id:'g02',date:'2026-06-11',time:'20:00',timezone:'UTC-6',home:'south_korea',away:'czech_republic',group:'A',venue:'Estadio Akron, Zapopan',status:'upcoming',result:null},

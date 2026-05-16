@@ -62,5 +62,17 @@ export const TEAMS = {
 
  // TESTES
 
+  chelsea: {
+    name: 'Chelsea',
+    flag: 'https://placehold.co/30x20/034694/white?text=CHE',
+    color: '#034694',
+    group: 'FA Cup Final'
+  },
+  manchester_city: {
+    name: 'Manchester City',
+    flag: 'https://placehold.co/30x20/6CABDD/white?text=MCI',
+    color: '#6CABDD',
+    group: 'FA Cup Final'
+  }
 
 };
