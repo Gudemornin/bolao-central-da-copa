@@ -107,7 +107,6 @@ export async function renderAdminGames() {
 
 
   // Garantir que GAMES_STATE está atualizado
-  const games = GAMES_STATE.length ? GAMES_STATE : await loadGames();
   if (games.length && !GAMES_STATE.length) setGamesState(games);
 
   el.innerHTML = GAMES_STATE.map(g => {
