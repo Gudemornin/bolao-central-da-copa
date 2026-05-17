@@ -26,7 +26,7 @@ if (process.env.DATABASE_URL) {
   });
   console.log('✅ PostgreSQL conectado');
 } else {
-  console.error('❌ DATABASE_URL não encontrada! Banco de dados não disponível.');
+  console.log('⚠️ DATABASE_URL não encontrada. Usando localStorage apenas.');
 }
 
 // =============================================
@@ -36,9 +36,36 @@ async function initDatabase() {
   if (!pool) return;
   
   try {
-    // =============================================
-    // TABELA USERS (já existente)
-    // =============================================
+    // 1. Tabela de times (equipes)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS teams (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        flag TEXT,
+        color TEXT,
+        group_name TEXT,
+        is_custom BOOLEAN DEFAULT false
+      )
+    `);
+    console.log('✅ Tabela "teams" verificada/criada');
+
+    // 2. Tabela de partidas estruturada
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS games_structured (
+        id TEXT PRIMARY KEY,
+        date DATE NOT NULL,
+        time TEXT,
+        home_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
+        away_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
+        group_name TEXT,
+        venue TEXT,
+        status TEXT DEFAULT 'upcoming',
+        result JSONB
+      )
+    `);
+    console.log('✅ Tabela "games_structured" verificada/criada');
+
+    // 3. Tabela de usuários (já existente)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -57,41 +84,9 @@ async function initDatabase() {
         created_at BIGINT
       )
     `);
+    console.log('✅ Tabela "users" verificada/criada');
 
-    // =============================================
-    // TABELA TEAMS (nova)
-    // =============================================
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS teams (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        flag TEXT,
-        color TEXT,
-        group_name TEXT,
-        is_custom BOOLEAN DEFAULT false
-      )
-    `);
-
-    // =============================================
-    // TABELA GAMES_STRUCTURED (nova)
-    // =============================================
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS games_structured (
-        id TEXT PRIMARY KEY,
-        date DATE NOT NULL,
-        time TEXT,
-        home_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
-        away_team TEXT REFERENCES teams(id) ON DELETE RESTRICT,
-        group_name TEXT,
-        venue TEXT,
-        status TEXT DEFAULT 'upcoming',
-        result JSONB
-      )
-    `);
-
-    // =============================================
-    // TABELA BETS (já existente)
-    // =============================================
+    // 4. Tabela de palpites
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bets (
         user_id TEXT,
@@ -103,23 +98,23 @@ async function initDatabase() {
         PRIMARY KEY (user_id, game_id)
       )
     `);
+    console.log('✅ Tabela "bets" verificada/criada');
 
-    // =============================================
-    // TABELA GAMES (antiga, mantida para compatibilidade)
-    // =============================================
+    // 5. Tabela de jogos (backup JSON) – opcional
     await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
         data JSONB
       )
     `);
+    console.log('✅ Tabela "games" verificada/criada');
 
-    console.log('✅ Tabelas verificadas/criadas com sucesso');
   } catch (error) {
     console.error('❌ Erro ao criar tabelas:', error);
   }
 }
 
+// Inicializar o banco de dados
 await initDatabase();
 
 // =============================================
@@ -129,593 +124,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // =============================================
-// ENDPOINT: USUÁRIOS (GET)
-// =============================================
-app.get('/api/users', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
-  
-  try {
-    const result = await pool.query(`
-      SELECT 
-        id, 
-        profile_name as "profileName", 
-        password_player_id as "passwordPlayerId", 
-        password_backup as "passwordBackup", 
-        password_reset_pending as "passwordResetPending", 
-        temp_password as "tempPassword", 
-        reset_by_admin as "resetByAdmin", 
-        email, 
-        is_admin as "isAdmin", 
-        is_hidden as "isHidden", 
-        secure_auth as "secureAuth", 
-        two_fa_code as "twoFaCode", 
-        admin_overrides as "adminOverrides", 
-        created_at as "createdAt"
-      FROM users 
-      ORDER BY created_at DESC
-    `);
-    res.json({ users: result.rows });
-  } catch (error) {
-    console.error('❌ GET /api/users erro:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
-// ENDPOINT: USUÁRIOS (POST)
-// =============================================
-app.post('/api/users', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
-  
-  const { users } = req.body;
-  
-  if (!users || !Array.isArray(users)) {
-    return res.status(400).json({ error: 'Dados inválidos' });
-  }
-  
-  try {
-    for (const user of users) {
-      const query = `
-        INSERT INTO users (
-          id, profile_name, password_player_id, password_backup, password_reset_pending, temp_password, reset_by_admin, email, 
-          is_admin, is_hidden, secure_auth, two_fa_code, admin_overrides, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        ON CONFLICT (id) DO UPDATE SET
-          profile_name = EXCLUDED.profile_name,
-          password_player_id = EXCLUDED.password_player_id,
-          password_backup = EXCLUDED.password_backup,
-          password_reset_pending = EXCLUDED.password_reset_pending,
-          temp_password = EXCLUDED.temp_password,
-          reset_by_admin = EXCLUDED.reset_by_admin,
-          email = EXCLUDED.email,
-          is_admin = EXCLUDED.is_admin,
-          is_hidden = EXCLUDED.is_hidden,
-          secure_auth = EXCLUDED.secure_auth,
-          two_fa_code = EXCLUDED.two_fa_code,
-          admin_overrides = EXCLUDED.admin_overrides,
-          created_at = EXCLUDED.created_at
-      `;
-      
-      await pool.query(query, [
-        user.id,
-        user.profileName,
-        user.passwordPlayerId,
-        user.passwordBackup || null,
-        user.passwordResetPending || false,
-        user.tempPassword || null,
-        user.resetByAdmin || false,
-        user.email || null,
-        user.isAdmin || false,
-        user.isHidden || false,
-        user.secureAuth || false,
-        user.twoFaCode || null,
-        user.adminOverrides || null,
-        user.createdAt || Date.now()
-      ]);
-    }
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('❌ POST /api/users erro:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
-// ENDPOINT: PALPITES (GET)
-// =============================================
-app.get('/api/bets', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
-  
-  try {
-    const result = await pool.query('SELECT * FROM bets');
-    const bets = {};
-    for (const row of result.rows) {
-      if (!bets[row.user_id]) bets[row.user_id] = {};
-      bets[row.user_id][row.game_id] = {
-        homeScore: row.home_score,
-        awayScore: row.away_score,
-        playerId: row.player_id,
-        savedAt: row.saved_at
-      };
-    }
-    res.json({ bets });
-  } catch (error) {
-    console.error('❌ GET /api/bets erro:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
-// ENDPOINT: PALPITES (POST)
-// =============================================
-app.post('/api/bets', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
-  
-  const { bets } = req.body;
-  
-  if (!bets) {
-    return res.json({ success: true });
-  }
-  
-  try {
-    for (const [userId, userBets] of Object.entries(bets)) {
-      for (const [gameId, bet] of Object.entries(userBets)) {
-        await pool.query(
-          `INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (user_id, game_id) DO UPDATE SET
-             home_score = EXCLUDED.home_score,
-             away_score = EXCLUDED.away_score,
-             player_id = EXCLUDED.player_id,
-             saved_at = EXCLUDED.saved_at`,
-          [userId, gameId, bet.homeScore, bet.awayScore, bet.playerId, bet.savedAt || Date.now()]
-        );
-      }
-    }
-    res.json({ success: true });
-  } catch (error) {
-    console.error('❌ POST /api/bets erro:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
-// ENDPOINT: JOGOS (GET)
-// =============================================
-app.get('/api/games', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
-  
-  try {
-    const result = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
-    if (result.rows.length > 0) {
-      res.json({ games: result.rows[0].data });
-    } else {
-      res.json({ games: null });
-    }
-  } catch (error) {
-    console.error('❌ GET /api/games erro:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
-// ENDPOINT: JOGOS (POST)
-// =============================================
-app.post('/api/games', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
-  
-  const { games } = req.body;
-  
-  if (!games) {
-    return res.json({ success: true });
-  }
-  
-  try {
-    await pool.query(
-      `INSERT INTO games (id, data) VALUES ($1, $2)
-       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
-      ['games_data', { games }]
-    );
-    res.json({ success: true });
-  } catch (error) {
-    console.error('❌ POST /api/games erro:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
-// ENDPOINT: LIMPAR DADOS
-// =============================================
-app.delete('/api/clear', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
-  
-  try {
-    await pool.query('DELETE FROM users');
-    await pool.query('DELETE FROM bets');
-    await pool.query('DELETE FROM games');
-    res.json({ success: true });
-  } catch (error) {
-    console.error('❌ DELETE /api/clear erro:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete('/api/users/:id', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
-
-  const { id } = req.params;
-
-  try {
-    // Impedir remoção do admin padrão
-    if (id === 'admin_default') {
-      return res.status(403).json({ error: 'Não é possível remover o administrador padrão' });
-    }
-
-    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Usuário não encontrado' });
-    }
-
-    // Também remover palpites do usuário (opcional, mas recomendado)
-    await pool.query('DELETE FROM bets WHERE user_id = $1', [id]);
-
-    res.json({ success: true, message: 'Usuário removido com sucesso' });
-  } catch (error) {
-    console.error('❌ Erro ao deletar usuário:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-/* =============================================
- ENDPOINT: FOOTBALL API ANTIGA
- =============================================
-app.get('/api/football', async (req, res) => {
-  const { endpoint, team } = req.query;
-  
-  if (!endpoint) {
-    return res.status(400).json({ error: 'Endpoint obrigatório' });
-  }
-  
-  let url = '';
-  switch (endpoint) {
-    case 'standings':
-      url = 'https://api.football-data.org/v4/competitions/WC/standings';
-      break;
-    case 'fixtures':
-      url = 'https://api.football-data.org/v4/competitions/WC/matches';
-      if (team) url += `?team=${team}`;
-      break;
-      case 'laliga_fixtures':
-  url = 'https://api.football-data.org/v4/competitions/PD/matches'; // PD = Primera Division
-  break;
-    case 'topscorers':
-      url = 'https://api.football-data.org/v4/competitions/WC/scorers';
-      break;
-    default:
-      return res.status(400).json({ error: 'Endpoint não suportado' });
-  }
-  
-  try {
-    const response = await fetch(url, {
-      headers: { 'X-Auth-Token': process.env.API_KEY }
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error('❌ Erro no proxy football:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-*/
-
-// =============================================
-// ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
+// ENDPOINTS PARA EQUIPES (TEAMS)
 // =============================================
 
-
-const FOOTBALL_DATA_API_KEY = process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_DATA_KEY || process.env.FOOTBALL_DATA_ORG_KEY;
-const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
-
-const FD_TEAM_MAP = {
-  'Mexico': 'mexico', 'South Africa': 'south_africa', 'Korea Republic': 'south_korea',
-  'South Korea': 'south_korea', 'Czech Republic': 'czech_republic', 'Canada': 'canada',
-  'Bosnia and Herzegovina': 'bosnia', 'Brazil': 'brazil', 'Morocco': 'morocco',
-  'United States': 'usa', 'USA': 'usa', 'Paraguay': 'paraguay', 'Australia': 'australia',
-  'Turkey': 'turkey', 'Türkiye': 'turkey', 'Germany': 'germany', 'Curacao': 'curacao',
-  'Côte d\'Ivoire': 'ivory_coast', 'Ivory Coast': 'ivory_coast', 'Ecuador': 'ecuador',
-  'Netherlands': 'netherlands', 'Japan': 'japan', 'Sweden': 'sweden', 'Tunisia': 'tunisia',
-  'Belgium': 'belgium', 'Egypt': 'egypt', 'Iran': 'iran', 'New Zealand': 'new_zealand',
-  'Spain': 'spain', 'Cape Verde': 'cape_verde', 'Saudi Arabia': 'saudi_arabia',
-  'Uruguay': 'uruguay', 'France': 'france', 'Senegal': 'senegal', 'Iraq': 'iraq',
-  'Norway': 'norway', 'Argentina': 'argentina', 'Algeria': 'algeria', 'Austria': 'austria',
-  'Jordan': 'jordan', 'Portugal': 'portugal', 'DR Congo': 'dr_congo', 'Congo DR': 'dr_congo',
-  'Uzbekistan': 'uzbekistan', 'Colombia': 'colombia', 'England': 'england',
-  'Croatia': 'croatia', 'Ghana': 'ghana', 'Panama': 'panama', 'Poland': 'poland',
-  'Serbia': 'serbia', 'Denmark': 'denmark', 'Wales': 'wales', 'Ukraine': 'ukraine',
-  'Nigeria': 'nigeria', 'Cameroon': 'cameroon',
-  'Valencia CF': 'valencia', 'Valencia': 'valencia',
-  'Rayo Vallecano': 'rayo_vallecano', 'Rayo Vallecano de Madrid': 'rayo_vallecano',
-  'Girona FC': 'girona', 'Girona': 'girona',
-  'Real Sociedad': 'real_sociedad', 'Real Sociedad de Fútbol': 'real_sociedad',
-  'Real Madrid CF': 'real_madrid', 'Real Madrid': 'real_madrid',
-  'FC Barcelona': 'barcelona', 'Barcelona': 'barcelona',
-  'Club Atlético de Madrid': 'atletico_madrid', 'Atlético Madrid': 'atletico_madrid',
-  'Athletic Club': 'athletic_bilbao', 'Athletic Bilbao': 'athletic_bilbao',
-  'Sevilla FC': 'sevilla', 'Sevilla': 'sevilla',
-  'Villarreal CF': 'villarreal', 'Villarreal': 'villarreal',
-  'Real Betis Balompié': 'betis', 'Real Betis': 'betis',
-  'Celta Vigo': 'celta_vigo', 'RC Celta de Vigo': 'celta_vigo',
-  'CA Osasuna': 'osasuna', 'Osasuna': 'osasuna',
-  'Getafe CF': 'getafe', 'Getafe': 'getafe',
-  'RCD Mallorca': 'mallorca', 'Mallorca': 'mallorca',
-  'RCD Espanyol': 'espanyol', 'Espanyol': 'espanyol',
-  'Deportivo Alavés': 'alaves', 'Alavés': 'alaves',
-  'CD Leganés': 'leganes', 'Leganés': 'leganes',
-  'UD Las Palmas': 'las_palmas', 'Las Palmas': 'las_palmas',
-  'Real Valladolid': 'valladolid', 'Valladolid': 'valladolid'
-};
-
-function normalizeTeamName(name) {
-  if (!name) return null;
-  return name.toString().toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '');
-}
-
-function mapFdTeam(name) {
-  if (!name) return null;
-  if (FD_TEAM_MAP[name]) return FD_TEAM_MAP[name];
-  return normalizeTeamName(name);
-}
-
-function mapFdStatus(status) {
-  if (!status) return 'upcoming';
-  const finished = ['FINISHED', 'AWARDED'].includes(status);
-  const live = ['IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'].includes(status);
-  return finished ? 'completed' : live ? 'live' : 'upcoming';
-}
-
-async function fetchFootballData(path, params = {}) {
-  if (!FOOTBALL_DATA_API_KEY) {
-    throw new Error('Football Data API key não configurada');
-  }
-  const url = new URL(`${FOOTBALL_DATA_BASE_URL}${path}`);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value != null) url.searchParams.set(key, value);
-  });
-
-  const response = await fetch(url.toString(), {
-    headers: { 'X-Auth-Token': FOOTBALL_DATA_API_KEY }
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Football Data ${path} → HTTP ${response.status} ${text}`);
-  }
-  return response.json();
-}
-
-function getCompetitionCode(game) {
-  if (!game?.group) return null;
-  const group = game.group.toString();
-  if (group === 'La Liga' || group === 'PD') return 'PD';
-  if (group === 'Premier League' || group === 'PL') return 'PL';
-  if (group === 'Bundesliga' || group === 'BL1') return 'BL1';
-  if (group === 'Serie A' || group === 'SA') return 'SA';
-  if (group === 'Ligue 1' || group === 'FL1') return 'FL1';
-  if (group === 'Champions League' || group === 'CL') return 'CL';
-  if (/^[A-L]$/.test(group)) return 'WC';
-  return null;
-}
-
-function matchTeamsToLocal(game, match) {
-  const homeKey = mapFdTeam(match.homeTeam?.name);
-  const awayKey = mapFdTeam(match.awayTeam?.name);
-  if (!homeKey || !awayKey) return false;
-  return (game.home === homeKey && game.away === awayKey) || (game.home === awayKey && game.away === homeKey);
-}
-
-async function resolveFootballDataMatch(game) {
-  const competition = getCompetitionCode(game);
-  if (!competition) return null;
-  const date = game.date;
-  if (!date) return null;
-
-  const data = await fetchFootballData(`/competitions/${competition}/matches`, {
-    dateFrom: date,
-    dateTo: date,
-  });
-
-  const matches = Array.isArray(data.matches) ? data.matches : [];
-  const candidates = matches.filter(match => matchTeamsToLocal(game, match));
-  if (candidates.length === 1) return candidates[0];
-  if (candidates.length > 1) {
-    const normalizedTime = game.time ? game.time.replace(':', '') : null;
-    return candidates.find(match => {
-      const matchTime = match.utcDate?.substring(11, 16);
-      return matchTime === game.time;
-    }) || candidates[0];
-  }
-  return null;
-}
-
-function buildScorersFromMatch(match) {
-  if (!Array.isArray(match.goals)) return [];
-  const grouped = {};
-  for (const goal of match.goals) {
-    if (!goal || goal.type === 'OWN_GOAL') continue;
-    const playerName = goal.scorer?.name;
-    const teamKey = mapFdTeam(goal.team?.name);
-    if (!playerName) continue;
-    const key = `${playerName}::${teamKey}`;
-    if (!grouped[key]) {
-      grouped[key] = { playerName, playerId: null, goals: 0, team: teamKey, minutes: [] };
-    }
-    grouped[key].goals++;
-    if (goal.minute) grouped[key].minutes.push(goal.minute);
-  }
-  return Object.values(grouped);
-}
-
-function buildEventsFromMatch(match) {
-  if (!Array.isArray(match.bookings)) return [];
-  return match.bookings.map(b => ({
-    type: b.card === 'YELLOW_CARD' ? 'yellow_card' : 'red_card',
-    playerName: b.player?.name ?? null,
-    playerId: null,
-    minute: b.minute ?? 0,
-    team: mapFdTeam(b.team?.name)
-  }));
-}
-
-async function syncFootballDataResults(competitions = ['WC', 'PD']) {
-  const result = { updated: 0, details: [] };
-  if (!pool) throw new Error('Banco não conectado');
-
-  const gamesRes = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
-  let games = gamesRes.rows[0]?.data?.games || [];
-  if (!Array.isArray(games)) games = [];
-
-  const now = new Date();
-  const candidates = games.filter(g => g.status !== 'completed' && g.home && g.away && getCompetitionCode(g));
-
-  for (const game of candidates) {
-    const competition = getCompetitionCode(game);
-    if (!competition) continue;
-
-    try {
-      const existingFdId = game.fdId;
-      const match = game.fdId ?
-        (await fetchFootballData(`/matches/${game.fdId}`)).match :
-        await resolveFootballDataMatch(game);
-
-      if (!match) {
-        result.details.push({ gameId: game.id, reason: 'não encontrado' });
-        continue;
-      }
-
-      if (!game.fdId) {
-        game.fdId = match.id?.toString();
-        game.apiId = game.fdId;
-      }
-
-      const status = mapFdStatus(match.status?.status);
-      const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? null;
-      const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? null;
-      const scorers = buildScorersFromMatch(match);
-      const events = buildEventsFromMatch(match);
-
-      const prevResult = game.result || {};
-      const hasNewId = !existingFdId && !!game.fdId;
-      const changed = hasNewId || (
-        game.status !== status ||
-        prevResult.homeScore !== homeScore ||
-        prevResult.awayScore !== awayScore ||
-        JSON.stringify(prevResult.scorers || []) !== JSON.stringify(scorers) ||
-        JSON.stringify(prevResult.events || []) !== JSON.stringify(events)
-      );
-
-      game.status = status;
-      game.result = {
-        homeScore,
-        awayScore,
-        scorers: scorers.length ? scorers : (prevResult.scorers || []),
-        events: events.length ? events : (prevResult.events || []),
-        craqueId: prevResult.craqueId ?? null,
-      };
-
-      if (changed) {
-        result.updated++;
-        result.details.push({
-          gameId: game.id,
-          fdId: game.fdId,
-          status,
-          homeScore,
-          awayScore,
-          scorers: scorers.length,
-          events: events.length,
-          mergedId: hasNewId,
-        });
-      }
-    } catch (err) {
-      result.details.push({ gameId: game.id, error: err.message });
-    }
-  }
-
-  if (result.updated > 0) {
-    await pool.query(
-      `INSERT INTO games (id, data) VALUES ($1, $2)
-       ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
-      ['games_data', { games }]
-    );
-  }
-
-  return result;
-}
-
-app.get('/api/fd', async (req, res) => {
-  const { path, ttl, ...query } = req.query;
-  if (!path) return res.status(400).json({ error: 'Parametro path obrigatório' });
-
-  try {
-    const data = await fetchFootballData(path, query);
-    res.json(data);
-  } catch (error) {
-    console.error('❌ Erro no proxy Football Data:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/sync-results', async (req, res) => {
-  const competitions = Array.isArray(req.body?.competitions) ? req.body.competitions : ['WC', 'PD'];
-  try {
-    const result = await syncFootballDataResults(competitions);
-    res.json({ success: true, ...result });
-  } catch (error) {
-    console.error('❌ Erro /api/sync-results:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post('/api/update-results', async (req, res) => {
-  const gamesToUpdate = games.filter(g => {
-  if (g.status === 'completed') return false;  // ← já protegido
-  if (!g.apiId) return false;
-  const gameStart = new Date(`${g.date}T${g.time}:00`);
-  return gameStart <= now;
-});
-  try {
-    const result = await syncFootballDataResults(['WC', 'PD']);
-    res.json({ success: true, updated: result.updated, details: result.details });
-  } catch (error) {
-    console.error('❌ Erro no update automático:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/teams - listar todos os times
+// GET /api/teams
 app.get('/api/teams', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   try {
@@ -726,15 +138,16 @@ app.get('/api/teams', async (req, res) => {
   }
 });
 
-// POST /api/teams - criar novo time
+// POST /api/teams
 app.post('/api/teams', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { id, name, flag, color, group } = req.body;
   if (!id || !name) return res.status(400).json({ error: 'id e name são obrigatórios' });
   try {
     await pool.query(
-      'INSERT INTO teams (id, name, flag, color, group_name, is_custom) VALUES ($1, $2, $3, $4, $5, $6)',
-      [id, name, flag || null, color || null, group || null, true]
+      `INSERT INTO teams (id, name, flag, color, group_name, is_custom)
+       VALUES ($1, $2, $3, $4, $5, true)`,
+      [id, name, flag || null, color || null, group || null]
     );
     res.json({ success: true });
   } catch (error) {
@@ -742,14 +155,14 @@ app.post('/api/teams', async (req, res) => {
   }
 });
 
-// PUT /api/teams/:id - editar time
+// PUT /api/teams/:id
 app.put('/api/teams/:id', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { id } = req.params;
   const { name, flag, color, group } = req.body;
   try {
     await pool.query(
-      'UPDATE teams SET name = $1, flag = $2, color = $3, group_name = $4 WHERE id = $5',
+      `UPDATE teams SET name = $1, flag = $2, color = $3, group_name = $4 WHERE id = $5`,
       [name, flag, color, group, id]
     );
     res.json({ success: true });
@@ -758,13 +171,16 @@ app.put('/api/teams/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/teams/:id - remover time (somente se for custom e não usado em partidas)
+// DELETE /api/teams/:id
 app.delete('/api/teams/:id', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { id } = req.params;
   try {
     // Verificar se o time está sendo usado em alguma partida
-    const check = await pool.query("SELECT 1 FROM games WHERE data->>'home' = $1 OR data->>'away' = $1 LIMIT 1", [id]);
+    const check = await pool.query(
+      `SELECT 1 FROM games_structured WHERE home_team = $1 OR away_team = $1 LIMIT 1`,
+      [id]
+    );
     if (check.rowCount > 0) {
       return res.status(400).json({ error: 'Time está sendo usado em uma ou mais partidas. Remova as partidas primeiro.' });
     }
@@ -775,7 +191,10 @@ app.delete('/api/teams/:id', async (req, res) => {
   }
 });
 
-// GET /api/games-structured
+// =============================================
+// ENDPOINTS PARA PARTIDAS (GAMES_STRUCTURED)
+// =============================================
+
 // GET /api/games-structured
 app.get('/api/games-structured', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
@@ -787,7 +206,7 @@ app.get('/api/games-structured', async (req, res) => {
   }
 });
 
-// POST /api/games-structured - criar nova partida
+// POST /api/games-structured
 app.post('/api/games-structured', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { id, date, time, home_team, away_team, group_name, venue } = req.body;
@@ -806,7 +225,7 @@ app.post('/api/games-structured', async (req, res) => {
   }
 });
 
-// PUT /api/games-structured/:id - editar partida
+// PUT /api/games-structured/:id
 app.put('/api/games-structured/:id', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { id } = req.params;
@@ -824,7 +243,7 @@ app.put('/api/games-structured/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/games-structured/:id - remover partida
+// DELETE /api/games-structured/:id
 app.delete('/api/games-structured/:id', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { id } = req.params;
@@ -842,12 +261,192 @@ app.delete('/api/games-structured/:id', async (req, res) => {
 });
 
 // =============================================
+// ENDPOINTS LEGADOS (USERS, BETS, GAMES)
+// =============================================
+
+// GET /api/users
+app.get('/api/users', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  try {
+    const result = await pool.query(`
+      SELECT id, profile_name as "profileName", email, is_admin as "isAdmin",
+             is_hidden as "isHidden", secure_auth as "secureAuth",
+             two_fa_code as "twoFaCode", admin_overrides as "adminOverrides",
+             created_at as "createdAt"
+      FROM users ORDER BY created_at DESC
+    `);
+    res.json({ users: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/users
+app.post('/api/users', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { users } = req.body;
+  if (!users || !Array.isArray(users)) return res.status(400).json({ error: 'Dados inválidos' });
+  try {
+    for (const user of users) {
+      await pool.query(`
+        INSERT INTO users (id, profile_name, password_player_id, email, is_admin, is_hidden, secure_auth, two_fa_code, admin_overrides, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ON CONFLICT (id) DO UPDATE SET
+          profile_name = EXCLUDED.profile_name,
+          password_player_id = EXCLUDED.password_player_id,
+          email = EXCLUDED.email,
+          is_admin = EXCLUDED.is_admin,
+          is_hidden = EXCLUDED.is_hidden,
+          secure_auth = EXCLUDED.secure_auth,
+          two_fa_code = EXCLUDED.two_fa_code,
+          admin_overrides = EXCLUDED.admin_overrides,
+          created_at = EXCLUDED.created_at
+      `, [
+        user.id, user.profileName, user.passwordPlayerId, user.email || null,
+        user.isAdmin || false, user.isHidden || false, user.secureAuth || false,
+        user.twoFaCode || null, user.adminOverrides || null, user.createdAt || Date.now()
+      ]);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/users/:id
+app.delete('/api/users/:id', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { id } = req.params;
+  if (id === 'admin_default') return res.status(403).json({ error: 'Não é possível remover o administrador padrão' });
+  try {
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
+    await pool.query('DELETE FROM bets WHERE user_id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/bets
+app.get('/api/bets', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  try {
+    const result = await pool.query('SELECT * FROM bets');
+    const bets = {};
+    for (const row of result.rows) {
+      if (!bets[row.user_id]) bets[row.user_id] = {};
+      bets[row.user_id][row.game_id] = {
+        homeScore: row.home_score,
+        awayScore: row.away_score,
+        playerId: row.player_id,
+        savedAt: row.saved_at
+      };
+    }
+    res.json({ bets });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/bets
+app.post('/api/bets', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { bets } = req.body;
+  if (!bets) return res.json({ success: true });
+  try {
+    for (const [userId, userBets] of Object.entries(bets)) {
+      for (const [gameId, bet] of Object.entries(userBets)) {
+        await pool.query(`
+          INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at)
+          VALUES ($1, $2, $3, $4, $5, $6)
+          ON CONFLICT (user_id, game_id) DO UPDATE SET
+            home_score = EXCLUDED.home_score,
+            away_score = EXCLUDED.away_score,
+            player_id = EXCLUDED.player_id,
+            saved_at = EXCLUDED.saved_at
+        `, [userId, gameId, bet.homeScore, bet.awayScore, bet.playerId, bet.savedAt || Date.now()]);
+      }
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/games (legado)
+app.get('/api/games', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  try {
+    const result = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
+    res.json({ games: result.rows[0]?.data || null });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/games (legado)
+app.post('/api/games', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { games } = req.body;
+  if (!games) return res.json({ success: true });
+  try {
+    await pool.query(`
+      INSERT INTO games (id, data) VALUES ($1, $2)
+      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
+    `, ['games_data', { games }]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/clear
+app.delete('/api/clear', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  try {
+    await pool.query('DELETE FROM users');
+    await pool.query('DELETE FROM bets');
+    await pool.query('DELETE FROM games');
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// PROXY THE SPORTS DB
+// =============================================
+const THESPORTSDB_API_KEY = '123';
+const THESPORTSDB_BASE_URL = 'https://www.thesportsdb.com/api/v1/json';
+
+app.get('/api/tsdb', async (req, res) => {
+  const { endpoint, leagueId, id, date } = req.query;
+  let url = '';
+  if (endpoint === 'events_season') {
+    url = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/eventsseason.php?id=${leagueId}`;
+  } else if (endpoint === 'event_timeline') {
+    url = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/lookuptimeline.php?id=${id}`;
+  } else if (endpoint === 'events_day') {
+    url = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/eventsday.php?d=${date}`;
+  } else {
+    return res.status(400).json({ error: 'Endpoint não suportado' });
+  }
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('❌ Erro no proxy TheSportsDB:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
 // FALLBACK
 // =============================================
 app.get('*', (req, res) => {
-  if (req.path.match(/\.\w+$/)) {
-    return res.status(404).send('Arquivo não encontrado');
-  }
+  if (req.path.match(/\.\w+$/)) return res.status(404).send('Arquivo não encontrado');
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
