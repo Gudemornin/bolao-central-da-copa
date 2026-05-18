@@ -885,3 +885,7 @@
   position: relative;
   width: 100%;
 }
+
+.player-search-results.open {
+  display: block !important;
+}
