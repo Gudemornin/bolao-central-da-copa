@@ -42,7 +42,7 @@ export function calcBetPoints(bet, game, gameEvents = null) {
     // GOLS
     const goals = playerEvents.filter(e => e.type === 'goal').length;
     if (goals > 0) {
-      pts += 3;                       // base
+      pts += 2;                       // base
       pts += (goals - 1) * 2;         // +2 por gol adicional
     }
     
@@ -54,21 +54,14 @@ export function calcBetPoints(bet, game, gameEvents = null) {
     }
     
     // CARTÕES
-    const yellowCards = playerEvents.filter(e => e.type === 'yellow_card').length;
     const redCards = playerEvents.filter(e => e.type === 'red_card').length;
-    pts -= yellowCards * 2;
-    pts -= redCards * 4;
-    
-    // PÊNALTI DEFENDIDO (goleiro)
-    if (isGoalkeeper) {
-      const penaltiesSaved = playerEvents.filter(e => e.type === 'penalty_saved').length;
-      pts += penaltiesSaved * 5;
-    }
+    pts -= redCards * 2;
+
 
   }
   
   // 4. CRAQUE DO JOGO
-  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 4;
+  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 2;
   
   return pts;
 }

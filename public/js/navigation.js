@@ -1,4 +1,5 @@
-// navigation.js - COMPLETO E CORRIGIDO
+// navigation.js - versão corrigida
+
 import { cap } from './utils.js';
 import { setCurrentTab, currentUser } from './state.js';
 import { renderGames } from './gamemanager.js';
@@ -12,6 +13,7 @@ import { loadGames } from './storage.js';
 import { getPlayer } from './exportplayer.js';
 import { updateMobileActiveTab, updateMobileMenu } from './app.js';
 import { renderCommunityBets } from './communityBets.js';
+import { renderSpecials } from './specials.js';
 
 // =============================================
 // FUNÇÃO PARA EXIBIR "JOGOS DA COPA"
@@ -146,7 +148,7 @@ function renderProfile() {
     <div class="info-grid">
       <div class="info-card">
         <div class="info-card-title">📋 Informações da Conta</div>
-        <div class="rule-item"><strong>Nome:</strong> ${currentUser.profileName}</div>
+        <div class="rule-item"><strong>Nome:</strong> ${escapeHtml(currentUser.profileName)}</div>
         <div class="rule-item"><strong>E-mail:</strong> ${currentUser.email || 'Não informado'}</div>
         <div class="rule-item"><strong>ID:</strong> ${currentUser.id}</div>
         <div class="rule-item"><strong>Admin:</strong> ${currentUser.isAdmin ? 'Sim 👑' : 'Não'}</div>
@@ -155,11 +157,18 @@ function renderProfile() {
       <div class="info-card">
         <div class="info-card-title">🔐 Segurança</div>
         <div class="rule-item"><strong>Autenticação 2FA:</strong> ${currentUser.secureAuth ? '✅ Ativada' : '❌ Desativada'}</div>
-        <button class="btn btn-blue" onclick="changePassword()" style="margin-top:16px;">🔑 Alterar Senha</button>
-        <button class="btn-ghost" onclick="logout()" style="margin-top:8px;width:100%;">🚪 Sair da Conta</button>
+        <button class="btn btn-blue" onclick="window.changePassword()" style="margin-top:16px;">🔑 Alterar Senha</button>
+        <button class="btn-ghost" onclick="window.logout()" style="margin-top:8px;width:100%;">🚪 Sair da Conta</button>
       </div>
     </div>
   `;
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // =============================================
@@ -210,25 +219,20 @@ export async function switchTab(tab) {
   }
   
   // Outras abas
-  if (tab === 'games') await renderGames();
-  if (tab === 'bets') await renderBets();
-  if (tab === 'community') await renderCommunityBets();
-  if (tab === 'ranking') await renderRanking();
-  if (tab === 'worldcup') await renderWorldCupGames();
-  if (tab === 'standings') await renderStandings();
-  if (tab === 'topscorers') await renderTopScorers();
-  if (tab === 'profile') renderProfile();
-  if (tab === 'specials') {
-  import('./specials.js').then(module => module.renderSpecials());
+  try {
+    if (tab === 'games') await renderGames();
+    if (tab === 'bets') await renderBets();
+    if (tab === 'community') await renderCommunityBets();
+    if (tab === 'ranking') await renderRanking();
+    if (tab === 'worldcup') await renderWorldCupGames();
+    if (tab === 'standings') await renderStandings();
+    if (tab === 'topscorers') await renderTopScorers();
+    if (tab === 'profile') renderProfile();
+    if (tab === 'specials') await renderSpecials();
+  } catch (error) {
+    console.error(`❌ Erro ao renderizar aba ${tab}:`, error);
+  }
 }
-}
-
-// =============================================
-// FUNÇÃO PARA TROCAR SENHA
-// =============================================
-window.changePassword = () => {
-  alert('Funcionalidade de troca de senha em desenvolvimento.\n\nPor enquanto, solicite ao administrador uma nova senha temporária.');
-};
 
 // =============================================
 // EXPORTAÇÕES E REGISTROS

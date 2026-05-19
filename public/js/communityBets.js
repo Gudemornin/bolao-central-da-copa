@@ -363,7 +363,6 @@ function calculateBetPoints(bet, game) {
   // Jogadores do palpite (suporta até 2)
   const players = [
     { id: bet.playerId, role: bet.playerRole || 'field' },
-    { id: bet.player2Id, role: bet.player2Role || 'field' }
   ].filter(p => p.id);
   
   for (const player of players) {
@@ -377,7 +376,7 @@ function calculateBetPoints(bet, game) {
     // GOLS
     const goals = playerEvents.filter(e => e.type === 'goal').length;
     if (goals > 0) {
-      pts += 3;                       // base
+      pts += 2;                       // base
       pts += (goals - 1) * 2;         // +2 por gol adicional
     }
     
@@ -386,22 +385,13 @@ function calculateBetPoints(bet, game) {
     pts += assists * 1;               // 1 ponto por assistência
     
     // CARTÕES
-    const yellowCards = playerEvents.filter(e => e.type === 'yellow_card').length;
     const redCards = playerEvents.filter(e => e.type === 'red_card').length;
-    pts -= yellowCards * 2;
-    pts -= redCards * 4;
-    
-    // PÊNALTI DEFENDIDO (goleiro)
-    if (isGoalkeeper) {
-      const penaltiesSaved = playerEvents.filter(e => e.type === 'penalty_saved').length;
-      pts += penaltiesSaved * 5;
-    }
-    
+    pts -= redCards * 2;
 
   }
   
   // 4. CRAQUE DO JOGO
-  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 4;
+  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 2;
   
   return pts;
 }
