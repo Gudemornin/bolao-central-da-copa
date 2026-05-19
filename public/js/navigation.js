@@ -1,4 +1,4 @@
-// navigation.js - VERSÃO CORRIGIDA COM LOGS E TRATAMENTO DE ERROS
+// navigation.js - CORRIGIDO (sem mock, com logs e fallback visual)
 import { cap } from './utils.js';
 import { setCurrentTab, currentUser } from './state.js';
 import { renderGames } from './gamemanager.js';
@@ -20,8 +20,9 @@ async function renderWorldCupGames() {
     console.error('❌ Container #worldcupGamesList não encontrado');
     return;
   }
-  console.log('🌍 renderWorldCupGames() chamada');
-  
+  console.log('🌍 renderWorldCupGames() iniciada');
+  container.innerHTML = '<div class="empty-state">⏳ Carregando jogos...</div>';
+
   try {
     let games = GAMES_STATE;
     if (!games.length) games = await loadGames();
@@ -34,7 +35,7 @@ async function renderWorldCupGames() {
       container.innerHTML = '<div class="empty-state">📅 Calendário da Copa 2026 será exibido em breve.</div>';
       return;
     }
-    // Agrupar e exibir (mesmo código que você já tinha)
+
     const gamesByDate = {};
     worldCupGames.forEach(game => {
       if (!gamesByDate[game.date]) gamesByDate[game.date] = [];
@@ -70,29 +71,30 @@ async function renderWorldCupGames() {
       html += `</div></div>`;
     }
     container.innerHTML = html;
+    console.log('✅ Jogos da Copa renderizados');
   } catch (err) {
     console.error('Erro em renderWorldCupGames:', err);
-    container.innerHTML = '<div class="empty-state">❌ Erro ao carregar jogos da Copa. Verifique o console.</div>';
+    container.innerHTML = `<div class="empty-state">❌ Erro: ${err.message}</div>`;
   }
 }
 
-// ==================== CLASSIFICAÇÃO (via API real) ====================
+// ==================== CLASSIFICAÇÃO (API real) ====================
 async function renderStandings() {
   const container = document.getElementById('standingsContainer');
   if (!container) {
     console.error('❌ Container #standingsContainer não encontrado');
     return;
   }
-  console.log('📊 renderStandings() chamada');
+  console.log('📊 renderStandings() iniciada');
   container.innerHTML = '<div class="empty-state">⏳ Carregando classificação...</div>';
-  
+
   try {
     const res = await fetch('/api/fd?path=/competitions/WC/standings&season=2026&ttl=900');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const rawGroups = data.standings || [];
     if (!rawGroups.length) throw new Error('Nenhum dado de classificação retornado.');
-    
+
     let html = `<div class="page-header"><div class="page-title">📊 Classificação dos Grupos</div><div class="page-subtitle">Copa do Mundo 2026 - dados oficiais</div></div>`;
     for (const group of rawGroups) {
       const groupName = group.group || group.stage || 'Grupo';
@@ -120,29 +122,30 @@ async function renderStandings() {
       html += `</tbody></table></div>`;
     }
     container.innerHTML = html;
+    console.log('✅ Classificação renderizada');
   } catch (err) {
     console.error('Erro em renderStandings:', err);
-    container.innerHTML = '<div class="empty-state">❌ Não foi possível carregar a classificação da API. Verifique a chave FOOTBALL_DATA_API_KEY no servidor.<br>Detalhe: ' + err.message + '</div>';
+    container.innerHTML = `<div class="empty-state">❌ Erro ao carregar classificação: ${err.message}<br>Verifique a chave FOOTBALL_DATA_API_KEY no servidor.</div>`;
   }
 }
 
-// ==================== ARTILHARIA (via API real) ====================
+// ==================== ARTILHARIA (API real) ====================
 async function renderTopScorers() {
   const container = document.getElementById('topscorersList');
   if (!container) {
     console.error('❌ Container #topscorersList não encontrado');
     return;
   }
-  console.log('⚽ renderTopScorers() chamada');
+  console.log('⚽ renderTopScorers() iniciada');
   container.innerHTML = '<div class="empty-state">⏳ Carregando artilheiros...</div>';
-  
+
   try {
     const res = await fetch('/api/fd?path=/competitions/WC/scorers&season=2026&limit=20&ttl=1800');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const scorers = data.scorers || [];
     if (!scorers.length) throw new Error('Nenhum artilheiro retornado.');
-    
+
     let html = `<div class="page-header"><div class="page-title">⚽ Artilharia da Copa</div><div class="page-subtitle">Goleadores - dados oficiais</div></div>
                 <div class="ranking-wrap"><table class="ranking-table"><thead><tr><th>#</th><th>Jogador</th><th>Seleção</th><th>Gols</th></tr></thead><tbody>`;
     scorers.forEach((s, i) => {
@@ -159,9 +162,10 @@ async function renderTopScorers() {
     });
     html += `</tbody></table></div>`;
     container.innerHTML = html;
+    console.log('✅ Artilharia renderizada');
   } catch (err) {
     console.error('Erro em renderTopScorers:', err);
-    container.innerHTML = '<div class="empty-state">❌ Não foi possível carregar a artilharia da API. Verifique a chave FOOTBALL_DATA_API_KEY no servidor.<br>Detalhe: ' + err.message + '</div>';
+    container.innerHTML = `<div class="empty-state">❌ Erro ao carregar artilharia: ${err.message}<br>Verifique a chave FOOTBALL_DATA_API_KEY.</div>`;
   }
 }
 
@@ -177,22 +181,29 @@ function renderProfile() {
     container.innerHTML = '<div class="empty-state">Faça login para ver seu perfil.</div>';
     return;
   }
+  // Limpa qualquer conteúdo estático e injeta o perfil
   container.innerHTML = `
-    <div class="page-header"><div class="page-title">👤 Meu Perfil</div></div>
+    <div class="page-header">
+      <div class="page-title">👤 Meu Perfil</div>
+    </div>
     <div class="info-grid">
-      <div class="info-card"><div class="info-card-title">📋 Informações</div>
+      <div class="info-card">
+        <div class="info-card-title">📋 Informações</div>
         <div class="rule-item"><strong>Nome:</strong> ${escapeHtml(currentUser.profileName)}</div>
         <div class="rule-item"><strong>E-mail:</strong> ${currentUser.email || 'Não informado'}</div>
         <div class="rule-item"><strong>Admin:</strong> ${currentUser.isAdmin ? 'Sim' : 'Não'}</div>
         <div class="rule-item"><strong>ID:</strong> ${currentUser.id}</div>
       </div>
-      <div class="info-card"><div class="info-card-title">🔐 Segurança</div>
+      <div class="info-card">
+        <div class="info-card-title">🔐 Segurança</div>
         <button class="btn btn-blue" onclick="window.changePassword()">Alterar Senha</button>
         <button class="btn-ghost" onclick="window.logout()">Sair</button>
       </div>
     </div>
   `;
+  console.log('✅ Perfil renderizado');
 }
+
 function escapeHtml(text) {
   if (!text) return '';
   const div = document.createElement('div');
@@ -204,7 +215,7 @@ function escapeHtml(text) {
 export async function switchTab(tab) {
   console.log('🔄 switchTab chamado para:', tab);
   setCurrentTab(tab);
-  
+
   // Atualizar UI dos menus
   document.querySelectorAll('.sidebar .nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
@@ -213,11 +224,11 @@ export async function switchTab(tab) {
   document.querySelectorAll('.tab-content').forEach(el => {
     el.classList.toggle('active', el.id === 'tab' + cap(tab));
   });
-  
+
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar')?.classList.remove('open');
   }
-  
+
   // Admin
   if (tab === 'admin') {
     if (currentUser && currentUser.isAdmin) {
@@ -228,8 +239,8 @@ export async function switchTab(tab) {
     }
     return;
   }
-  
-  // Outras abas - cada uma com seu próprio try/catch para não quebrar as demais
+
+  // Outras abas
   try {
     if (tab === 'games') await renderGames();
     if (tab === 'bets') await renderBets();
@@ -241,10 +252,9 @@ export async function switchTab(tab) {
     if (tab === 'profile') renderProfile();
     if (tab === 'specials') await renderSpecials();
   } catch (err) {
-    console.error(`❌ Erro CRÍTICO ao renderizar aba ${tab}:`, err);
-    // Tenta exibir uma mensagem no container da aba atual
+    console.error(`❌ Erro CRÍTICO na aba ${tab}:`, err);
     const activeContainer = document.querySelector(`#tab${cap(tab)}`);
-    if (activeContainer) activeContainer.innerHTML = `<div class="empty-state">❌ Erro ao carregar esta aba. Verifique o console.</div>`;
+    if (activeContainer) activeContainer.innerHTML = `<div class="empty-state">❌ Erro: ${err.message}</div>`;
   }
 }
 
@@ -253,4 +263,4 @@ window.renderProfile = renderProfile;
 window.renderWorldCupGames = renderWorldCupGames;
 window.renderStandings = renderStandings;
 window.renderTopScorers = renderTopScorers;
-console.log('✅ navigation.js recarregado (com logs e tratamento de erros)');
+console.log('✅ navigation.js carregado (versão corrigida sem mock)');
