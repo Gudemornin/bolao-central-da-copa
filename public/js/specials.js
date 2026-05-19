@@ -1,6 +1,5 @@
-// js/specials.js
+// js/specials.js - VERSÃO CORRIGIDA COM LOGS
 import { TEAMS } from './data/teams.js';
-import { PLAYERS } from './data/players.js';
 import { currentUser } from './state.js';
 import { showToast } from './ui.js';
 import { filterPlayers, getPlayer } from './exportplayer.js';
@@ -12,15 +11,35 @@ let selectedRevelation = null;
 
 export async function renderSpecials() {
   console.log('🎆 renderSpecials chamado');
+  
+  // 1. Verificar container
   const container = document.getElementById('tabSpecials');
   if (!container) {
-    console.error('Container #tabSpecials não encontrado');
+    console.error('❌ Container #tabSpecials não encontrado');
+    return;
+  }
+  console.log('✅ Container encontrado');
+
+  // 2. Verificar usuário logado
+  if (!currentUser) {
+    console.error('❌ currentUser é null/undefined');
+    container.innerHTML = '<div class="empty-state">Faça login para acessar.</div>';
+    return;
+  }
+  console.log('✅ Usuário logado:', currentUser.id);
+
+  // 3. Tenta carregar picks atuais
+  let picks = { championTeam: null, mvpPlayerId: null, revelationPlayerId: null };
+  try {
+    picks = await loadSpecialPicks(currentUser.id);
+    console.log('✅ Picks carregados:', picks);
+  } catch (err) {
+    console.error('❌ Erro ao carregar picks:', err);
+    container.innerHTML = '<div class="empty-state">❌ Erro ao carregar suas escolhas. Tente novamente.</div>';
     return;
   }
 
-  // Carregar escolhas atuais
-  const picks = await loadSpecialPicks(currentUser.id);
-
+  // 4. Injeta o HTML (mesmo se picks estiver vazio)
   container.innerHTML = `
     <div class="page-header">
       <div>
@@ -79,8 +98,9 @@ export async function renderSpecials() {
       <button class="btn btn-green" id="saveSpecialsBtn">💾 Salvar Escolhas</button>
     </div>
   `;
+  console.log('✅ HTML injetado');
 
-  // Inicializar seleções com dados carregados
+  // 5. Inicializar seleções com dados carregados
   if (picks.championTeam) {
     const team = TEAMS[picks.championTeam];
     if (team) setChampionDisplay(team);
@@ -94,14 +114,19 @@ export async function renderSpecials() {
     if (player) setRevelationDisplay(player);
   }
 
-  // Configurar buscas
+  // 6. Configurar buscas
   setupTeamSearch('championSearch', 'championResults', (team) => setChampionDisplay(team));
   setupPlayerSearch('mvpSearch', 'mvpResults', (player) => setMvpDisplay(player));
   setupPlayerSearch('revelationSearch', 'revelationResults', (player) => setRevelationDisplay(player));
 
-  document.getElementById('saveSpecialsBtn').onclick = async () => {
-    await saveSpecialPicks();
-  };
+  // 7. Configurar botão salvar
+  const saveBtn = document.getElementById('saveSpecialsBtn');
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      await saveSpecialPicks();
+    };
+  }
+  console.log('✅ Renderização concluída');
 }
 
 async function loadSpecialPicks(userId) {
