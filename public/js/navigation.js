@@ -218,6 +218,9 @@ export async function switchTab(tab) {
   if (tab === 'standings') await renderStandings();
   if (tab === 'topscorers') await renderTopScorers();
   if (tab === 'profile') renderProfile();
+  if (tab === 'specials') {
+  import('./specials.js').then(module => module.renderSpecials());
+}
 }
 
 // =============================================

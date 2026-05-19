@@ -25,7 +25,8 @@ export async function renderAdmin() {
 <button class="admin-tab-btn active" onclick="showAdminTab('users', this)">👥 Usuários</button>
     <button class="admin-tab-btn" onclick="showAdminTab('games', this)">⚽ Resultados</button>
     <button class="admin-tab-btn" onclick="showAdminTab('matches', this)">📅 Partidas</button>
-    <button class="admin-tab-btn" onclick="showAdminTab('teams', this)">🏷️ Equipes</button>
+      <button class="admin-tab-btn" onclick="showAdminTab('bets', this)">📋 Palpites</button>
+  <button class="admin-tab-btn" onclick="showAdminTab('specials', this)">🏆 Especiais</button>
     </div>
     <div id="adminTabContent"></div>
   `;
@@ -217,6 +218,63 @@ export async function renderAdminGames() {
   }
   
   renderGamesByDate('all');
+}
+
+async function renderAdminBets() {
+  const container = document.getElementById('adminTabContent');
+  if (!container) return;
+  const res = await fetch('/api/bets');
+  const data = await res.json();
+  const bets = data.bets || {};
+  const usersRes = await fetch('/api/users');
+  const usersData = await usersRes.json();
+  const users = usersData.users || [];
+  const games = await loadGames(); // função já existente
+
+  let html = `<div class="ranking-wrap"><table class="ranking-table"><thead><tr><th>Usuário</th><th>Jogo</th><th>Placar</th><th>Jogador</th><th>Data do Palpite</th></tr></thead><tbody>`;
+  for (const [userId, userBets] of Object.entries(bets)) {
+    const user = users.find(u => u.id === userId);
+    const userName = user ? user.profileName : userId;
+    for (const [gameId, bet] of Object.entries(userBets)) {
+      const game = games.find(g => g.id === gameId);
+      const gameTitle = game ? `${game.home} x ${game.away}` : gameId;
+      const player = bet.playerId ? getPlayer(bet.playerId) : null;
+      const playerName = player ? player.name : '—';
+      html += `<tr>
+        <td>${userName}</td>
+        <td>${gameTitle}</td>
+        <td>${bet.homeScore} : ${bet.awayScore}</td>
+        <td>${playerName}</td>
+        <td>${new Date(bet.savedAt).toLocaleString()}</td>
+      </tr>`;
+    }
+  }
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+}
+
+async function renderAdminSpecials() {
+  const container = document.getElementById('adminTabContent');
+  if (!container) return;
+  const res = await fetch('/api/special-picks/all');
+  const data = await res.json();
+  const picks = data.picks || [];
+
+  let html = `<div class="ranking-wrap"><table class="ranking-table"><thead><tr><th>Usuário</th><th>Campeão</th><th>Craque (MVP)</th><th>Revelação</th><th>Atualizado em</th></tr></thead><tbody>`;
+  for (const pick of picks) {
+    const championTeam = pick.champion_team ? (TEAMS[pick.champion_team]?.name || pick.champion_team) : '—';
+    const mvp = pick.mvp_player_id ? (getPlayer(pick.mvp_player_id)?.name || pick.mvp_player_id) : '—';
+    const revelation = pick.revelation_player_id ? (getPlayer(pick.revelation_player_id)?.name || pick.revelation_player_id) : '—';
+    html += `<tr>
+      <td>${pick.profile_name}</td>
+      <td>${championTeam}</td>
+      <td>${mvp}</td>
+      <td>${revelation}</td>
+      <td>${new Date(pick.updated_at).toLocaleString()}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
 }
 
 async function renderAdminTeams() {
@@ -862,8 +920,11 @@ window.showAdminPlayerResults  = showAdminPlayerResults;
 window.selectAdminPlayer       = selectAdminPlayer;
 window.showAdminTab = (tab, button) => {
   // ... código existente ...
+  
   if (tab === 'users') renderAdminPanel();
   else if (tab === 'games') renderAdminGames();
   else if (tab === 'matches') renderAdminMatches();
   else if (tab === 'teams') renderAdminTeams();
+  else if (tab === 'bets') renderAdminBets();
+  else if (tab === 'specials') renderAdminSpecials();
 };

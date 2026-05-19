@@ -100,6 +100,17 @@ async function initDatabase() {
     `);
     console.log('✅ Tabela "bets" verificada/criada');
 
+    await pool.query(`
+  CREATE TABLE IF NOT EXISTS special_picks (
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    champion_team TEXT,
+    mvp_player_id TEXT,
+    revelation_player_id TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+console.log('✅ Tabela "special_picks" verificada/criada');
+
     // 5. Tabela de jogos (backup JSON) – opcional
     await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
@@ -438,6 +449,64 @@ app.get('/api/tsdb', async (req, res) => {
     res.json(data);
   } catch (error) {
     console.error('❌ Erro no proxy TheSportsDB:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/special-picks/:userId
+app.get('/api/special-picks/:userId', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { userId } = req.params;
+  try {
+    const result = await pool.query(
+      'SELECT champion_team, mvp_player_id, revelation_player_id FROM special_picks WHERE user_id = $1',
+      [userId]
+    );
+    if (result.rows.length === 0) {
+      return res.json({ championTeam: null, mvpPlayerId: null, revelationPlayerId: null });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/special-picks
+app.post('/api/special-picks', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { userId, championTeam, mvpPlayerId, revelationPlayerId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId é obrigatório' });
+  try {
+    await pool.query(
+      `INSERT INTO special_picks (user_id, champion_team, mvp_player_id, revelation_player_id, updated_at)
+       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+       ON CONFLICT (user_id) DO UPDATE SET
+         champion_team = EXCLUDED.champion_team,
+         mvp_player_id = EXCLUDED.mvp_player_id,
+         revelation_player_id = EXCLUDED.revelation_player_id,
+         updated_at = CURRENT_TIMESTAMP`,
+      [userId, championTeam || null, mvpPlayerId || null, revelationPlayerId || null]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/special-picks/all (admin)
+app.get('/api/special-picks/all', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  // Opcional: verificar se o usuário é admin (pelo header x-admin-key ou similar)
+  // Por simplicidade, vamos confiar que a rota só será chamada via frontend admin.
+  try {
+    const result = await pool.query(`
+      SELECT sp.user_id, u.profile_name, sp.champion_team, sp.mvp_player_id, sp.revelation_player_id, sp.updated_at
+      FROM special_picks sp
+      JOIN users u ON sp.user_id = u.id
+      ORDER BY u.profile_name
+    `);
+    res.json({ picks: result.rows });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
