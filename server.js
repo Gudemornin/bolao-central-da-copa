@@ -511,6 +511,25 @@ app.get('/api/special-picks/all', async (req, res) => {
   }
 });
 
+const FD_API_KEY = process.env.FOOTBALL_DATA_API_KEY; // cadastre sua chave em .env
+app.get('/api/fd', async (req, res) => {
+  const { path, season, ttl, status } = req.query;
+  if (!path) return res.status(400).json({ error: 'Missing path' });
+  let url = `https://api.football-data.org/v4${path}`;
+  if (season) url += `?season=${season}`;
+  if (status) url += `${url.includes('?') ? '&' : '?'}status=${status}`;
+  try {
+    const response = await fetch(url, {
+      headers: { 'X-Auth-Token': FD_API_KEY }
+    });
+    const data = await response.json();
+    res.setHeader('Cache-Control', `max-age=${ttl || 300}`);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // =============================================
 // FALLBACK
 // =============================================

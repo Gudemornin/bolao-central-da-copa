@@ -11,10 +11,10 @@ let selectedMvp = null;
 let selectedRevelation = null;
 
 export async function renderSpecials() {
+  console.log('🎆 renderSpecials chamado');
   const container = document.getElementById('tabSpecials');
-  if (!container) return;
-  if (!currentUser) {
-    container.innerHTML = '<div class="empty-state">Faça login para acessar.</div>';
+  if (!container) {
+    console.error('Container #tabSpecials não encontrado');
     return;
   }
 

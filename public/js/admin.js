@@ -13,10 +13,9 @@ const tempEvents = {};
 export async function renderAdmin() {
   const container = document.getElementById('adminGamesList');
   if (!container) return;
-  
-  // Verificar se é admin
+  console.log('⚙️ renderAdmin chamado');
   if (!window.currentUser?.isAdmin) {
-    container.innerHTML = '<div style="text-align:center;padding:60px;">🔒 Acesso restrito</div>';
+    container.innerHTML = '<div class="empty-state">🔒 Acesso restrito a administradores.</div>';
     return;
   }
   
