@@ -1,4 +1,4 @@
-// navigation.js - COMPLETO E CORRIGIDO
+// navigation.js - usa dados REAIS da football-data.org
 import { cap } from './utils.js';
 import { setCurrentTab, currentUser } from './state.js';
 import { renderGames } from './gamemanager.js';
@@ -7,14 +7,13 @@ import { renderAdmin } from './admin.js';
 import { renderBets } from './bets.js';
 import { renderCommunityBets } from './communityBets.js';
 import { renderSpecials } from './specials.js';
-import { loadGames, loadUsers } from './storage.js';
+import { loadGames } from './storage.js';
 import { GAMES_STATE, setGamesState } from './state.js';
 import { TEAMS } from './data/teams.js';
 import { getPlayer } from './exportplayer.js';
 import { updateMobileActiveTab } from './app.js';
-import { fetchFdStandings, fetchFdScorers } from './syncFootballData.js';
 
-// ==================== JOGOS DA COPA ====================
+// ==================== JOGOS DA COPA (dados locais, mas sem mock) ====================
 async function renderWorldCupGames() {
   const container = document.getElementById('worldcupGamesList');
   if (!container) return;
@@ -72,37 +71,40 @@ async function renderWorldCupGames() {
   }
 }
 
-// ==================== CLASSIFICAÇÃO (usando football-data.org) ====================
+// ==================== CLASSIFICAÇÃO (via API real) ====================
 async function renderStandings() {
   const container = document.getElementById('standingsContainer');
   if (!container) return;
   console.log('📊 Renderizando Classificação via football-data.org...');
+  container.innerHTML = '<div class="empty-state">⏳ Carregando classificação...</div>';
   try {
-    // Buscar classificação da Copa do Mundo (código 'WC')
-    const groups = await fetchFdStandings('WC', 2026);
-    if (!groups || !groups.length) {
-      container.innerHTML = '<div class="empty-state">🏆 Classificação será exibida quando disponível.</div>';
-      return;
-    }
-    let html = `<div class="page-header"><div class="page-title">📊 Classificação dos Grupos</div><div class="page-subtitle">Copa do Mundo 2026</div></div>`;
-    for (const group of groups) {
-      html += `<h3 style="margin-top:20px; font-family:Anton;">${group.label}</h3>
+    const res = await fetch('/api/fd?path=/competitions/WC/standings&season=2026&ttl=900');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const rawGroups = data.standings || [];
+    if (!rawGroups.length) throw new Error('Nenhum dado de classificação retornado.');
+    let html = `<div class="page-header"><div class="page-title">📊 Classificação dos Grupos</div><div class="page-subtitle">Copa do Mundo 2026 - dados oficiais</div></div>`;
+    for (const group of rawGroups) {
+      const groupName = group.group || group.stage || 'Grupo';
+      const table = group.table || [];
+      html += `<h3 style="margin-top:20px; font-family:Anton;">${groupName}</h3>
                <div class="ranking-wrap"><table class="ranking-table">
                <thead><tr><th>#</th><th>Seleção</th><th>Pts</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr></thead><tbody>`;
-      group.table.forEach((team, idx) => {
-        const teamName = team.team || '—';
-        const flagUrl = team.logo || `https://flagcdn.com/32x24/${team.teamKey?.substring(0,2)}.png`;
+      table.forEach((entry, idx) => {
+        const teamName = entry.team?.name || '—';
+        const flagKey = teamName.toLowerCase().replace(/\s/g, '_');
+        const flagUrl = TEAMS[flagKey]?.flag || `https://flagcdn.com/32x24/${teamName.substring(0,2)}.png`;
         html += `<tr>
           <td>${idx+1}</td>
-          <td><div style="display:flex;align-items:center;gap:8px;"><img src="${flagUrl}" style="width:24px;height:16px;"> ${teamName}</div></td>
-          <td>${team.points}</td>
-          <td>${team.played}</td>
-          <td>${team.won}</td>
-          <td>${team.draw}</td>
-          <td>${team.lost}</td>
-          <td>${team.goalsFor}</td>
-          <td>${team.goalsAgainst}</td>
-          <td>${team.goalDiff > 0 ? '+' : ''}${team.goalDiff}</td>
+          <td><div style="display:flex;align-items:center;gap:8px;"><img src="${flagUrl}" style="width:24px;height:16px;" onerror="this.src='https://flagcdn.com/32x24/un.png'"> ${teamName}</div></td>
+          <td>${entry.points || 0}</td>
+          <td>${entry.playedGames || 0}</td>
+          <td>${entry.won || 0}</td>
+          <td>${entry.draw || 0}</td>
+          <td>${entry.lost || 0}</td>
+          <td>${entry.goalsFor || 0}</td>
+          <td>${entry.goalsAgainst || 0}</td>
+          <td>${(entry.goalsFor||0) - (entry.goalsAgainst||0)}</td>
         </tr>`;
       });
       html += `</tbody></table></div>`;
@@ -110,37 +112,41 @@ async function renderStandings() {
     container.innerHTML = html;
   } catch (err) {
     console.error('Erro em renderStandings:', err);
-    container.innerHTML = '<div class="empty-state">❌ Erro ao carregar classificação.</div>';
+    container.innerHTML = '<div class="empty-state">❌ Não foi possível carregar a classificação da API. Verifique a chave FOOTBALL_DATA_API_KEY no servidor.</div>';
   }
 }
 
-// ==================== ARTILHARIA (usando football-data.org) ====================
+// ==================== ARTILHARIA (via API real) ====================
 async function renderTopScorers() {
   const container = document.getElementById('topscorersList');
   if (!container) return;
   console.log('⚽ Renderizando Artilharia via football-data.org...');
+  container.innerHTML = '<div class="empty-state">⏳ Carregando artilheiros...</div>';
   try {
-    const scorers = await fetchFdScorers('WC', 2026, 20);
-    if (!scorers || !scorers.length) {
-      container.innerHTML = '<div class="empty-state">⚽ Artilharia será exibida quando os gols começarem.</div>';
-      return;
-    }
-    let html = `<div class="page-header"><div class="page-title">⚽ Artilharia da Copa</div><div class="page-subtitle">Goleadores</div></div>
+    const res = await fetch('/api/fd?path=/competitions/WC/scorers&season=2026&limit=20&ttl=1800');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const scorers = data.scorers || [];
+    if (!scorers.length) throw new Error('Nenhum artilheiro retornado.');
+    let html = `<div class="page-header"><div class="page-title">⚽ Artilharia da Copa</div><div class="page-subtitle">Goleadores - dados oficiais</div></div>
                 <div class="ranking-wrap"><table class="ranking-table"><thead><tr><th>#</th><th>Jogador</th><th>Seleção</th><th>Gols</th></tr></thead><tbody>`;
     scorers.forEach((s, i) => {
-      const flag = s.teamCrest || `https://flagcdn.com/32x24/${s.teamKey?.substring(0,2)}.png`;
+      const playerName = s.player?.name || '—';
+      const teamName = s.team?.name || '—';
+      const flagKey = teamName.toLowerCase().replace(/\s/g, '_');
+      const flagUrl = TEAMS[flagKey]?.flag || `https://flagcdn.com/32x24/${teamName.substring(0,2)}.png`;
       html += `<tr>
         <td>${i+1}</td>
-        <td>${s.name}</td>
-        <td><img src="${flag}" style="width:20px;height:14px;"> ${s.team}</td>
-        <td><strong>${s.goals}</strong></td>
+        <td>${playerName}</td>
+        <td><img src="${flagUrl}" style="width:20px;height:14px;" onerror="this.src='https://flagcdn.com/32x24/un.png'"> ${teamName}</td>
+        <td><strong>${s.goals || 0}</strong></td>
       </tr>`;
     });
     html += `</tbody></table></div>`;
     container.innerHTML = html;
   } catch (err) {
     console.error('Erro em renderTopScorers:', err);
-    container.innerHTML = '<div class="empty-state">❌ Erro ao carregar artilharia.</div>';
+    container.innerHTML = '<div class="empty-state">❌ Não foi possível carregar a artilharia da API. Verifique a chave FOOTBALL_DATA_API_KEY no servidor.</div>';
   }
 }
 
@@ -160,6 +166,7 @@ function renderProfile() {
         <div class="rule-item"><strong>Nome:</strong> ${escapeHtml(currentUser.profileName)}</div>
         <div class="rule-item"><strong>E-mail:</strong> ${currentUser.email || 'Não informado'}</div>
         <div class="rule-item"><strong>Admin:</strong> ${currentUser.isAdmin ? 'Sim' : 'Não'}</div>
+        <div class="rule-item"><strong>ID:</strong> ${currentUser.id}</div>
       </div>
       <div class="info-card"><div class="info-card-title">🔐 Segurança</div>
         <button class="btn btn-blue" onclick="window.changePassword()">Alterar Senha</button>
@@ -168,7 +175,6 @@ function renderProfile() {
     </div>
   `;
 }
-
 function escapeHtml(text) {
   if (!text) return '';
   const div = document.createElement('div');
@@ -181,7 +187,6 @@ export async function switchTab(tab) {
   console.log('🔄 switchTab chamado para:', tab);
   setCurrentTab(tab);
   
-  // Atualizar menus
   document.querySelectorAll('.sidebar .nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
@@ -190,18 +195,17 @@ export async function switchTab(tab) {
     el.classList.toggle('active', el.id === 'tab' + cap(tab));
   });
   
-  // Fechar sidebar no mobile
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar')?.classList.remove('open');
   }
   
-  // Aba admin
+  // Admin
   if (tab === 'admin') {
     if (currentUser && currentUser.isAdmin) {
       await renderAdmin();
     } else {
       const adminContainer = document.getElementById('adminGamesList');
-      if (adminContainer) adminContainer.innerHTML = '<div class="empty-state">🔒 Acesso restrito.</div>';
+      if (adminContainer) adminContainer.innerHTML = '<div class="empty-state">🔒 Acesso restrito a administradores.</div>';
     }
     return;
   }
@@ -222,11 +226,9 @@ export async function switchTab(tab) {
   }
 }
 
-// Registrar funções globais
 window.switchTab = switchTab;
 window.renderProfile = renderProfile;
 window.renderWorldCupGames = renderWorldCupGames;
 window.renderStandings = renderStandings;
 window.renderTopScorers = renderTopScorers;
-
-console.log('✅ navigation.js carregado com football-data.org');
+console.log('✅ navigation.js carregado (modo API real)');
