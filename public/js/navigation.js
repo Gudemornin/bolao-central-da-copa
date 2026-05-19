@@ -1,4 +1,4 @@
-// navigation.js - usa dados REAIS da football-data.org
+// navigation.js - VERSÃO CORRIGIDA COM LOGS E TRATAMENTO DE ERROS
 import { cap } from './utils.js';
 import { setCurrentTab, currentUser } from './state.js';
 import { renderGames } from './gamemanager.js';
@@ -13,11 +13,15 @@ import { TEAMS } from './data/teams.js';
 import { getPlayer } from './exportplayer.js';
 import { updateMobileActiveTab } from './app.js';
 
-// ==================== JOGOS DA COPA (dados locais, mas sem mock) ====================
+// ==================== JOGOS DA COPA ====================
 async function renderWorldCupGames() {
   const container = document.getElementById('worldcupGamesList');
-  if (!container) return;
-  console.log('🌍 Renderizando Jogos da Copa...');
+  if (!container) {
+    console.error('❌ Container #worldcupGamesList não encontrado');
+    return;
+  }
+  console.log('🌍 renderWorldCupGames() chamada');
+  
   try {
     let games = GAMES_STATE;
     if (!games.length) games = await loadGames();
@@ -30,6 +34,7 @@ async function renderWorldCupGames() {
       container.innerHTML = '<div class="empty-state">📅 Calendário da Copa 2026 será exibido em breve.</div>';
       return;
     }
+    // Agrupar e exibir (mesmo código que você já tinha)
     const gamesByDate = {};
     worldCupGames.forEach(game => {
       if (!gamesByDate[game.date]) gamesByDate[game.date] = [];
@@ -67,22 +72,27 @@ async function renderWorldCupGames() {
     container.innerHTML = html;
   } catch (err) {
     console.error('Erro em renderWorldCupGames:', err);
-    container.innerHTML = '<div class="empty-state">❌ Erro ao carregar jogos da Copa.</div>';
+    container.innerHTML = '<div class="empty-state">❌ Erro ao carregar jogos da Copa. Verifique o console.</div>';
   }
 }
 
 // ==================== CLASSIFICAÇÃO (via API real) ====================
 async function renderStandings() {
   const container = document.getElementById('standingsContainer');
-  if (!container) return;
-  console.log('📊 Renderizando Classificação via football-data.org...');
+  if (!container) {
+    console.error('❌ Container #standingsContainer não encontrado');
+    return;
+  }
+  console.log('📊 renderStandings() chamada');
   container.innerHTML = '<div class="empty-state">⏳ Carregando classificação...</div>';
+  
   try {
     const res = await fetch('/api/fd?path=/competitions/WC/standings&season=2026&ttl=900');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const rawGroups = data.standings || [];
     if (!rawGroups.length) throw new Error('Nenhum dado de classificação retornado.');
+    
     let html = `<div class="page-header"><div class="page-title">📊 Classificação dos Grupos</div><div class="page-subtitle">Copa do Mundo 2026 - dados oficiais</div></div>`;
     for (const group of rawGroups) {
       const groupName = group.group || group.stage || 'Grupo';
@@ -112,22 +122,27 @@ async function renderStandings() {
     container.innerHTML = html;
   } catch (err) {
     console.error('Erro em renderStandings:', err);
-    container.innerHTML = '<div class="empty-state">❌ Não foi possível carregar a classificação da API. Verifique a chave FOOTBALL_DATA_API_KEY no servidor.</div>';
+    container.innerHTML = '<div class="empty-state">❌ Não foi possível carregar a classificação da API. Verifique a chave FOOTBALL_DATA_API_KEY no servidor.<br>Detalhe: ' + err.message + '</div>';
   }
 }
 
 // ==================== ARTILHARIA (via API real) ====================
 async function renderTopScorers() {
   const container = document.getElementById('topscorersList');
-  if (!container) return;
-  console.log('⚽ Renderizando Artilharia via football-data.org...');
+  if (!container) {
+    console.error('❌ Container #topscorersList não encontrado');
+    return;
+  }
+  console.log('⚽ renderTopScorers() chamada');
   container.innerHTML = '<div class="empty-state">⏳ Carregando artilheiros...</div>';
+  
   try {
     const res = await fetch('/api/fd?path=/competitions/WC/scorers&season=2026&limit=20&ttl=1800');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const scorers = data.scorers || [];
     if (!scorers.length) throw new Error('Nenhum artilheiro retornado.');
+    
     let html = `<div class="page-header"><div class="page-title">⚽ Artilharia da Copa</div><div class="page-subtitle">Goleadores - dados oficiais</div></div>
                 <div class="ranking-wrap"><table class="ranking-table"><thead><tr><th>#</th><th>Jogador</th><th>Seleção</th><th>Gols</th></tr></thead><tbody>`;
     scorers.forEach((s, i) => {
@@ -146,15 +161,18 @@ async function renderTopScorers() {
     container.innerHTML = html;
   } catch (err) {
     console.error('Erro em renderTopScorers:', err);
-    container.innerHTML = '<div class="empty-state">❌ Não foi possível carregar a artilharia da API. Verifique a chave FOOTBALL_DATA_API_KEY no servidor.</div>';
+    container.innerHTML = '<div class="empty-state">❌ Não foi possível carregar a artilharia da API. Verifique a chave FOOTBALL_DATA_API_KEY no servidor.<br>Detalhe: ' + err.message + '</div>';
   }
 }
 
 // ==================== PERFIL ====================
 function renderProfile() {
   const container = document.getElementById('tabProfile');
-  if (!container) return;
-  console.log('👤 Renderizando Perfil...');
+  if (!container) {
+    console.error('❌ Container #tabProfile não encontrado');
+    return;
+  }
+  console.log('👤 renderProfile() chamada, currentUser:', currentUser);
   if (!currentUser) {
     container.innerHTML = '<div class="empty-state">Faça login para ver seu perfil.</div>';
     return;
@@ -187,6 +205,7 @@ export async function switchTab(tab) {
   console.log('🔄 switchTab chamado para:', tab);
   setCurrentTab(tab);
   
+  // Atualizar UI dos menus
   document.querySelectorAll('.sidebar .nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
@@ -210,7 +229,7 @@ export async function switchTab(tab) {
     return;
   }
   
-  // Outras abas
+  // Outras abas - cada uma com seu próprio try/catch para não quebrar as demais
   try {
     if (tab === 'games') await renderGames();
     if (tab === 'bets') await renderBets();
@@ -222,7 +241,10 @@ export async function switchTab(tab) {
     if (tab === 'profile') renderProfile();
     if (tab === 'specials') await renderSpecials();
   } catch (err) {
-    console.error(`❌ Erro ao renderizar aba ${tab}:`, err);
+    console.error(`❌ Erro CRÍTICO ao renderizar aba ${tab}:`, err);
+    // Tenta exibir uma mensagem no container da aba atual
+    const activeContainer = document.querySelector(`#tab${cap(tab)}`);
+    if (activeContainer) activeContainer.innerHTML = `<div class="empty-state">❌ Erro ao carregar esta aba. Verifique o console.</div>`;
   }
 }
 
@@ -231,4 +253,4 @@ window.renderProfile = renderProfile;
 window.renderWorldCupGames = renderWorldCupGames;
 window.renderStandings = renderStandings;
 window.renderTopScorers = renderTopScorers;
-console.log('✅ navigation.js carregado (modo API real)');
+console.log('✅ navigation.js recarregado (com logs e tratamento de erros)');
