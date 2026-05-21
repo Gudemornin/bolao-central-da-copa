@@ -18,20 +18,22 @@ export async function renderSpecials() {
     console.error('❌ Container #tabSpecials não encontrado');
     return;
   }
-  console.log('✅ Container encontrado');
+  container.classList.add('active');
+  console.log('✅ Container encontrado e ativado');
 
   // 2. Verificar usuário logado
-  if (!currentUser) {
-    console.error('❌ currentUser é null/undefined');
+  const user = currentUser || window.currentUser;
+  if (!user) {
+    console.error('❌ Usuário não encontrado em currentUser');
     container.innerHTML = '<div class="empty-state">Faça login para acessar.</div>';
     return;
   }
-  console.log('✅ Usuário logado:', currentUser.id);
+  console.log('✅ Usuário logado:', user.id, 'currentUser:', currentUser, 'window.currentUser:', window.currentUser);
 
   // 3. Tenta carregar picks atuais
   let picks = { championTeam: null, mvpPlayerId: null, revelationPlayerId: null };
   try {
-    picks = await loadSpecialPicks(currentUser.id);
+    picks = await loadSpecialPicks(user.id);
     console.log('✅ Picks carregados:', picks);
   } catch (err) {
     console.error('❌ Erro ao carregar picks:', err);
