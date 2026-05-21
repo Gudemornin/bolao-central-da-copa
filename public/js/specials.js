@@ -177,9 +177,10 @@ function setupTeamSearch(inputId, resultsId, onSelect) {
       results.classList.remove('open');
       return;
     }
-    const matches = Object.values(TEAMS).filter(team =>
-      team.name.toLowerCase().includes(query)
-    );
+    const matches = Object.entries(TEAMS)
+      .filter(([, team]) => team.name.toLowerCase().includes(query))
+      .map(([id, team]) => ({ ...team, id }));
+
     results.innerHTML = matches.map(team => `
       <div class="psearch-item" data-team-id="${team.id}">
         <span class="pflag">${teamFlagImg(team, 20)}</span>
@@ -193,7 +194,7 @@ function setupTeamSearch(inputId, resultsId, onSelect) {
         const teamId = el.dataset.teamId;
         const team = TEAMS[teamId];
         if (team) {
-          onSelect(team);
+          onSelect({ ...team, id: teamId });
           input.value = '';
           results.classList.remove('open');
         }
