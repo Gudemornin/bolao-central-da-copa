@@ -261,6 +261,38 @@ html, body {
   position: relative;
 }
 
+#tabSpecials .player-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--navy-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 20;
+  display: none;
+}
+
+#tabSpecials .player-search-results.open {
+  display: block;
+}
+
+#tabSpecials .psearch-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  transition: background .15s;
+}
+
+#tabSpecials .psearch-item:hover {
+  background: var(--glass-2);
+}
+
 /* Ajuste para telas pequenas (já existe, mas reforço) */
 @media (max-width: 768px) {
   .main-content {
