@@ -256,6 +256,11 @@ html, body {
   overflow-x: hidden;
 }
 
+#tabSpecials .info-card .team-search-wrapper,
+#tabSpecials .info-card .player-search-wrapper {
+  position: relative;
+}
+
 /* Ajuste para telas pequenas (já existe, mas reforço) */
 @media (max-width: 768px) {
   .main-content {
