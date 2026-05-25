@@ -530,6 +530,26 @@ app.get('/api/fd', async (req, res) => {
   }
 });
 
+app.get('/api/tsdb/table', async (req, res) => {
+  const { leagueId, season } = req.query;
+  if (!leagueId || !season) return res.status(400).json({ error: 'leagueId e season obrigatórios' });
+  const url = `https://www.thesportsdb.com/api/v1/json/3/lookuptable.php?l=${leagueId}&s=${season}`;
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/tsdb/scorers', async (req, res) => {
+  const { leagueId } = req.query;
+  if (!leagueId) return res.status(400).json({ error: 'leagueId obrigatório' });
+  const url = `https://www.thesportsdb.com/api/v1/json/3/lookuptopscorers.php?id=${leagueId}`;
+  // ...
+});
+
 // =============================================
 // FALLBACK
 // =============================================

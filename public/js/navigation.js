@@ -11,7 +11,7 @@ import { loadGames } from './storage.js';
 import { GAMES_STATE, setGamesState } from './state.js';
 import { TEAMS } from './data/teams.js';
 import { getPlayer } from './exportplayer.js';
-import { updateMobileActiveTab } from './app.js';
+
 
 // ==================== JOGOS DA COPA ====================
 async function renderWorldCupGames() {
