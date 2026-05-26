@@ -91,9 +91,7 @@ export async function selectDate(d) {
 
 async function renderGameList() {
   let gamesState = GAMES_STATE;
-  
-  if (!Array.isArray(gamesState)) {
-    console.warn('⚠️ GAMES_STATE não é array, recarregando...', gamesState);
+  if (!Array.isArray(gamesState) || gamesState.length === 0) {
     gamesState = await loadGames();
     setGamesState(gamesState);
   }

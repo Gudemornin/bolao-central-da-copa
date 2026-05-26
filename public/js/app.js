@@ -1,5 +1,5 @@
-import { loadUsers } from './storage.js';
-import { currentUser, setCurrentUser } from './state.js';
+import { loadUsers, loadGames } from './storage.js';
+import { currentUser, setCurrentUser, setGamesState } from './state.js';
 import './admin.js';
 import './gamemanager.js';
 import './ranking.js';
@@ -8,6 +8,8 @@ import { getUserPoints } from './ranking.js';
 import { initModalClosers, showToast } from './ui.js';
 import { switchTab } from './navigation.js';
 import './auth.js';
+
+
 
 // Importar funções necessárias para a atualização automática (que são exportadas)
 import { renderGames } from './gamemanager.js';
@@ -145,6 +147,9 @@ async function init() {
   // Se chegou aqui, não há sessão válida
   document.getElementById('authScreen').style.display = '';
 }
+
+const games = await loadGames();
+setGamesState(games);
 
 // Aguardar DOM carregar
 if (document.readyState === 'loading') {

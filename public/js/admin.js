@@ -54,18 +54,17 @@ window.showAdminTab = (tab, button) => {
 };
 
 export async function renderAdminGames() {
-  const el = document.getElementById('adminTabContent');
-  if (!el) return;
-
-  // 🔁 Carrega jogos do estado global ou do backend
   let games = GAMES_STATE;
   if (!games || !games.length) {
     games = await loadGames();
-    if (games && games.length) setGamesState(games);
+    if (games.length) setGamesState(games);
   }
-
+  if (!games.length) {
+    document.getElementById('adminTabContent').innerHTML = '<div class="empty-state">Nenhum jogo cadastrado.</div>';
+    return;
+  }
   if (!games || !games.length) {
-    el.innerHTML = '<div class="empty-state">Nenhum jogo cadastrado ainda.</div>';
+    document.getElementById('adminTabContent').innerHTML = '<div class="empty-state">Nenhum jogo cadastrado ainda.</div>';
     return;
   }
 
