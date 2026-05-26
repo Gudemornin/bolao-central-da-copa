@@ -21,17 +21,22 @@ export async function renderSpecials() {
 
   // Fallback: exibe mensagem amigável se API falhar
   let userPicks = { championTeam: null, topScorerId: null, mvpId: null, revelationId: null };
-  let allPicks = {};
+if (currentUser) {
+  try {
+    const res = await fetch(`/api/special-picks/${currentUser.id}`);
+    if (res.ok) userPicks = await res.json();
+    else console.warn('Falha ao carregar seus palpites, usando vazio');
+  } catch (e) { console.error(e); }
+}
 
-  if (currentUser) {
-    try {
-      const res = await fetch(`/api/special-picks/${currentUser.id}`);
-      if (res.ok) userPicks = await res.json();
-      else console.warn('Erro ao carregar seus palpites:', res.status);
-    } catch (e) {
-      console.error('Falha ao carregar special picks do usuário:', e);
-    }
-  }
+let allPicks = {};
+try {
+  const res = await fetch('/api/all-special-picks');
+  if (res.ok) allPicks = await res.json();
+  else console.warn('Falha ao carregar palpites de todos');
+} catch (e) { console.error(e); }
+
+
 
   try {
     const res = await fetch('/api/all-special-picks');
