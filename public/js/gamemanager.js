@@ -237,22 +237,70 @@ function setGamePlayerDisplay(gameId, p) {
 }
 
 export function filterGamePlayers(gameId) {
+  // Verifica se o GAMES_STATE está carregado
+  if (!GAMES_STATE || !GAMES_STATE.length) {
+    console.warn('⚠️ GAMES_STATE vazio, carregando jogos...');
+    loadGames().then(games => {
+      if (games.length) setGamesState(games);
+      // Tenta novamente após carregar
+      filterGamePlayers(gameId);
+    });
+    return;
+  }
+
   const game = GAMES_STATE.find(g => g.id === gameId);
-  if (!game) return;
+  if (!game) {
+    console.error('Jogo não encontrado:', gameId);
+    return;
+  }
+
   const inp = document.getElementById('gpinp_' + gameId);
   const res = document.getElementById('gpr_' + gameId);
   if (!inp || !res) return;
-  const q = inp.value;
-  const players = filterPlayers(q, [game.home, game.away]);
-  res.innerHTML = players.map(p => `
-    <div class="game-pitem" onclick="selectGamePlayer('${gameId}','${p.id}')">
-      <span class="gpi-name">${teamFlagImg(TEAMS[p.team], 16)} ${p.name}</span>
-      <span class="gpi-right">
-        <span class="gpi-team">${TEAMS[p.team]?.name||p.team}</span>
-        <span class="gpi-pos">${p.pos}</span>
-      </span>
-    </div>`).join('') || '<div style="padding:8px 12px;font-size:12px;color:var(--text-d)">Nenhum resultado</div>';
+
+  const query = inp.value.trim();
+  if (!query) {
+    res.classList.remove('open');
+    res.innerHTML = '';
+    return;
+  }
+
+  // Filtra jogadores apenas das duas equipes do jogo
+  const players = filterPlayers(query, [game.home, game.away]);
+
+  if (!players.length) {
+    res.innerHTML = '<div style="padding: 10px 12px; color: var(--text-d);">Nenhum jogador encontrado</div>';
+    res.classList.add('open');
+    return;
+  }
+
+  // Monta a lista de resultados
+  res.innerHTML = players.map(p => {
+    const team = TEAMS[p.team];
+    const flagHtml = team?.flag ? `<img src="${team.flag}" style="width:20px;height:14px;border-radius:2px;margin-right:6px;">` : '';
+    return `
+      <div class="game-pitem" onclick="selectGamePlayer('${gameId}','${p.id}')" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border);">
+        <span class="gpi-name">${flagHtml} ${p.name}</span>
+        <span class="gpi-right" style="font-size:12px; color:var(--text-d);">${team?.name || p.team} - ${p.pos}</span>
+      </div>
+    `;
+  }).join('');
   res.classList.add('open');
+}
+
+export function showGameResults(gameId) {
+  // Apenas chama o filtro, mas garante que o campo de busca tenha foco
+  const inp = document.getElementById('gpinp_' + gameId);
+  if (inp && inp.value.trim()) {
+    filterGamePlayers(gameId);
+  } else {
+    // Se o campo estiver vazio, apenas limpa os resultados
+    const res = document.getElementById('gpr_' + gameId);
+    if (res) {
+      res.classList.remove('open');
+      res.innerHTML = '';
+    }
+  }
 }
 
 export function selectGamePlayer(gameId, playerId) {
@@ -279,9 +327,6 @@ export function clearGamePlayer(gameId) {
   if (inp) inp.value = '';
 }
 
-function showGameResults(gameId) {
-  filterGamePlayers(gameId);
-}
 
 export async function saveBet(gameId) {
   const s1 = document.getElementById('s1_' + gameId)?.value;
