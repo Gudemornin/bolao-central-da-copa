@@ -86,14 +86,15 @@ async function initDatabase() {
       )
     `);
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS special_picks (
-  user_id TEXT PRIMARY KEY,
-  champion TEXT,
-  top_scorer TEXT,
-  mvp TEXT,
-  revelation TEXT
-)
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS special_picks (
+    user_id TEXT PRIMARY KEY,
+    champion_team TEXT,
+    top_scorer_id TEXT,
+    mvp_id TEXT,
+    revelation_id TEXT,
+    updated_at BIGINT
+  )
 `);
 
     await pool.query(`
