@@ -19,6 +19,28 @@ export async function renderSpecials() {
   const container = document.getElementById('tabSpecials');
   if (!container) return;
 
+  // Fallback: exibe mensagem amigável se API falhar
+  let userPicks = { championTeam: null, topScorerId: null, mvpId: null, revelationId: null };
+  let allPicks = {};
+
+  if (currentUser) {
+    try {
+      const res = await fetch(`/api/special-picks/${currentUser.id}`);
+      if (res.ok) userPicks = await res.json();
+      else console.warn('Erro ao carregar seus palpites:', res.status);
+    } catch (e) {
+      console.error('Falha ao carregar special picks do usuário:', e);
+    }
+  }
+
+  try {
+    const res = await fetch('/api/all-special-picks');
+    if (res.ok) allPicks = await res.json();
+    else console.warn('Erro ao carregar palpites de todos:', res.status);
+  } catch (e) {
+    console.error('Falha ao carregar all special picks:', e);
+  }
+  
   const deadlinePassed = isDeadlinePassed();
 
   // Carregar picks do usuário
