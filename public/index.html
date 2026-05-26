@@ -204,6 +204,10 @@
   <span class="nav-tab-logo">👥</span>
   <span>Galera</span>
 </div>
+<div class="nav-item" data-tab="specials" onclick="switchTab('specials')">
+  <span class="nav-tab-logo">🎆</span>
+  <span>Especiais</span>
+</div>
   <div class="nav-item" data-tab="ranking" onclick="switchTab('ranking')">
     <span class="nav-tab-logo">🏆</span>
     <span>Ranking</span>
@@ -266,6 +270,10 @@
         <span class="nav-tab-logo">📋</span>
         <span>Palpites Ativos</span>
       </div>
+      <div class="nav-item" data-tab="specials" onclick="switchTab('specials')">
+  <span class="nav-tab-logo">🎆</span>
+  <span>Especiais</span>
+</div>
       <div class="nav-item" data-tab="community" onclick="switchTab('community')">
       <span class="nav-tab-logo">👥</span>
       <span>Palpites da Galera</span>
@@ -375,82 +383,87 @@
 
     <!-- ─── INFORMAÇÕES ─── -->
     <div class="tab-content" id="tabInfo">
-      <div class="page-header">
-        <div>
-          <div class="page-title">ℹ️ Informações</div>
-          <div class="page-subtitle">Regras, pontuação e premiação</div>
+  <div class="page-header">
+    <div>
+      <div class="page-title">ℹ️ Informações</div>
+      <div class="page-subtitle">Regras, pontuação e premiação</div>
+    </div>
+  </div>
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-card-title">⚡ Pontuação</div>
+      <div class="score-rule">
+        <span>Placar Exato</span>
+        <span class="pts pts-gold">10 pts</span>
+      </div>
+      <div class="score-rule">
+        <span>Resultado Certo (Vencedor/Empate)</span>
+        <span class="pts pts-green">6 pts</span>
+      </div>
+      <div class="score-rule">
+        <span>Gol do jogador representante</span>
+        <span class="pts pts-blue">2 pts por gol</span>
+      </div>
+      <div class="score-rule">
+        <span>Assistência do jogador</span>
+        <span class="pts pts-blue">1 pt por assistência</span>
+      </div>
+      <div class="score-rule">
+        <span>Craque do Jogo (MOTM)</span>
+        <span class="pts pts-red">3 pts</span>
+      </div>
+      <div class="score-rule">
+        <span>Expulsão (cartão vermelho)</span>
+        <span class="pts pts-red">-3 pts</span>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">🥇 Premiação</div>
+      <div class="prize-item">
+        <div class="prize-medal">🥇</div>
+        <div class="prize-info">
+          <div class="prize-place">1º Lugar</div>
+          <div class="prize-desc">A definir pelo organizador</div>
         </div>
       </div>
-      <div class="info-grid">
-        <div class="info-card">
-          <div class="info-card-title">⚡ Pontuação</div>
-          <div class="score-rule">
-            <span>Placar Exato</span>
-            <span class="pts pts-gold">10 pts</span>
-          </div>
-          <div class="score-rule">
-            <span>Vencedor / Empate Certo</span>
-            <span class="pts pts-green">6 pts</span>
-          </div>
-          <div class="score-rule">
-            <span>Marcador (1º gol)</span>
-            <span class="pts pts-blue">3 pts</span>
-          </div>
-          <div class="score-rule">
-            <span>+1 por cada gol adicional</span>
-            <span class="pts pts-blue">+2 pt</span>
-          </div>
-          <div class="score-rule">
-            <span>Craque do Jogo</span>
-            <span class="pts pts-red">4 pts</span>
-          </div>
+      <div class="prize-item">
+        <div class="prize-medal">🥈</div>
+        <div class="prize-info">
+          <div class="prize-place">2º Lugar</div>
+          <div class="prize-desc">A definir pelo organizador</div>
         </div>
-        <div class="info-card">
-          <div class="info-card-title">🥇 Premiação</div>
-          <div class="prize-item">
-            <div class="prize-medal">🥇</div>
-            <div class="prize-info">
-              <div class="prize-place">1º Lugar</div>
-              <div class="prize-desc">A definir pelo organizador</div>
-            </div>
-          </div>
-          <div class="prize-item">
-            <div class="prize-medal">🥈</div>
-            <div class="prize-info">
-              <div class="prize-place">2º Lugar</div>
-              <div class="prize-desc">A definir pelo organizador</div>
-            </div>
-          </div>
-          <div class="prize-item">
-            <div class="prize-medal">🥉</div>
-            <div class="prize-info">
-              <div class="prize-place">3º Lugar</div>
-              <div class="prize-desc">A definir pelo organizador</div>
-            </div>
-          </div>
-          <div class="prize-item">
-            <div class="prize-medal">⭐</div>
-            <div class="prize-info">
-              <div class="prize-place">Mais Craques</div>
-              <div class="prize-desc">Prêmio especial de melhor selecionador</div>
-            </div>
-          </div>
+      </div>
+      <div class="prize-item">
+        <div class="prize-medal">🥉</div>
+        <div class="prize-info">
+          <div class="prize-place">3º Lugar</div>
+          <div class="prize-desc">A definir pelo organizador</div>
         </div>
-        <div class="info-card info-card-full">
-          <div class="info-card-title">📜 Regras Gerais</div>
-          <div class="rule-item"><strong>Prazo de palpite:</strong> Palpites devem ser feitos antes do horário de início da partida. Após o início, o palpite é bloqueado automaticamente.</div>
-          <div class="rule-item"><strong>Jogador representante:</strong> Cada palpite inclui a seleção de um jogador dentre as duas seleções em campo. Este jogador compete tanto como Marcador quanto como Craque do Jogo.</div>
-          <div class="rule-item"><strong>Marcador:</strong> Pontua 3 pts base se o jogador selecionado marcar um gol, +2 pt por gol adicional do mesmo jogador (ex: 2 gols = 4 pts, 3 gols = 5 pts).</div>
-          <div class="rule-item"><strong>Pênalti Salvo:</strong> Goleiros Pontuam + 5 por pênalti defendido </div>
-          <div class="rule-item"><strong>Clean Sheet:</strong> Goleiros e Defensores Pontuam + 2 em caso de Clean Sheet </div>
-          <div class="rule-item"><strong>Craque do Jogo:</strong> Pontua 4 pts se o jogador selecionado for eleito o Craque da Partida pelo organizador.</div>
-          <div class="rule-item"><strong>Cartões:</strong> Cartão amarelo -2 Pts pro jogador, Cartão Vermelho -5 Pts </div>
-          <div class="rule-item"><strong>Placar vs. Resultado:</strong> Acertar o placar exato vale 10 pts. Acertar apenas o vencedor ou empate vale 6 pts (não acumula com o placar exato).</div>
-          <div class="rule-item"><strong>Desempate:</strong> Pontos → Craques → Marcadores Certos → Média de pontos por palpite.</div>
-          <div class="rule-item"><strong>Tabela de Rankings:</strong> JP = Jogos Palpitados | MC = Marcadores Certos | C = Craques do Jogo acertados.</div>
+      </div>
+      <div class="prize-item">
+        <div class="prize-medal">⭐</div>
+        <div class="prize-info">
+          <div class="prize-place">Mais Craques</div>
+          <div class="prize-desc">Prêmio especial de melhor selecionador</div>
         </div>
       </div>
     </div>
+    <div class="info-card info-card-full">
+      <div class="info-card-title">📜 Regras Gerais</div>
+      <div class="rule-item"><strong>Prazo de palpite:</strong> Palpites devem ser feitos antes do horário de início da partida. Após o início, o palpite é bloqueado automaticamente.</div>
+      <div class="rule-item"><strong>Jogador representante:</strong> Cada palpite inclui a seleção de um jogador. Ele pontua por gols (2 pts cada), assistências (1 pt cada), e se for eleito Craque do Jogo (3 pts). Cartão vermelho: -3 pts.</div>
+      <div class="rule-item"><strong>Placar vs. Resultado:</strong> Acertar o placar exato vale 10 pts. Acertar apenas o vencedor ou empate vale 6 pts (não acumula com o placar exato).</div>
+      <div class="rule-item"><strong>Desempate:</strong> Pontos → Craques → Marcadores Certos → Média de pontos por palpite.</div>
+      <div class="rule-item"><strong>Tabela de Rankings:</strong> JP = Jogos Palpitados | MC = Marcadores Certos (gols do jogador) | C = Craques do Jogo acertados.</div>
+    </div>
+  </div>
+</div>
+
+<div class="tab-content" id="tabSpecials">
+  <!-- O conteúdo será injetado pelo JavaScript -->
+  <div id="specialsContainer"></div>
+</div>
+
 
     <!-- ─── JOGOS DA COPA ─── -->
 <div class="tab-content" id="tabWorldcup">

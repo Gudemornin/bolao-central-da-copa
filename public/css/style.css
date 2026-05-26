@@ -177,6 +177,12 @@ img[src*="flagcdn"] {
   transition: all 0.2s;
 }
 
+.specials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
 html, body {
   overflow-x: hidden;
   width: 100%;

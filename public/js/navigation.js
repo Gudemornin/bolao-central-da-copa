@@ -12,7 +12,7 @@ import { loadGames } from './storage.js';
 import { getPlayer } from './exportplayer.js';
 import { updateMobileActiveTab, updateMobileMenu } from './app.js';
 import { renderCommunityBets } from './communityBets.js';
-
+import { renderSpecials } from './specials.js';
 
 // =============================================
 // FUNÇÃO PARA EXIBIR "JOGOS DA COPA"
@@ -219,6 +219,7 @@ export async function switchTab(tab) {
   if (tab === 'standings') await renderStandings();
   if (tab === 'topscorers') await renderTopScorers();
   if (tab === 'profile') renderProfile();
+  if (tab === 'specials') await renderSpecials();
 }
 
 // =============================================

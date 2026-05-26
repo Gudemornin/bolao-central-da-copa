@@ -63,6 +63,8 @@ async function initDatabase() {
         created_at BIGINT
       )
     `);
+
+    
     
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password_backup TEXT;
@@ -83,7 +85,17 @@ async function initDatabase() {
         PRIMARY KEY (user_id, game_id)
       )
     `);
-    
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS special_picks (
+  user_id TEXT PRIMARY KEY,
+  champion TEXT,
+  top_scorer TEXT,
+  mvp TEXT,
+  revelation TEXT
+)
+`);
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
@@ -546,6 +558,21 @@ app.post('/api/update-results', async (req, res) => {
     console.error('❌ Erro no update automático:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// Objeto em memória (substituir por banco de dados)
+let specialPicks = {};
+
+app.get('/api/special-picks', (req, res) => {
+  res.json(specialPicks);
+});
+
+app.post('/api/special-picks', (req, res) => {
+  const { userId, picks } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+  specialPicks[userId] = picks;
+  // Se usar PostgreSQL: salvar no banco
+  res.json({ success: true });
 });
 
 // =============================================
