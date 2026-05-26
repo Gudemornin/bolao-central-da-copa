@@ -753,14 +753,3 @@
   }
 }
 
-@media (max-width: 768px) {
-  .admin-game-row {
-    overflow-x: auto;
-  }
-  .scorer-item, .event-item {
-    flex-wrap: wrap;
-  }
-  .admin-remove-btn {
-    margin-top: 8px;
-  }
-}

@@ -1,6 +1,5 @@
 // storage.js - Versão com suporte a PostgreSQL via API
 import { GAMES } from './data/games.js'
-import { GAMES as MANUAL_GAMES } from './data/games.js';
 
 // Configuração: usar API ou localStorage
 const USE_API = true
@@ -148,18 +147,46 @@ export async function saveGames(games) {
 }
 
 export async function loadGames() {
-  // Buscar partidas do banco (admin)
-  let dbGames = [];
-  try {
-    const res = await fetch('/api/games-structured');
-    const data = await res.json();
-    dbGames = data.games || [];
-  } catch(e) { console.warn('Erro ao buscar games do banco', e); }
-  // Carregar jogos da Copa (manuais) do arquivo estático (apenas para datas futuras)
-  const copaGames = [...MANUAL_GAMES]; // ou importar
-  // Mesclar (evitar duplicar IDs)
-  const merged = [...copaGames, ...dbGames];
-  return merged;
+  let games = []
+  
+  if (USE_API) {
+    const result = await apiRequest('/games')
+    
+    if (result && result.games) {
+      if (Array.isArray(result.games)) {
+        games = result.games
+      } else if (result.games.games && Array.isArray(result.games.games)) {
+        games = result.games.games
+      } else if (result.games.data && Array.isArray(result.games.data)) {
+        games = result.games.data
+      }
+    }
+    
+    if (Array.isArray(result)) {
+      games = result
+    }
+  }
+  
+  if (!games || !games.length) {
+    try {
+      const saved = localStorage.getItem('bc26_games')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          games = parsed
+        }
+      }
+    } catch (e) {
+      games = []
+    }
+  }
+  
+  if (!games || !games.length) {
+    games = [...GAMES]
+  }
+  
+  console.log('✅ loadGames:', games.length, 'jogos')
+  return games
 }
 
 // =============================================

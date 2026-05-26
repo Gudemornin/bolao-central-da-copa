@@ -4,7 +4,6 @@ import { loadBets, loadUsers, loadGames } from './storage.js';
 import { GAMES_STATE, currentUser } from './state.js';
 import { formatDate, teamFlagImg } from './utils.js';
 import { getPlayer } from './exportplayer.js';
-import { sign } from './utils.js';
 
 let currentCommunityDate = null;
 
@@ -131,10 +130,6 @@ function renderDateSelector(dates) {
 // =============================================
 async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
   const games = gamesByDate[date] || [];
-const gameStart = new Date(`${game.date}T${game.time}:00`);
-const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
-
-
 
   if (games.length === 0) {
     return '<div class="empty-state">Nenhum jogo nesta data.</div>';
@@ -228,9 +223,6 @@ const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
 
     html += `
       <div class="community-game-card" data-game-id="${gameId}">
-      <div class="community-game-body" id="community-game-${gameId}" style="display: none;">
-  ${hasStarted ? renderBetsList(gameBets, game) : '<div class="no-bets-msg">⏳ Palpites serão exibidos após o início da partida.</div>'}
-</div>
         <div class="community-game-header" onclick="toggleCommunityGame('${gameId}')">
           <div class="community-game-info">
             <div class="community-teams">
@@ -348,53 +340,33 @@ function calculateBetPoints(bet, game) {
   if (!game.result) return 0;
   const r = game.result;
   let pts = 0;
-  
-  // 1. RESULTADO DA PARTIDA
-  const betWinner = Math.sign(bet.homeScore - bet.awayScore);
-  const realWinner = Math.sign(r.homeScore - r.awayScore);
-  if (betWinner === realWinner) pts += 6;
-  
-  // 2. PLACAR EXATO
-  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) pts += 4;
-  
-  // 3. EVENTOS (gols, assistências, cartões, etc.)
-  const events = r.events || [];
-  
-  // Jogadores do palpite (suporta até 2)
-  const players = [
-    { id: bet.playerId, role: bet.playerRole || 'field' },
-  ].filter(p => p.id);
-  
-  for (const player of players) {
-    const p = getPlayer(player.id);
-    if (!p) continue;
-    
-    const playerEvents = events.filter(e => e.playerId === player.id);
-    const isGoalkeeper = player.role === 'goleiro' || p.pos === 'GOL';
-    const isDefender = player.role === 'zagueiro' || p.pos === 'DEF';
-    
-    // GOLS
-    const goals = playerEvents.filter(e => e.type === 'goal').length;
-    if (goals > 0) {
-      pts += 2;                       // base
-      pts += (goals - 1) * 2;         // +2 por gol adicional
-    }
-    
-    // ASSISTÊNCIAS
-    const assists = playerEvents.filter(e => e.type === 'assist').length;
-    pts += assists * 1;               // 1 ponto por assistência
-    
-    // CARTÕES
-    const redCards = playerEvents.filter(e => e.type === 'red_card').length;
-    pts -= redCards * 2;
 
+  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) {
+    pts += 7;
+  } else if (Math.sign(bet.homeScore - bet.awayScore) === Math.sign(r.homeScore - r.awayScore)) {
+    pts += 5;
   }
-  
-  // 4. CRAQUE DO JOGO
-  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 2;
-  
+
+  if (bet.playerId && r.scorers && Array.isArray(r.scorers)) {
+    const scorerFound = r.scorers.find(s => s.playerId === bet.playerId);
+    if (scorerFound) {
+      pts += 3 + (scorerFound.goals - 1);
+    }
+  }
+  if (bet.player2Id && r.scorers && Array.isArray(r.scorers)) {
+    const scorerFound = r.scorers.find(s => s.playerId === bet.player2Id);
+    if (scorerFound) {
+      pts += 3 + (scorerFound.goals - 1);
+    }
+  }
+
+  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) {
+    pts += 4;
+  }
+
   return pts;
 }
+
 // =============================================
 // FUNÇÕES GLOBAIS
 // =============================================

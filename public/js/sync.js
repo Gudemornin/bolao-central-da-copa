@@ -137,29 +137,20 @@ export async function syncGamesWithAPI() {
         const awayExists = TEAMS[awayKey];
         if (!homeExists || !awayExists) continue;
 
-      const existingGame = existingGames.find(g => g.id === event.idEvent || 
-  (g.date === event.dateEvent && g.home === homeKey && g.away === awayKey));
-
-// Se já existe um jogo local e ele está finalizado, preservar tudo (não atualizar)
-if (existingGame && existingGame.status === 'completed' && existingGame.result) {
-  // Mantém o jogo existente inalterado
-  apiLaLigaGames.push(existingGame);
-} else {
-  // Cria ou atualiza normalmente (com resultado da API, se houver)
-  const gameObj = {
-    id: event.idEvent,
-    apiId: event.idEvent,
-    date: event.dateEvent,
-    time: event.strTime || '12:00',
-    home: homeKey,
-    away: awayKey,
-    group: 'La Liga',
-    venue: event.strVenue || 'Estádio',
-    status: event.strStatus === 'FT' ? 'completed' : 'upcoming',
-    result: existingGame?.result || null   // preserva resultado manual se existir
-  };
-  apiLaLigaGames.push(gameObj);
-}
+        const existingGame = existingGames.find(g => g.id === event.idEvent);
+        const gameObj = {
+  id: event.idEvent, // ou mantém o id manual? Melhor usar o idEvent como identificador único
+  apiId: event.idEvent, // guarda o ID da API
+  date: event.dateEvent,
+  time: event.strTime || '12:00',
+  home: homeKey,
+  away: awayKey,
+  group: 'La Liga',
+  venue: event.strVenue || 'Estádio',
+  status: event.strStatus === 'FT' ? 'completed' : 'upcoming',
+  result: existingGame?.result || null
+};
+        apiLaLigaGames.push(gameObj);
       }
     }
   } catch (error) {

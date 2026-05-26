@@ -2,8 +2,6 @@ import { loadBets, loadUsers } from './storage.js';
 import { GAMES_STATE, currentUser } from './state.js';
 import { sign } from './utils.js';
 import { updateSidebar } from './app.js';
-import { getPlayer } from './exportplayer.js';
-import { TEAMS } from './data/teams.js';
 
 export function calcBetPoints(bet, game, gameEvents = null) {
   if (!game.result) return 0;
@@ -11,57 +9,78 @@ export function calcBetPoints(bet, game, gameEvents = null) {
   const r = game.result;
   let pts = 0;
   
-  // 1. RESULTADO DA PARTIDA
+  // 1. RESULTADO DA PARTIDA (Vitória/Empate)
   const betWinner = sign(bet.homeScore - bet.awayScore);
   const realWinner = sign(r.homeScore - r.awayScore);
-  if (betWinner === realWinner) pts += 6;
   
-  // 2. PLACAR EXATO
-  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) pts += 4;
+  if (betWinner === realWinner) {
+    // Vitória = 6 pontos, Empate = 6 pontos também
+    pts += 6;
+  }
   
-  // 3. EVENTOS (gols, assistências, cartões, etc.)
-  const events = gameEvents || r.events || [];
+  // 2. PLACAR EXATO (+4 adicional, total 10)
+  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) {
+    pts += 4; // +4 em cima dos 6 do resultado = 10
+  }
   
-  // Jogadores do palpite (suporta até 2)
+  // 3. PONTUAÇÃO DOS JOGADORES ESCOLHIDOS
+  // Suporta até 2 jogadores (playerId e player2Id)
   const players = [
     { id: bet.playerId, role: bet.playerRole || 'field' },
     { id: bet.player2Id, role: bet.player2Role || 'field' }
   ].filter(p => p.id);
   
+  // Buscar eventos do jogo (se fornecidos)
+  const events = gameEvents || r.events || [];
+  
   for (const player of players) {
     const p = getPlayer(player.id);
-    if (!p) {
-      console.warn(`Jogador não encontrado: ${player.id}`);
-      continue;
-    }
+    if (!p) continue;
     
     const playerEvents = events.filter(e => e.playerId === player.id);
     const isGoalkeeper = player.role === 'goleiro' || p.pos === 'GOL';
     const isDefender = player.role === 'zagueiro' || p.pos === 'DEF';
     
-    // GOLS
+    // Gols marcados
     const goals = playerEvents.filter(e => e.type === 'goal').length;
     if (goals > 0) {
-      pts += 2;                       // base
-      pts += (goals - 1) * 2;         // +2 por gol adicional
+      pts += 3; // base por marcar
+      pts += (goals - 1) * 2; // +2 por cada gol adicional
     }
     
-    // ASSISTÊNCIAS
+    // Assistências
     const assists = playerEvents.filter(e => e.type === 'assist').length;
-    if (assists > 0) {
-      pts += assists * 1;             // 1 ponto por assistência
-      console.log(`✅ Assistência para ${p.name}: +${assists} ponto(s)`);
+    pts += assists * 1;
+    
+    // Cartões
+    const yellowCards = playerEvents.filter(e => e.type === 'yellow_card').length;
+    const redCards = playerEvents.filter(e => e.type === 'red_card').length;
+    pts -= yellowCards * 2;
+    pts -= redCards * 4;
+    
+    // Goleiro: defesa de pênalti
+    if (isGoalkeeper) {
+      const penaltiesSaved = playerEvents.filter(e => e.type === 'penalty_saved').length;
+      pts += penaltiesSaved * 5;
     }
     
-    // CARTÕES
-    const redCards = playerEvents.filter(e => e.type === 'red_card').length;
-    pts -= redCards * 2;
-
-
+    // Goleiro/Zagueiro: cleansheet
+    if ((isGoalkeeper || isDefender) && r.homeScore === 0 && r.awayScore === 0) {
+      pts += 2;
+    } else if ((isGoalkeeper || isDefender)) {
+      // Cleansheet individual (time não levou gol enquanto jogador estava em campo)
+      const minutesPlayed = playerEvents.find(e => e.type === 'minutes_played')?.value || 90;
+      const goalsConceded = player.team === game.home ? r.awayScore : r.homeScore;
+      if (goalsConceded === 0 && minutesPlayed >= 60) {
+        pts += 2;
+      }
+    }
   }
   
-  // 4. CRAQUE DO JOGO
-  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 2;
+  // 4. MOTM (Man of the Match) - 4 pontos
+  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) {
+    pts += 4;
+  }
   
   return pts;
 }
@@ -124,36 +143,36 @@ function parseEventsFromTimeline(timeline) {
 async function getUserStats(userId) {
   const users = await loadUsers();
   const user = users.find(u => u && u.id === userId);
+  
   const bets = await loadBets();
   const userBets = bets[userId] || {};
   let pts = 0, jp = 0, victories = 0, exactScores = 0, motm = 0;
-
+  
   for (const [gid, bet] of Object.entries(userBets)) {
     const g = GAMES_STATE.find(x => x && x.id === gid);
     if (!g || !g.result) continue;
-
+    
     jp++;
-    try {
-      // Usar os eventos que já estão salvos no jogo (se existirem)
-      const events = g.result.events || [];
-      const p = calcBetPoints(bet, g, events);
-      pts += p;
-
-      const betWinner = sign(bet.homeScore - bet.awayScore);
-      const realWinner = sign(g.result.homeScore - g.result.awayScore);
-      if (betWinner === realWinner) victories++;
-      if (bet.homeScore === g.result.homeScore && bet.awayScore === g.result.awayScore) exactScores++;
-      if (bet.playerId === g.result.craqueId || bet.player2Id === g.result.craqueId) motm++;
-    } catch (err) {
-      console.error(`Erro ao calcular pontos para ${userId}, jogo ${gid}:`, err);
-    }
+    const events = await fetchGameEvents(gid);
+    const p = calcBetPoints(bet, g, events);
+    pts += p;
+    
+    // Estatísticas adicionais
+    const betWinner = sign(bet.homeScore - bet.awayScore);
+    const realWinner = sign(g.result.homeScore - g.result.awayScore);
+    if (betWinner === realWinner) victories++;
+    
+    if (bet.homeScore === g.result.homeScore && bet.awayScore === g.result.awayScore) exactScores++;
+    if (bet.playerId === g.result.craqueId || bet.player2Id === g.result.craqueId) motm++;
   }
-
-  const avg = jp > 0 ? pts / jp : 0;
+  
+  const avg = jp > 0 ? (pts / jp) : 0;
+  
   if (user && user.adminOverrides) {
     if (user.adminOverrides.manualPoints !== undefined) pts = user.adminOverrides.manualPoints;
     if (user.adminOverrides.manualCraques !== undefined) motm = user.adminOverrides.manualCraques;
   }
+  
   return { pts, jp, victories, exactScores, motm, avg };
 }
 
