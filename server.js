@@ -575,6 +575,59 @@ app.post('/api/special-picks', (req, res) => {
   res.json({ success: true });
 });
 
+// server.js - adicionar após os outros endpoints
+
+// =============================================
+// PALPITES ESPECIAIS
+// =============================================
+app.get('/api/special-picks/:userId', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { userId } = req.params;
+  try {
+    const result = await pool.query('SELECT special_picks FROM users WHERE id = $1', [userId]);
+    if (result.rows.length > 0 && result.rows[0].special_picks) {
+      res.json(result.rows[0].special_picks);
+    } else {
+      res.json({ championTeam: null, topScorerId: null, mvpId: null, revelationId: null });
+    }
+  } catch (error) {
+    console.error('Erro ao buscar special picks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/special-picks', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { userId, championTeam, topScorerId, mvpId, revelationId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+  try {
+    const specialPicks = { championTeam, topScorerId, mvpId, revelationId, updatedAt: Date.now() };
+    await pool.query('UPDATE users SET special_picks = $1 WHERE id = $2', [JSON.stringify(specialPicks), userId]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao salvar special picks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/all-special-picks', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  try {
+    const result = await pool.query('SELECT id, profile_name, special_picks FROM users WHERE special_picks IS NOT NULL');
+    const picks = {};
+    for (const row of result.rows) {
+      picks[row.id] = {
+        profileName: row.profile_name,
+        specialPicks: row.special_picks
+      };
+    }
+    res.json(picks);
+  } catch (error) {
+    console.error('Erro ao buscar todos special picks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // =============================================
 // FALLBACK
 // =============================================
