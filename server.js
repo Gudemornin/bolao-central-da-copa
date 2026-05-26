@@ -418,189 +418,18 @@ app.get('/api/football', async (req, res) => {
 
 */
 
-// =============================================
-// ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
-// =============================================
-// =============================================
-// PROXY PARA THESPORTSDB (CHAVE 123)
-// =============================================
-const THESPORTSDB_API_KEY = '123';
-const THESPORTSDB_BASE_URL = 'https://www.thesportsdb.com/api/v1/json';
 
-app.get('/api/tsdb', async (req, res) => {
-  const { endpoint, leagueId, id, date, teamId, season } = req.query;
-
-  let url = '';
-  switch (endpoint) {
-    case 'events_season':
-      url = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/eventsseason.php?id=${leagueId}`;
-      if (season) url += `&s=${season}`;
-      break;
-    case 'event_timeline':
-      url = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/lookuptimeline.php?id=${id}`;
-      break;
-    case 'event_details':
-      url = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/lookupevent.php?id=${id}`;
-      break;
-    default:
-      return res.status(400).json({ error: 'Endpoint não suportado' });
-  }
-
-  try {
-    console.log(`🌐 Chamando TheSportsDB: ${url}`);
-    const response = await fetch(url);
-    const text = await response.text();
-
-    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
-      console.error(`❌ API retornou HTML. URL: ${url}`);
-      return res.status(502).json({ error: 'API retornou erro HTML. Verifique a chave e os parâmetros.' });
-    }
-
-    const data = JSON.parse(text);
-    res.json(data);
-  } catch (error) {
-    console.error('❌ Erro no proxy TheSportsDB:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // =============================================
-// ATUALIZAÇÃO AUTOMÁTICA DE RESULTADOS (5 em 5 min)
+// ENDPOINTS PARA PALPITES ESPECIAIS
 // =============================================
-app.post('/api/update-results', async (req, res) => {
-  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
 
-  try {
-    // 1. Carregar jogos atuais
-    const gamesResult = await pool.query('SELECT data FROM games WHERE id = $1', ['games_data']);
-    let games = gamesResult.rows[0]?.data?.games || [];
-    if (!Array.isArray(games)) games = [];
-
-    const now = new Date();
-    let updatedCount = 0;
-    const updatedGames = [];
-
-    // 2. Filtrar jogos que podem ser atualizados
-    const gamesToUpdate = games.filter(g => {
-      if (g.status === 'completed') return false;      // já finalizado manualmente
-      if (!g.apiId) return false;                      // só atualiza se tiver ID da API
-      const gameStart = new Date(`${g.date}T${g.time}:00`);
-      return gameStart <= now;                          // já começou
-    });
-
-    console.log(`🔄 Verificando ${gamesToUpdate.length} jogos para atualização...`);
-
-    for (const game of gamesToUpdate) {
-      try {
-        // 3. Buscar detalhes do evento (placar)
-        const eventUrl = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/lookupevent.php?id=${game.apiId}`;
-        const eventRes = await fetch(eventUrl);
-        const eventData = await eventRes.json();
-        if (!eventData.events?.[0]) continue;
-        const ev = eventData.events[0];
-
-        const homeScore = ev.intHomeScore !== undefined ? parseInt(ev.intHomeScore) : null;
-        const awayScore = ev.intAwayScore !== undefined ? parseInt(ev.intAwayScore) : null;
-        if (homeScore === null || awayScore === null) continue; // sem placar ainda
-
-        // 4. Buscar timeline (gols, cartões)
-        const timelineUrl = `${THESPORTSDB_BASE_URL}/${THESPORTSDB_API_KEY}/lookuptimeline.php?id=${game.apiId}`;
-        const timelineRes = await fetch(timelineUrl);
-        const timelineData = await timelineRes.json();
-
-        const scorers = [];
-        if (timelineData.timeline) {
-          const goalMap = new Map();
-          for (const evt of timelineData.timeline) {
-            if (evt.type === 'Goal') {
-              const playerName = evt.player;
-              goalMap.set(playerName, (goalMap.get(playerName) || 0) + 1);
-            }
-          }
-          for (const [playerName, goals] of goalMap.entries()) {
-            scorers.push({ playerId: playerName, playerName, goals });
-          }
-        }
-
-        // 5. Definir status finalizado
-        const status = ev.strStatus;
-        const isCompleted = ['FT', 'AET', 'PEN'].includes(status);
-
-        // 6. Atualizar objeto do jogo
-        game.status = isCompleted ? 'completed' : 'in_progress';
-        if (!game.result) game.result = {};
-        game.result.homeScore = homeScore;
-        game.result.awayScore = awayScore;
-        game.result.scorers = scorers;
-        // craqueId mantém o que já existir (ou null)
-        if (!game.result.craqueId) game.result.craqueId = null;
-
-        updatedGames.push(game);
-        updatedCount++;
-        console.log(`✅ Jogo ${game.id} atualizado: ${homeScore}:${awayScore} (${scorers.length} goleadores)`);
-      } catch (err) {
-        console.error(`❌ Erro no jogo ${game.id}:`, err.message);
-      }
-    }
-
-    // 7. Salvar alterações
-    if (updatedCount > 0) {
-      const finalGames = games.map(g => updatedGames.find(ug => ug.id === g.id) || g);
-      await pool.query(
-        `INSERT INTO games (id, data) VALUES ($1, $2)
-         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
-        ['games_data', { games: finalGames }]
-      );
-      console.log(`💾 ${updatedCount} jogos salvos automaticamente.`);
-    }
-
-    res.json({ success: true, updated: updatedCount });
-  } catch (error) {
-    console.error('❌ Erro no update automático:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Objeto em memória (substituir por banco de dados)
-let specialPicks = {};
-
-// =============================================
-// ENDPOINT: SALVAR PALPITES ESPECIAIS
-// =============================================
-app.post('/api/special-picks', async (req, res) => {
-  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
-  const { userId, championTeam, topScorerId, mvpId, revelationId } = req.body;
-  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
-  try {
-    await pool.query(
-      `INSERT INTO special_picks (user_id, champion_team, top_scorer_id, mvp_id, revelation_id, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (user_id) DO UPDATE SET
-         champion_team = EXCLUDED.champion_team,
-         top_scorer_id = EXCLUDED.top_scorer_id,
-         mvp_id = EXCLUDED.mvp_id,
-         revelation_id = EXCLUDED.revelation_id,
-         updated_at = EXCLUDED.updated_at`,
-      [userId, championTeam, topScorerId, mvpId, revelationId, Date.now()]
-    );
-    res.json({ success: true });
-  } catch (error) {
-    console.error('❌ POST /api/special-picks erro:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
-// ENDPOINT: BUSCAR PALPITES DE UM USUÁRIO
-// =============================================
+// Buscar palpites de um usuário específico
 app.get('/api/special-picks/:userId', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { userId } = req.params;
   try {
-    const result = await pool.query(
-      `SELECT champion_team, top_scorer_id, mvp_id, revelation_id FROM special_picks WHERE user_id = $1`,
-      [userId]
-    );
+    const result = await pool.query('SELECT * FROM special_picks WHERE user_id = $1', [userId]);
     if (result.rows.length === 0) {
       return res.json({ championTeam: null, topScorerId: null, mvpId: null, revelationId: null });
     }
@@ -612,14 +441,35 @@ app.get('/api/special-picks/:userId', async (req, res) => {
       revelationId: row.revelation_id
     });
   } catch (error) {
-    console.error('❌ GET /api/special-picks/:userId erro:', error);
+    console.error('Erro em GET /special-picks:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// =============================================
-// ENDPOINT: BUSCAR PALPITES DE TODOS OS USUÁRIOS (COM NOMES)
-// =============================================
+// Salvar palpites especiais
+app.post('/api/special-picks', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { userId, championTeam, topScorerId, mvpId, revelationId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+  try {
+    await pool.query(`
+      INSERT INTO special_picks (user_id, champion_team, top_scorer_id, mvp_id, revelation_id, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (user_id) DO UPDATE SET
+        champion_team = EXCLUDED.champion_team,
+        top_scorer_id = EXCLUDED.top_scorer_id,
+        mvp_id = EXCLUDED.mvp_id,
+        revelation_id = EXCLUDED.revelation_id,
+        updated_at = EXCLUDED.updated_at
+    `, [userId, championTeam || null, topScorerId || null, mvpId || null, revelationId || null, Date.now()]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro em POST /special-picks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Buscar palpites de todos os usuários (para exibir na lista)
 app.get('/api/all-special-picks', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   try {
@@ -627,7 +477,8 @@ app.get('/api/all-special-picks', async (req, res) => {
       SELECT u.id, u.profile_name, sp.champion_team, sp.top_scorer_id, sp.mvp_id, sp.revelation_id
       FROM users u
       LEFT JOIN special_picks sp ON u.id = sp.user_id
-      WHERE u.is_hidden = false OR u.is_hidden IS NULL
+      WHERE (u.is_hidden = false OR u.is_hidden IS NULL)
+      ORDER BY u.profile_name
     `);
     const allPicks = {};
     for (const row of result.rows) {
@@ -643,11 +494,10 @@ app.get('/api/all-special-picks', async (req, res) => {
     }
     res.json(allPicks);
   } catch (error) {
-    console.error('❌ GET /api/all-special-picks erro:', error);
+    console.error('Erro em GET /all-special-picks:', error);
     res.status(500).json({ error: error.message });
   }
 });
-
 // =============================================
 // FALLBACK
 // =============================================
