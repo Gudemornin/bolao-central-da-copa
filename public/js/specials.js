@@ -40,11 +40,10 @@ export async function renderSpecials() {
   } catch (e) {
     console.error('Falha ao carregar all special picks:', e);
   }
-  
+
   const deadlinePassed = isDeadlinePassed();
 
   // Carregar picks do usuário
-  let userPicks = { championTeam: null, topScorerId: null, mvpId: null, revelationId: null };
   if (currentUser) {
     try {
       const res = await fetch(`/api/special-picks/${currentUser.id}`);
@@ -53,7 +52,6 @@ export async function renderSpecials() {
   }
 
   // Carregar picks de todos
-  let allPicks = {};
   try {
     const res = await fetch('/api/all-special-picks');
     if (res.ok) allPicks = await res.json();
