@@ -815,3 +815,73 @@
     font-size: 0.6rem;
   }
 }
+
+.player-search-results {
+  display: none !important;
+}
+.player-search-results[style*="display: block"] {
+  display: block !important;
+}
+
+.player-search-results {
+  background: var(--navy-3) !important;        /* fundo escuro */
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Cada item da lista */
+.player-search-item {
+  background: transparent;
+  color: var(--text);                          /* texto claro */
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.player-search-item:hover {
+  background: var(--navy-4);                   /* realce no hover */
+  color: var(--blue-l);
+}
+
+/* Remover borda do último item */
+.player-search-item:last-child {
+  border-bottom: none;
+}
+
+/* Estilo da posição/jogador dentro do item */
+.player-search-item span:first-child {
+  flex: 1;
+  font-size: 13px;
+}
+
+.player-search-item span:last-child {
+  font-size: 11px;
+  color: var(--text-d);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 12px;
+}
+
+/* Ajuste para inputs de busca dentro do admin */
+.admin-game-row .player-search-input {
+  background: var(--navy-3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.player-search-wrapper {
+  position: relative;
+  width: 100%;
+}
