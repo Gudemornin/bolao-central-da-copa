@@ -421,16 +421,22 @@ app.get('/api/football', async (req, res) => {
 
 
 // =============================================
-// ENDPOINTS PARA PALPITES ESPECIAIS
+// PALPITES ESPECIAIS (Campeão, Artilheiro, Craque, Revelação)
 // =============================================
 
-// Buscar palpites de um usuário específico
+// Buscar palpites de um usuário
 app.get('/api/special-picks/:userId', async (req, res) => {
-  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
   const { userId } = req.params;
   try {
-    const result = await pool.query('SELECT * FROM special_picks WHERE user_id = $1', [userId]);
+    const result = await pool.query(
+      'SELECT champion_team, top_scorer_id, mvp_id, revelation_id FROM special_picks WHERE user_id = $1',
+      [userId]
+    );
     if (result.rows.length === 0) {
+      // Retorna objeto vazio (sem palpites)
       return res.json({ championTeam: null, topScorerId: null, mvpId: null, revelationId: null });
     }
     const row = result.rows[0];
@@ -440,41 +446,49 @@ app.get('/api/special-picks/:userId', async (req, res) => {
       mvpId: row.mvp_id,
       revelationId: row.revelation_id
     });
-  } catch (error) {
-    console.error('Erro em GET /special-picks:', error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error('❌ Erro em GET /special-picks:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
 // Salvar palpites especiais
 app.post('/api/special-picks', async (req, res) => {
-  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
   const { userId, championTeam, topScorerId, mvpId, revelationId } = req.body;
-  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+  if (!userId) {
+    return res.status(400).json({ error: 'userId é obrigatório' });
+  }
   try {
-    await pool.query(`
-      INSERT INTO special_picks (user_id, champion_team, top_scorer_id, mvp_id, revelation_id, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (user_id) DO UPDATE SET
-        champion_team = EXCLUDED.champion_team,
-        top_scorer_id = EXCLUDED.top_scorer_id,
-        mvp_id = EXCLUDED.mvp_id,
-        revelation_id = EXCLUDED.revelation_id,
-        updated_at = EXCLUDED.updated_at
-    `, [userId, championTeam || null, topScorerId || null, mvpId || null, revelationId || null, Date.now()]);
+    await pool.query(
+      `INSERT INTO special_picks (user_id, champion_team, top_scorer_id, mvp_id, revelation_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (user_id) DO UPDATE SET
+         champion_team = EXCLUDED.champion_team,
+         top_scorer_id = EXCLUDED.top_scorer_id,
+         mvp_id = EXCLUDED.mvp_id,
+         revelation_id = EXCLUDED.revelation_id,
+         updated_at = EXCLUDED.updated_at`,
+      [userId, championTeam || null, topScorerId || null, mvpId || null, revelationId || null, Date.now()]
+    );
     res.json({ success: true });
-  } catch (error) {
-    console.error('Erro em POST /special-picks:', error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error('❌ Erro em POST /special-picks:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Buscar palpites de todos os usuários (para exibir na lista)
+// Buscar palpites de todos os usuários (para listagem)
 app.get('/api/all-special-picks', async (req, res) => {
-  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  if (!pool) {
+    return res.status(500).json({ error: 'Banco de dados não conectado' });
+  }
   try {
     const result = await pool.query(`
-      SELECT u.id, u.profile_name, sp.champion_team, sp.top_scorer_id, sp.mvp_id, sp.revelation_id
+      SELECT u.id, u.profile_name, 
+             sp.champion_team, sp.top_scorer_id, sp.mvp_id, sp.revelation_id
       FROM users u
       LEFT JOIN special_picks sp ON u.id = sp.user_id
       WHERE (u.is_hidden = false OR u.is_hidden IS NULL)
@@ -493,11 +507,12 @@ app.get('/api/all-special-picks', async (req, res) => {
       };
     }
     res.json(allPicks);
-  } catch (error) {
-    console.error('Erro em GET /all-special-picks:', error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error('❌ Erro em GET /all-special-picks:', err);
+    res.status(500).json({ error: err.message });
   }
 });
+
 // =============================================
 // FALLBACK
 // =============================================
