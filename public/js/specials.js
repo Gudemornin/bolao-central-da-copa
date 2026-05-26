@@ -196,35 +196,48 @@ function setupTeamSearch(inputId, resultsId, onSelect) {
   const input = document.getElementById(inputId);
   const results = document.getElementById(resultsId);
   if (!input || !results) return;
-  
-  const handler = () => {
+
+  input.addEventListener('input', () => {
     const query = input.value.trim().toLowerCase();
     if (query.length < 2) {
       results.classList.remove('open');
+      results.style.display = 'none';
       return;
     }
     const matches = Object.entries(TEAMS)
       .filter(([, t]) => t.name.toLowerCase().includes(query))
       .map(([id, t]) => ({ id, name: t.name, flag: t.flag }));
+    
+    if (!matches.length) {
+      results.innerHTML = '<div style="padding:8px 12px;">Nenhum time encontrado</div>';
+      results.classList.add('open');
+      results.style.display = 'block';
+      return;
+    }
     results.innerHTML = matches.map(t => `
       <div class="psearch-item" data-team-id="${t.id}" style="padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px;">
         <img src="${t.flag}" style="width:20px;"> ${t.name}
       </div>
     `).join('');
     results.classList.add('open');
-    
+    results.style.display = 'block';
+
     results.querySelectorAll('.psearch-item').forEach(el => {
-      el.onclick = () => {
+      el.addEventListener('click', () => {
         onSelect(el.dataset.teamId);
         input.value = '';
         results.classList.remove('open');
-      };
+        results.style.display = 'none';
+      });
     });
-  };
-  
-  input.addEventListener('input', handler);
+  });
+
+  // Fechar ao clicar fora
   document.addEventListener('click', (e) => {
-    if (!input.contains(e.target) && !results.contains(e.target)) results.classList.remove('open');
+    if (!input.contains(e.target) && !results.contains(e.target)) {
+      results.classList.remove('open');
+      results.style.display = 'none';
+    }
   });
 }
 
@@ -232,14 +245,21 @@ function setupPlayerSearch(inputId, resultsId, onSelect) {
   const input = document.getElementById(inputId);
   const results = document.getElementById(resultsId);
   if (!input || !results) return;
-  
-  const handler = () => {
+
+  input.addEventListener('input', () => {
     const query = input.value.trim();
     if (query.length < 2) {
       results.classList.remove('open');
+      results.style.display = 'none';
       return;
     }
     const players = filterPlayers(query);
+    if (!players.length) {
+      results.innerHTML = '<div style="padding:8px 12px;">Nenhum jogador encontrado</div>';
+      results.classList.add('open');
+      results.style.display = 'block';
+      return;
+    }
     results.innerHTML = players.map(p => {
       const team = TEAMS[p.team];
       const flag = team?.flag ? `<img src="${team.flag}" style="width:20px;">` : '';
@@ -251,19 +271,23 @@ function setupPlayerSearch(inputId, resultsId, onSelect) {
       `;
     }).join('');
     results.classList.add('open');
-    
+    results.style.display = 'block';
+
     results.querySelectorAll('.psearch-item').forEach(el => {
-      el.onclick = () => {
+      el.addEventListener('click', () => {
         onSelect(el.dataset.playerId);
         input.value = '';
         results.classList.remove('open');
-      };
+        results.style.display = 'none';
+      });
     });
-  };
-  
-  input.addEventListener('input', handler);
+  });
+
   document.addEventListener('click', (e) => {
-    if (!input.contains(e.target) && !results.contains(e.target)) results.classList.remove('open');
+    if (!input.contains(e.target) && !results.contains(e.target)) {
+      results.classList.remove('open');
+      results.style.display = 'none';
+    }
   });
 }
 
