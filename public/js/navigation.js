@@ -13,6 +13,7 @@ import { getPlayer } from './exportplayer.js';
 import { updateMobileActiveTab, updateMobileMenu } from './app.js';
 import { renderCommunityBets } from './communityBets.js';
 
+
 // =============================================
 // FUNÇÃO PARA EXIBIR "JOGOS DA COPA"
 // =============================================

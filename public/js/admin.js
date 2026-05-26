@@ -57,8 +57,17 @@ export async function renderAdminGames() {
   const el = document.getElementById('adminTabContent');
   if (!el) return;
 
+  // Carregar jogos do estado global ou do backend
+  let games = GAMES_STATE;
+  if (!games || !games.length) {
+    games = await loadGames();
+  }
+  if (!games.length) {
+    el.innerHTML = '<div class="empty-state">Nenhum jogo cadastrado.</div>';
+    return;
+  }
 
-   // Agrupar jogos por data
+  // Agrupar jogos por data
   const gamesByDate = {};
   games.forEach(game => {
     if (!gamesByDate[game.date]) gamesByDate[game.date] = [];
