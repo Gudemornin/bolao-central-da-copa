@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS special_picks (
   champion_team TEXT,
   top_scorer_id TEXT,
   mvp_player_id TEXT,
-  revelation_id TEXT,
+  revelation_player_id TEXT,
   updated_at BIGINT
 );
 `);
@@ -432,7 +432,7 @@ app.get('/api/special-picks/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
     const result = await pool.query(
-      'SELECT champion_team, top_scorer_id, mvp_player_id, revelation_id FROM special_picks WHERE user_id = $1',
+      'SELECT champion_team, top_scorer_id, mvp_player_id, revelation_player_id FROM special_picks WHERE user_id = $1',
       [userId]
     );
     if (result.rows.length === 0) {
@@ -444,7 +444,7 @@ app.get('/api/special-picks/:userId', async (req, res) => {
       championTeam: row.champion_team,
       topScorerId: row.top_scorer_id,
       mvpId: row.mvp_player_id,
-      revelationId: row.revelation_id
+      revelationId: row.revelation_player_id
     });
   } catch (err) {
     console.error('❌ Erro em GET /special-picks:', err);
@@ -463,13 +463,13 @@ app.post('/api/special-picks', async (req, res) => {
   }
   try {
     await pool.query(
-      `INSERT INTO special_picks (user_id, champion_team, top_scorer_id, mvp_player_id, revelation_id, updated_at)
+      `INSERT INTO special_picks (user_id, champion_team, top_scorer_id, mvp_player_id, revelation_player_id, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (user_id) DO UPDATE SET
          champion_team = EXCLUDED.champion_team,
          top_scorer_id = EXCLUDED.top_scorer_id,
          mvp_player_id = EXCLUDED.mvp_player_id,
-         revelation_id = EXCLUDED.revelation_id,
+         revelation_player_id = EXCLUDED.revelation_player_id,
          updated_at = EXCLUDED.updated_at`,
       [userId, championTeam || null, topScorerId || null, mvpId || null, revelationId || null, Date.now()]
     );
@@ -488,7 +488,7 @@ app.get('/api/all-special-picks', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT u.id, u.profile_name, 
-             sp.champion_team, sp.top_scorer_id, sp.mvp_player_id, sp.revelation_id
+             sp.champion_team, sp.top_scorer_id, sp.mvp_player_id, sp.revelation_player_id
       FROM users u
       LEFT JOIN special_picks sp ON u.id = sp.user_id
       WHERE (u.is_hidden = false OR u.is_hidden IS NULL)
@@ -502,7 +502,7 @@ app.get('/api/all-special-picks', async (req, res) => {
           championTeam: row.champion_team,
           topScorerId: row.top_scorer_id,
           mvpId: row.mvp_player_id,
-          revelationId: row.revelation_id
+          revelationId: row.revelation_player_id
         }
       };
     }
