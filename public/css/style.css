@@ -183,6 +183,22 @@ img[src*="flagcdn"] {
   gap: 20px;
 }
 
+.form-group {
+  position: relative;
+}
+
+/* Estilo dos itens */
+.psearch-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.psearch-item:hover {
+  background: var(--navy-4);
+}
+
 html, body {
   overflow-x: hidden;
   width: 100%;
