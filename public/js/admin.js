@@ -9,6 +9,7 @@ import { renderAdminPanel } from './adminPanel.js';
 let tempScorers = {};
 let tempAssists = {};
 let tempRedCards = {};
+
 // Array para armazenar goleadores temporariamente (por jogo)
 
 export async function renderAdmin() {
@@ -53,22 +54,28 @@ window.showAdminTab = (tab, button) => {
   }
 };
 
+// admin.js
 export async function renderAdminGames() {
-  let games = GAMES_STATE;
-  if (!games || !games.length) {
-    games = await loadGames();
-    if (games.length) setGamesState(games);
-  }
-  if (!games.length) {
-    document.getElementById('adminTabContent').innerHTML = '<div class="empty-state">Nenhum jogo cadastrado.</div>';
-    return;
-  }
-  if (!games || !games.length) {
-    document.getElementById('adminTabContent').innerHTML = '<div class="empty-state">Nenhum jogo cadastrado ainda.</div>';
+  // 🔁 1. Define o elemento container
+  const el = document.getElementById('adminTabContent');
+  if (!el) {
+    console.error('❌ Elemento adminTabContent não encontrado');
     return;
   }
 
-  // Agrupa por data
+  // 🔁 2. Carrega os jogos do estado global ou do backend
+  let games = GAMES_STATE;
+  if (!games || !games.length) {
+    games = await loadGames();
+    if (games && games.length) setGamesState(games);
+  }
+
+  if (!games || !games.length) {
+    el.innerHTML = '<div class="empty-state">Nenhum jogo cadastrado ainda.</div>';
+    return;
+  }
+
+  // 🔁 3. Agrupa jogos por data
   const gamesByDate = {};
   games.forEach(game => {
     if (!game.date) return;
@@ -78,7 +85,8 @@ export async function renderAdminGames() {
 
   const sortedDates = Object.keys(gamesByDate).sort();
 
-  let html = `
+  // 🔁 4. Monta o HTML do filtro e do container
+  el.innerHTML = `
     <div class="admin-date-filter" style="margin-bottom:20px;">
       <label class="form-label">Filtrar por data:</label>
       <select id="adminDateFilter" class="form-input" style="width:auto;display:inline-block;margin-left:10px;">
@@ -88,8 +96,8 @@ export async function renderAdminGames() {
     </div>
     <div id="adminGamesContainer"></div>
   `;
-  el.innerHTML = html;
 
+  // 🔁 5. Função para renderizar os jogos de acordo com a data selecionada
   const renderGamesByDate = (selectedDate) => {
     const container = document.getElementById('adminGamesContainer');
     const gamesToShow = selectedDate === 'all' ? games : games.filter(g => g.date === selectedDate);
@@ -99,20 +107,58 @@ export async function renderAdminGames() {
       return;
     }
 
-    // Gera o HTML para cada jogo (usando a mesma lógica que você já tem)
-    container.innerHTML = gamesToShow.map(game => renderAdminGameCard(game)).join('');
+    // Gera o HTML de cada jogo (você pode usar sua função `renderAdminGameCard` ou o bloco inline)
+    container.innerHTML = gamesToShow.map(game => {
+      const t1 = TEAMS[game.home];
+      const t2 = TEAMS[game.away];
+      const r = game.result || {};
+      const gamePlayers = getPlayersByTeams(game.home, game.away);
 
-    // Reatribui eventos (se necessário)
+      // Inicializa temporários se necessário
+      if (!tempScorers[game.id]) tempScorers[game.id] = r.scorers ? [...r.scorers] : [];
+
+      return `
+        <div class="admin-game-row" id="admin-game-${game.id}">
+          <h4>${teamFlagImg(t1, 22)} ${t1?.name} × ${teamFlagImg(t2, 22)} ${t2?.name} — ${game.date} ${game.time}</h4>
+          <div class="admin-section">
+            <div class="admin-label">Resultado</div>
+            <div style="display:flex; gap:10px;">
+              <input class="admin-input" type="number" id="homeScore_${game.id}" value="${r.homeScore ?? ''}" placeholder="0">
+              <span>:</span>
+              <input class="admin-input" type="number" id="awayScore_${game.id}" value="${r.awayScore ?? ''}" placeholder="0">
+            </div>
+          </div>
+          <div class="admin-section">
+            <div class="admin-label">⚽ Goleadores</div>
+            <div id="scorers-list-${game.id}">${renderScorersList(game.id, tempScorers[game.id] || [], gamePlayers)}</div>
+            <button type="button" class="admin-add-btn" onclick="adminAddScorer('${game.id}')">+ Adicionar Goleador</button>
+          </div>
+          <div class="admin-section">
+            <div class="admin-label">⭐ Craque do Jogo</div>
+            <select class="admin-input" id="craque_${game.id}">
+              <option value="">Nenhum</option>
+              ${gamePlayers.map(p => `<option value="${p.id}" ${r.craqueId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+            </select>
+          </div>
+          <button class="admin-save-btn" onclick="adminSaveGame('${game.id}')">💾 SALVAR</button>
+        </div>
+        <hr>
+      `;
+    }).join('');
+
+    // Reatribui eventos dos botões dinâmicos (se necessário)
     document.querySelectorAll('.admin-remove-btn, .admin-add-btn, .admin-save-btn').forEach(btn => {
       btn.onclick = window[btn.getAttribute('onclick')?.split('(')[0]] || btn.onclick;
     });
   };
 
+  // 🔁 6. Configura o evento do filtro de data
   const dateFilter = document.getElementById('adminDateFilter');
   if (dateFilter) {
     dateFilter.addEventListener('change', (e) => renderGamesByDate(e.target.value));
   }
 
+  // 🔁 7. Renderiza a primeira vez (todas as datas)
   renderGamesByDate('all');
 }
 
