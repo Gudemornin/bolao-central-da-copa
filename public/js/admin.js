@@ -6,9 +6,10 @@ import { GAMES_STATE, setGamesState } from './state.js';
 import { formatDate, teamFlagImg } from './utils.js';
 import { renderAdminPanel } from './adminPanel.js';
 
+let tempScorers = {};
+let tempAssists = {};
+let tempRedCards = {};
 // Array para armazenar goleadores temporariamente (por jogo)
-const tempScorers = {};
-const tempEvents = {};
 
 export async function renderAdmin() {
   const container = document.getElementById('adminGamesList');
@@ -165,18 +166,6 @@ export async function renderAdminGames() {
 
         <div class="admin-section" style="margin-top:14px;">
           <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>🟨 Cartões Amarelos</span>
-            <button type="button" class="admin-add-btn" onclick="adminAddEvent('${g.id}','yellow_card')" style="background:var(--green);padding:4px 10px;font-size:11px;">
-              + Adicionar Cartão
-            </button>
-          </div>
-          <div id="event_section_yellow_card_${g.id}" style="margin-top:10px;">
-            ${renderEventSection(g.id, 'yellow_card', 'Cartão Amarelo', gamePlayers)}
-          </div>
-        </div>
-
-        <div class="admin-section" style="margin-top:14px;">
-          <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
             <span>🟥 Cartões Vermelhos</span>
             <button type="button" class="admin-add-btn" onclick="adminAddEvent('${g.id}','red_card')" style="background:var(--green);padding:4px 10px;font-size:11px;">
               + Adicionar Cartão
@@ -184,18 +173,6 @@ export async function renderAdminGames() {
           </div>
           <div id="event_section_red_card_${g.id}" style="margin-top:10px;">
             ${renderEventSection(g.id, 'red_card', 'Cartão Vermelho', gamePlayers)}
-          </div>
-        </div>
-
-        <div class="admin-section" style="margin-top:14px;">
-          <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>🧤 Pênaltis Defendidos</span>
-            <button type="button" class="admin-add-btn" onclick="adminAddEvent('${g.id}','penalty_saved')" style="background:var(--green);padding:4px 10px;font-size:11px;">
-              + Adicionar Defesa
-            </button>
-          </div>
-          <div id="event_section_penalty_saved_${g.id}" style="margin-top:10px;">
-            ${renderEventSection(g.id, 'penalty_saved', 'Penalti Defendido', gamePlayers, true)}
           </div>
         </div>
 
@@ -262,6 +239,29 @@ function renderScorersList(gameId, scorers, gamePlayers) {
       </div>
     `;
   }).join('');
+}
+
+function renderAssistsList(gameId, assists, gamePlayers) {
+  if (!assists.length) return '<div style="color:var(--text-d);">Nenhuma assistência registrada.</div>';
+  return assists.map((a, idx) => `
+    <div class="assist-item" style="display:flex; gap:10px; margin-bottom:8px;">
+      <span>${idx+1}º</span>
+      <div style="flex:1">${renderPlayerSearchControl(gameId, 'assist', idx, a.playerId, gamePlayers, false)}</div>
+      <input type="number" id="assist_count_${gameId}_${idx}" value="${a.assists || 1}" min="1" max="9" style="width:60px;">
+      <button class="admin-remove-btn" onclick="adminRemoveAssist('${gameId}', ${idx})">✕</button>
+    </div>
+  `).join('');
+}
+
+function renderRedCardsList(gameId, redCards, gamePlayers) {
+  if (!redCards.length) return '<div style="color:var(--text-d);">Nenhum cartão vermelho.</div>';
+  return redCards.map((card, idx) => `
+    <div class="redcard-item" style="display:flex; gap:10px; margin-bottom:8px;">
+      <span>${idx+1}º</span>
+      <div style="flex:1">${renderPlayerSearchControl(gameId, 'redcard', idx, card.playerId, gamePlayers, false)}</div>
+      <button class="admin-remove-btn" onclick="adminRemoveRedCard('${gameId}', ${idx})">✕</button>
+    </div>
+  `).join('');
 }
 
 function getTypeEvents(gameId, type) {
@@ -530,6 +530,23 @@ async function adminSaveGame(gameId) {
     return;
   }
 
+  // Coletar assistências
+const assists = [];
+for (let i = 0; i < (tempAssists[gameId] || []).length; i++) {
+  const playerId = document.getElementById(`player_selected_${gameId}_assist_${i}`)?.value;
+  const count = parseInt(document.getElementById(`assist_count_${gameId}_${i}`)?.value || 0);
+  if (playerId && count > 0) {
+    assists.push({ playerId, assists: count });
+  }
+}
+
+// Coletar cartões vermelhos
+const redCards = [];
+for (let i = 0; i < (tempRedCards[gameId] || []).length; i++) {
+  const playerId = document.getElementById(`player_selected_${gameId}_redcard_${i}`)?.value;
+  if (playerId) redCards.push({ playerId });
+}
+
   // Pegar craque do jogo
   const craqueSelect = document.getElementById(`craque_${gameId}`);
   const craqueId = craqueSelect ? craqueSelect.value : null;
@@ -577,11 +594,11 @@ if (document.getElementById('tabRanking').classList.contains('active')) {
   // Atualizar GAMES_STATE
   GAMES_STATE[idx].status = 'completed';
   GAMES_STATE[idx].result = {
-    homeScore,
-    awayScore,
-    scorers: updatedScorers,
-    craqueId: craqueId || null,
-    events: updatedEvents
+    homeScore, awayScore,
+  scorers: updatedScorers,
+  assists: assists,
+  redCards: redCards,
+  craqueId: craqueId || null
   };
 
   try {
@@ -609,3 +626,25 @@ window.filterAdminPlayers      = filterAdminPlayers;
 window.showAdminPlayerResults  = showAdminPlayerResults;
 window.selectAdminPlayer       = selectAdminPlayer;
 window.showAdminTab            = showAdminTab; 
+
+window.adminAddAssist = (gameId) => {
+  if (!tempAssists[gameId]) tempAssists[gameId] = [];
+  tempAssists[gameId].push({ playerId: '', assists: 1 });
+  renderAssistsListDynamic(gameId);
+};
+
+window.adminRemoveAssist = (gameId, idx) => {
+  tempAssists[gameId].splice(idx, 1);
+  renderAssistsListDynamic(gameId);
+};
+
+window.adminAddRedCard = (gameId) => {
+  if (!tempRedCards[gameId]) tempRedCards[gameId] = [];
+  tempRedCards[gameId].push({ playerId: '' });
+  renderRedCardsListDynamic(gameId);
+};
+
+window.adminRemoveRedCard = (gameId, idx) => {
+  tempRedCards[gameId].splice(idx, 1);
+  renderRedCardsListDynamic(gameId);
+};

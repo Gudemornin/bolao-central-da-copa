@@ -5,71 +5,47 @@ import { updateSidebar } from './app.js';
 import { getPlayer } from './exportplayer.js';
 import { TEAMS } from './data/teams.js';
 
-export function calcBetPoints(bet, game, gameEvents = null) {
+// ranking.js
+export function calcBetPoints(bet, game) {
   if (!game.result) return 0;
-  
   const r = game.result;
   let pts = 0;
-  
-  // 1. RESULTADO DA PARTIDA
+
+  // Resultado da partida
   const betWinner = sign(bet.homeScore - bet.awayScore);
   const realWinner = sign(r.homeScore - r.awayScore);
-  if (betWinner === realWinner) pts += 6;
-  
-  // 2. PLACAR EXATO
-  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) pts += 4;
-  
-  // 3. EVENTOS (gols, assistências, cartões, etc.)
-  const events = gameEvents || r.events || [];
-  
-  // Jogadores do palpite (suporta até 2)
-  const players = [
-    { id: bet.playerId, role: bet.playerRole || 'field' },
-    { id: bet.player2Id, role: bet.player2Role || 'field' }
-  ].filter(p => p.id);
-  
-  for (const player of players) {
-    const p = getPlayer(player.id);
-    if (!p) {
-      console.warn(`Jogador não encontrado: ${player.id}`);
-      continue;
-    }
-    
-    const playerEvents = events.filter(e => e.playerId === player.id);
-    const isGoalkeeper = player.role === 'goleiro' || p.pos === 'GOL';
-    const isDefender = player.role === 'zagueiro' || p.pos === 'DEF';
-    
-    // GOLS
-    const goals = playerEvents.filter(e => e.type === 'goal').length;
-    if (goals > 0) {
-      pts += 3;                       // base
-      pts += (goals - 1) * 2;         // +2 por gol adicional
-    }
-    
-    // ASSISTÊNCIAS
-    const assists = playerEvents.filter(e => e.type === 'assist').length;
-    if (assists > 0) {
-      pts += assists * 1;             // 1 ponto por assistência
-      console.log(`✅ Assistência para ${p.name}: +${assists} ponto(s)`);
-    }
-    
-    // CARTÕES
-    const yellowCards = playerEvents.filter(e => e.type === 'yellow_card').length;
-    const redCards = playerEvents.filter(e => e.type === 'red_card').length;
-    pts -= yellowCards * 2;
-    pts -= redCards * 4;
-    
-    // PÊNALTI DEFENDIDO (goleiro)
-    if (isGoalkeeper) {
-      const penaltiesSaved = playerEvents.filter(e => e.type === 'penalty_saved').length;
-      pts += penaltiesSaved * 5;
-    }
+  const exact = (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore);
 
+  if (exact) {
+    pts += 10;                    // placar exato
+  } else if (betWinner === realWinner) {
+    pts += 6;                     // só resultado certo
   }
-  
-  // 4. CRAQUE DO JOGO
-  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 4;
-  
+
+  // Gols do jogador representante (2 pts cada)
+  if (bet.playerId) {
+    const playerGoals = (r.scorers || [])
+      .filter(s => s.playerId === bet.playerId)
+      .reduce((sum, s) => sum + (s.goals || 0), 0);
+    pts += playerGoals * 2;
+  }
+
+  // Assistências do jogador representante (1 pt cada)
+  if (bet.playerId) {
+    const playerAssists = (r.assists || [])
+      .filter(a => a.playerId === bet.playerId)
+      .reduce((sum, a) => sum + (a.assists || 0), 0);
+    pts += playerAssists * 1;
+  }
+
+  // Expulsão (cartão vermelho) do jogador representante (-3 pts)
+  if (bet.playerId && (r.redCards || []).some(card => card.playerId === bet.playerId)) {
+    pts -= 3;
+  }
+
+  // Craque do jogo (3 pts)
+  if (bet.playerId === r.craqueId) pts += 3;
+
   return pts;
 }
 
