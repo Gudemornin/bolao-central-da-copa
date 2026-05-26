@@ -162,6 +162,11 @@
 }
 
 .player-search-results {
+  display: none;               /* padrão escondido */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
   background: var(--navy-3);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -170,12 +175,9 @@
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0,0,0,0.4);
 }
-.player-search-results .game-pitem:hover {
-  background: var(--navy-4);
-}
 
 .player-search-results.open {
-  display: block;
+  display: block !important;    /* força a exibição */
 }
 
 .selected-player-badge {

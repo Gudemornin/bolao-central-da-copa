@@ -280,7 +280,9 @@ export function filterGamePlayers(gameId) {
       </div>
     `;
   }).join('');
-  res.classList.add('open');
+
+res.classList.add('open');
+res.style.display = 'block';
 }
 
 export function showGameResults(gameId) {
