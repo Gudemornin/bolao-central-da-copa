@@ -57,26 +57,28 @@ export async function renderAdminGames() {
   const el = document.getElementById('adminTabContent');
   if (!el) return;
 
-  // Carregar jogos do estado global ou do backend
+  // 🔁 Carrega jogos do estado global ou do backend
   let games = GAMES_STATE;
   if (!games || !games.length) {
     games = await loadGames();
+    if (games && games.length) setGamesState(games);
   }
-  if (!games.length) {
-    el.innerHTML = '<div class="empty-state">Nenhum jogo cadastrado.</div>';
+
+  if (!games || !games.length) {
+    el.innerHTML = '<div class="empty-state">Nenhum jogo cadastrado ainda.</div>';
     return;
   }
 
-  // Agrupar jogos por data
+  // Agrupa por data
   const gamesByDate = {};
   games.forEach(game => {
+    if (!game.date) return;
     if (!gamesByDate[game.date]) gamesByDate[game.date] = [];
     gamesByDate[game.date].push(game);
   });
 
-    const sortedDates = Object.keys(gamesByDate).sort();
+  const sortedDates = Object.keys(gamesByDate).sort();
 
-  
   let html = `
     <div class="admin-date-filter" style="margin-bottom:20px;">
       <label class="form-label">Filtrar por data:</label>
@@ -92,112 +94,27 @@ export async function renderAdminGames() {
   const renderGamesByDate = (selectedDate) => {
     const container = document.getElementById('adminGamesContainer');
     const gamesToShow = selectedDate === 'all' ? games : games.filter(g => g.date === selectedDate);
-    
+
+    if (gamesToShow.length === 0) {
+      container.innerHTML = '<div class="empty-state">Nenhum jogo nesta data.</div>';
+      return;
+    }
+
+    // Gera o HTML para cada jogo (usando a mesma lógica que você já tem)
     container.innerHTML = gamesToShow.map(game => renderAdminGameCard(game)).join('');
-    
-    // Reatribuir eventos após renderização
+
+    // Reatribui eventos (se necessário)
     document.querySelectorAll('.admin-remove-btn, .admin-add-btn, .admin-save-btn').forEach(btn => {
       btn.onclick = window[btn.getAttribute('onclick')?.split('(')[0]] || btn.onclick;
     });
   };
-  
-  document.getElementById('adminDateFilter').addEventListener('change', (e) => {
-    renderGamesByDate(e.target.value);
-  });
-  
+
+  const dateFilter = document.getElementById('adminDateFilter');
+  if (dateFilter) {
+    dateFilter.addEventListener('change', (e) => renderGamesByDate(e.target.value));
+  }
+
   renderGamesByDate('all');
-
-
-  el.innerHTML = GAMES_STATE.map(g => {
-    const t1 = TEAMS[g.home], t2 = TEAMS[g.away];
-    const r = g.result || {};
-    const gamePlayers = getPlayersByTeams(g.home, g.away);
-    
-    // Inicializar tempScorers para este jogo se não existir
-    if (!tempScorers[g.id]) {
-      tempScorers[g.id] = r.scorers ? [...r.scorers] : [];
-    }
-    if (!tempEvents[g.id]) {
-      tempEvents[g.id] = r.events ? [...r.events] : [];
-    }
-    
-    // Lista de goleadores atuais
-    const scorersList = tempScorers[g.id] || [];
-    
-    return `
-      <div class="admin-game-row" id="admin-game-${g.id}">
-        <h4>
-          ${teamFlagImg(t1, 22)} ${t1?.name} × ${teamFlagImg(t2, 22)} ${t2?.name} — ${formatDate(g.date)} ${g.time}
-          <span class="status-badge ${g.status === 'completed' ? 'status-completed' : 'status-upcoming'}" style="margin-left:8px;">
-            ${g.status === 'completed' ? 'Finalizado' : 'Aguardando'}
-          </span>
-        </h4>
-        
-        <!-- Resultado do jogo -->
-        <div class="admin-section">
-          <div class="admin-label">Resultado</div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-            <input class="admin-input" type="number" id="homeScore_${g.id}" value="${r.homeScore !== undefined ? r.homeScore : ''}" placeholder="0" min="0" max="99" style="width:70px;">
-            <span style="font-size:20px;">:</span>
-            <input class="admin-input" type="number" id="awayScore_${g.id}" value="${r.awayScore !== undefined ? r.awayScore : ''}" placeholder="0" min="0" max="99" style="width:70px;">
-          </div>
-        </div>
-        
-        <!-- Múltiplos Goleadores -->
-        <div class="admin-section">
-          <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>⚽ Goleadores (múltiplos)</span>
-            <button type="button" class="admin-add-btn" onclick="adminAddScorer('${g.id}')" style="background:var(--green);padding:4px 10px;font-size:11px;">
-              + Adicionar Goleador
-            </button>
-          </div>
-          <div id="scorers-list-${g.id}" style="margin-top:10px;">
-            ${renderScorersList(g.id, scorersList, gamePlayers)}
-          </div>
-        </div>
-
-        <!-- Eventos do Jogo -->
-        <div class="admin-section">
-          <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>🅰️ Assistências</span>
-            <button type="button" class="admin-add-btn" onclick="adminAddEvent('${g.id}','assist')" style="background:var(--green);padding:4px 10px;font-size:11px;">
-              + Adicionar Assistência
-            </button>
-          </div>
-          <div id="event_section_assist_${g.id}" style="margin-top:10px;">
-            ${renderEventSection(g.id, 'assist', 'Assistência', gamePlayers)}
-          </div>
-        </div>
-
-        <div class="admin-section" style="margin-top:14px;">
-          <div class="admin-label" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>🟥 Cartões Vermelhos</span>
-            <button type="button" class="admin-add-btn" onclick="adminAddEvent('${g.id}','red_card')" style="background:var(--green);padding:4px 10px;font-size:11px;">
-              + Adicionar Cartão
-            </button>
-          </div>
-          <div id="event_section_red_card_${g.id}" style="margin-top:10px;">
-            ${renderEventSection(g.id, 'red_card', 'Cartão Vermelho', gamePlayers)}
-          </div>
-        </div>
-
-        <!-- Craque do Jogo -->
-        <div class="admin-section">
-          <div class="admin-label">⭐ Craque do Jogo</div>
-          <select class="admin-input admin-input-wide" id="craque_${g.id}" style="width:auto;margin-top:6px;">
-            <option value="">Nenhum</option>
-            ${gamePlayers.map(p => `<option value="${p.id}" ${r.craqueId === p.id ? 'selected' : ''}>${p.name} (${TEAMS[p.team]?.name || p.team})</option>`).join('')}
-          </select>
-        </div>
-        
-        <!-- Botão Salvar -->
-        <div style="margin-top:20px;">
-          <button class="admin-save-btn" onclick="adminSaveGame('${g.id}')">💾 SALVAR TODAS AS INFORMAÇÕES</button>
-        </div>
-      </div>
-      <hr style="margin:20px 0;border-color:var(--border);">
-    `;
-  }).join('');
 }
 
 function renderPlayerSearchControl(gameId, itemType, idx, selectedPlayerId, gamePlayers, onlyGoalkeepers = false) {
