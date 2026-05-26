@@ -19,48 +19,29 @@ export async function renderSpecials() {
   const container = document.getElementById('tabSpecials');
   if (!container) return;
 
-  // Fallback: exibe mensagem amigável se API falhar
+  // Carregar dados do backend (com fallback silencioso)
   let userPicks = { championTeam: null, topScorerId: null, mvpId: null, revelationId: null };
-if (currentUser) {
-  try {
-    const res = await fetch(`/api/special-picks/${currentUser.id}`);
-    if (res.ok) userPicks = await res.json();
-    else console.warn('Falha ao carregar seus palpites, usando vazio');
-  } catch (e) { console.error(e); }
-}
+  let allPicks = {};
 
-let allPicks = {};
-try {
-  const res = await fetch('/api/all-special-picks');
-  if (res.ok) allPicks = await res.json();
-  else console.warn('Falha ao carregar palpites de todos');
-} catch (e) { console.error(e); }
-
-
-
-  try {
-    const res = await fetch('/api/all-special-picks');
-    if (res.ok) allPicks = await res.json();
-    else console.warn('Erro ao carregar palpites de todos:', res.status);
-  } catch (e) {
-    console.error('Falha ao carregar all special picks:', e);
-  }
-
-  const deadlinePassed = isDeadlinePassed();
-
-  // Carregar picks do usuário
   if (currentUser) {
     try {
       const res = await fetch(`/api/special-picks/${currentUser.id}`);
       if (res.ok) userPicks = await res.json();
-    } catch (e) { console.error(e); }
+      else console.warn(`API /special-picks retornou ${res.status}`);
+    } catch (e) {
+      console.warn('Erro ao carregar seus palpites (usando vazio):', e);
+    }
   }
 
-  // Carregar picks de todos
   try {
     const res = await fetch('/api/all-special-picks');
     if (res.ok) allPicks = await res.json();
-  } catch (e) { console.error(e); }
+    else console.warn(`API /all-special-picks retornou ${res.status}`);
+  } catch (e) {
+    console.warn('Erro ao carregar palpites de todos (usando vazio):', e);
+  }
+
+  const deadlinePassed = isDeadlinePassed();
 
   container.innerHTML = `
     <div class="page-header">
@@ -148,7 +129,7 @@ try {
   if (userPicks.mvpId) setMVPDisplay(userPicks.mvpId);
   if (userPicks.revelationId) setRevelationDisplay(userPicks.revelationId);
 
-  // Configurar buscas
+  // Configurar buscas (autocomplete)
   setupTeamSearch('championSearch', 'championResults', (teamId) => setChampionDisplay(teamId));
   setupPlayerSearch('topScorerSearch', 'topScorerResults', (playerId) => setTopScorerDisplay(playerId));
   setupPlayerSearch('mvpSearch', 'mvpResults', (playerId) => setMVPDisplay(playerId));
@@ -215,38 +196,75 @@ function setupTeamSearch(inputId, resultsId, onSelect) {
   const input = document.getElementById(inputId);
   const results = document.getElementById(resultsId);
   if (!input || !results) return;
-  input.addEventListener('input', () => {
+  
+  const handler = () => {
     const query = input.value.trim().toLowerCase();
-    if (query.length < 2) { results.classList.remove('open'); return; }
-    const matches = Object.entries(TEAMS).filter(([, t]) => t.name.toLowerCase().includes(query)).map(([id, t]) => ({ id, name: t.name, flag: t.flag }));
-    results.innerHTML = matches.map(t => `<div class="psearch-item" data-team-id="${t.id}" style="padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px;"><img src="${t.flag}" style="width:20px;"> ${t.name}</div>`).join('');
+    if (query.length < 2) {
+      results.classList.remove('open');
+      return;
+    }
+    const matches = Object.entries(TEAMS)
+      .filter(([, t]) => t.name.toLowerCase().includes(query))
+      .map(([id, t]) => ({ id, name: t.name, flag: t.flag }));
+    results.innerHTML = matches.map(t => `
+      <div class="psearch-item" data-team-id="${t.id}" style="padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px;">
+        <img src="${t.flag}" style="width:20px;"> ${t.name}
+      </div>
+    `).join('');
     results.classList.add('open');
+    
     results.querySelectorAll('.psearch-item').forEach(el => {
-      el.addEventListener('click', () => { onSelect(el.dataset.teamId); input.value = ''; results.classList.remove('open'); });
+      el.onclick = () => {
+        onSelect(el.dataset.teamId);
+        input.value = '';
+        results.classList.remove('open');
+      };
     });
+  };
+  
+  input.addEventListener('input', handler);
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !results.contains(e.target)) results.classList.remove('open');
   });
-  document.addEventListener('click', (e) => { if (!input.contains(e.target) && !results.contains(e.target)) results.classList.remove('open'); });
 }
 
 function setupPlayerSearch(inputId, resultsId, onSelect) {
   const input = document.getElementById(inputId);
   const results = document.getElementById(resultsId);
   if (!input || !results) return;
-  input.addEventListener('input', () => {
+  
+  const handler = () => {
     const query = input.value.trim();
-    if (query.length < 2) { results.classList.remove('open'); return; }
+    if (query.length < 2) {
+      results.classList.remove('open');
+      return;
+    }
     const players = filterPlayers(query);
     results.innerHTML = players.map(p => {
       const team = TEAMS[p.team];
       const flag = team?.flag ? `<img src="${team.flag}" style="width:20px;">` : '';
-      return `<div class="psearch-item" data-player-id="${p.id}" style="padding:8px 12px; cursor:pointer; display:flex; justify-content:space-between;"><span>${flag} ${p.name}</span><span style="font-size:11px;">${team?.name || p.team}</span></div>`;
+      return `
+        <div class="psearch-item" data-player-id="${p.id}" style="padding:8px 12px; cursor:pointer; display:flex; justify-content:space-between;">
+          <span>${flag} ${p.name}</span>
+          <span style="font-size:11px;">${team?.name || p.team}</span>
+        </div>
+      `;
     }).join('');
     results.classList.add('open');
+    
     results.querySelectorAll('.psearch-item').forEach(el => {
-      el.addEventListener('click', () => { onSelect(el.dataset.playerId); input.value = ''; results.classList.remove('open'); });
+      el.onclick = () => {
+        onSelect(el.dataset.playerId);
+        input.value = '';
+        results.classList.remove('open');
+      };
     });
+  };
+  
+  input.addEventListener('input', handler);
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !results.contains(e.target)) results.classList.remove('open');
   });
-  document.addEventListener('click', (e) => { if (!input.contains(e.target) && !results.contains(e.target)) results.classList.remove('open'); });
 }
 
 // ========== Displays ==========
