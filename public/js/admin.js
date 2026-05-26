@@ -395,6 +395,35 @@ window.adminSaveGame = async (gameId) => {
 };
 
 // =============================================
+// RENDER ADMIN PRINCIPAL (chamado pelo navigation.js)
+// =============================================
+export async function renderAdmin() {
+  const container = document.getElementById('adminGamesList');
+  if (!container) {
+    console.error('Elemento adminGamesList não encontrado');
+    return;
+  }
+
+  // Verifica se é admin
+  if (!window.currentUser?.isAdmin) {
+    container.innerHTML = '<div style="text-align:center;padding:60px;">🔒 Acesso restrito</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="admin-tabs" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--border);">
+      <button class="admin-tab-btn active" onclick="window.showAdminTab('users', this)">👥 Usuários</button>
+      <button class="admin-tab-btn" onclick="window.showAdminTab('games', this)">⚽ Resultados</button>
+    </div>
+    <div id="adminTabContent"></div>
+  `;
+
+  // Carregar a aba de usuários por padrão
+  const firstBtn = container.querySelector('.admin-tab-btn');
+  if (firstBtn) window.showAdminTab('users', firstBtn);
+}
+
+// =============================================
 // EXPORTAÇÃO DAS FUNÇÕES GLOBAIS (para onclick)
 // =============================================
 window.filterAdminPlayers = filterAdminPlayers;
