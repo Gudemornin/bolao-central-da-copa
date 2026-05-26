@@ -131,17 +131,7 @@ function renderDateSelector(dates) {
 // =============================================
 async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
   const games = gamesByDate[date] || [];
-const gameStart = new Date(`${game.date}T${game.time}:00`);
-const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
-
-// Na seção do card, condicione a exibição da tabela:
-<div class="community-game-body" id="community-game-${gameId}" style="display: none;">
-  ${hasStarted ? renderBetsList(gameBets, game) : '<div class="no-bets-msg">⏳ Palpites serão exibidos após o início da partida.</div>'}
-</div>
-
-  if (games.length === 0) {
-    return '<div class="empty-state">Nenhum jogo nesta data.</div>';
-  }
+  if (games.length === 0) return '<div class="empty-state">Nenhum jogo nesta data.</div>';
 
   let html = '';
 
@@ -149,6 +139,10 @@ const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
     const t1 = TEAMS[game.home];
     const t2 = TEAMS[game.away];
     const gameId = game.id;
+
+    // Verificar se a partida já começou ou já foi finalizada
+    const gameStart = new Date(`${game.date}T${game.time}:00`);
+    const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
 
     // Coletar todos os palpites para este jogo
     const gameBets = [];
@@ -176,38 +170,27 @@ const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
     const resultText = hasResult ? `${game.result.homeScore} : ${game.result.awayScore}` : 'Aguardando';
 
     // =============================================
-    // CALCULAR ESTATÍSTICAS DOS PALPITES
+    // CALCULAR ESTATÍSTICAS DOS PALPITES (opcional)
     // =============================================
     let homeWins = 0, draws = 0, awayWins = 0;
-    const scoreCount = new Map(); // placar -> quantidade
-    const playerCount = new Map(); // playerId -> quantidade
+    const scoreCount = new Map();
+    const playerCount = new Map();
 
     for (const { bet } of gameBets) {
-      // Resultado do palpite
       if (bet.homeScore > bet.awayScore) homeWins++;
       else if (bet.homeScore === bet.awayScore) draws++;
       else awayWins++;
-
-      // Placar mais escolhido
       const scoreKey = `${bet.homeScore}-${bet.awayScore}`;
       scoreCount.set(scoreKey, (scoreCount.get(scoreKey) || 0) + 1);
-
-      // Jogador mais escolhido
-      if (bet.playerId) {
-        playerCount.set(bet.playerId, (playerCount.get(bet.playerId) || 0) + 1);
-      }
-      if (bet.player2Id) {
-        playerCount.set(bet.player2Id, (playerCount.get(bet.player2Id) || 0) + 1);
-      }
+      if (bet.playerId) playerCount.set(bet.playerId, (playerCount.get(bet.playerId) || 0) + 1);
+      if (bet.player2Id) playerCount.set(bet.player2Id, (playerCount.get(bet.player2Id) || 0) + 1);
     }
 
-    // Percentuais
     const total = gameBets.length;
     const homePercent = total ? Math.round((homeWins / total) * 100) : 0;
     const drawPercent = total ? Math.round((draws / total) * 100) : 0;
     const awayPercent = total ? Math.round((awayWins / total) * 100) : 0;
 
-    // Placar mais frequente
     let mostFrequentScore = 'Nenhum palpite';
     let maxScoreCount = 0;
     for (const [score, count] of scoreCount.entries()) {
@@ -218,7 +201,6 @@ const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
     }
     if (total === 0) mostFrequentScore = '—';
 
-    // Jogador mais escolhido
     let mostFrequentPlayer = '—';
     let maxPlayerCount = 0;
     for (const [playerId, count] of playerCount.entries()) {
@@ -228,6 +210,12 @@ const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
         mostFrequentPlayer = player ? player.name : '?';
       }
     }
+
+    // Corpo do card (expansível) – mostra palpites APENAS se a partida já começou
+    const showBets = hasStarted;
+    const betsBody = showBets
+      ? renderBetsList(gameBets, game)
+      : '<div class="no-bets-msg">⏳ Os palpites serão exibidos após o início da partida.</div>';
 
     html += `
       <div class="community-game-card" data-game-id="${gameId}">
@@ -245,28 +233,14 @@ const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
               </div>
             </div>
             <div class="community-game-meta">
-  <div class="real-score-big">
-    ${hasResult ? `<span class="real-score">${game.result.homeScore} : ${game.result.awayScore}</span>` : '<span class="no-result">⚽ AGUARDANDO</span>'}
-  </div>
-  <div class="game-meta-details">
-    <span class="game-badge">...</span>
-    <span>⏰ ${game.time}</span>
-  </div>
-</div>
-            <!-- NOVAS ESTATÍSTICAS -->
+              <span class="game-badge">${game.group === 'La Liga' ? '🏆 La Liga' : `🌍 Copa - Grupo ${game.group}`}</span>
+              <span>⏰ ${game.time}</span>
+              <span class="result-badge ${hasResult ? 'rb-exact' : 'rb-loss'}">${resultText}</span>
+            </div>
             <div class="community-stats" style="display:flex; gap:16px; margin-top:8px; font-size:12px; color:var(--text-d); flex-wrap:wrap;">
-              <div title="Percentual de palpites em cada resultado">
-                📊 <strong>Resultados:</strong> 
-                <span style="color:var(--green-l);">${homePercent}%</span> | 
-                <span style="color:var(--gold);">${drawPercent}%</span> | 
-                <span style="color:var(--red-l);">${awayPercent}%</span>
-              </div>
-              <div title="Placar mais escolhido pela galera">
-                🎯 <strong>Placar mais votado:</strong> ${mostFrequentScore} (${maxScoreCount} palpites)
-              </div>
-              <div title="Jogador mais escolhido como representante">
-                ⭐ <strong>Craque mais escolhido:</strong> ${mostFrequentPlayer}
-              </div>
+              <div>📊 Resultados: <span style="color:var(--green-l);">${homePercent}%</span> | <span style="color:var(--gold);">${drawPercent}%</span> | <span style="color:var(--red-l);">${awayPercent}%</span></div>
+              <div>🎯 Placar mais votado: ${mostFrequentScore} (${maxScoreCount} palpites)</div>
+              <div>⭐ Craque mais escolhido: ${mostFrequentPlayer}</div>
             </div>
           </div>
           <div class="community-game-stats">
@@ -275,15 +249,13 @@ const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
           </div>
         </div>
         <div class="community-game-body" id="community-game-${gameId}" style="display: none;">
-          ${renderBetsList(gameBets, game)}
+          ${betsBody}
         </div>
       </div>
     `;
   }
-
   return html;
 }
-
 // =============================================
 // RENDERIZA LISTA DE PALPITES DE UM JOGO
 // =============================================
