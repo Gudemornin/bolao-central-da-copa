@@ -106,11 +106,7 @@ export async function renderAdminGames() {
   });
   
   renderGamesByDate('all');
-  
-  
-  // Garantir que GAMES_STATE está atualizado
-  const games = GAMES_STATE.length ? GAMES_STATE : await loadGames();
-  if (games.length && !GAMES_STATE.length) setGamesState(games);
+
 
   el.innerHTML = GAMES_STATE.map(g => {
     const t1 = TEAMS[g.home], t2 = TEAMS[g.away];
