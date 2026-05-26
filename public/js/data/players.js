@@ -118,7 +118,6 @@ export const PLAYERS = [
   {id:'mx02',name:'E. Álvarez',      team:'mexico', pos:'DEF'},
   {id:'mx03',name:'Héctor Moreno',   team:'mexico', pos:'DEF'},
   {id:'mx04',name:'Héctor Herrera',  team:'mexico', pos:'MEI'},
-  {id:'mx05',name:'Edson Álvarez',   team:'mexico', pos:'MEI'},
   {id:'mx06',name:'Alexis Vega',     team:'mexico', pos:'ATA'},
   {id:'mx07',name:'Hirving Lozano',  team:'mexico', pos:'ATA'},
   {id:'mx08',name:'Raúl Jiménez',    team:'mexico', pos:'ATA'},

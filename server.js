@@ -563,67 +563,86 @@ app.post('/api/update-results', async (req, res) => {
 // Objeto em memória (substituir por banco de dados)
 let specialPicks = {};
 
-app.get('/api/special-picks', (req, res) => {
-  res.json(specialPicks);
-});
-
-app.post('/api/special-picks', (req, res) => {
-  const { userId, picks } = req.body;
-  if (!userId) return res.status(400).json({ error: 'userId required' });
-  specialPicks[userId] = picks;
-  // Se usar PostgreSQL: salvar no banco
-  res.json({ success: true });
-});
-
-// server.js - adicionar após os outros endpoints
-
 // =============================================
-// PALPITES ESPECIAIS
+// ENDPOINT: SALVAR PALPITES ESPECIAIS
 // =============================================
-app.get('/api/special-picks/:userId', async (req, res) => {
-  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
-  const { userId } = req.params;
-  try {
-    const result = await pool.query('SELECT special_picks FROM users WHERE id = $1', [userId]);
-    if (result.rows.length > 0 && result.rows[0].special_picks) {
-      res.json(result.rows[0].special_picks);
-    } else {
-      res.json({ championTeam: null, topScorerId: null, mvpId: null, revelationId: null });
-    }
-  } catch (error) {
-    console.error('Erro ao buscar special picks:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 app.post('/api/special-picks', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { userId, championTeam, topScorerId, mvpId, revelationId } = req.body;
   if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
   try {
-    const specialPicks = { championTeam, topScorerId, mvpId, revelationId, updatedAt: Date.now() };
-    await pool.query('UPDATE users SET special_picks = $1 WHERE id = $2', [JSON.stringify(specialPicks), userId]);
+    await pool.query(
+      `INSERT INTO special_picks (user_id, champion_team, top_scorer_id, mvp_id, revelation_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (user_id) DO UPDATE SET
+         champion_team = EXCLUDED.champion_team,
+         top_scorer_id = EXCLUDED.top_scorer_id,
+         mvp_id = EXCLUDED.mvp_id,
+         revelation_id = EXCLUDED.revelation_id,
+         updated_at = EXCLUDED.updated_at`,
+      [userId, championTeam, topScorerId, mvpId, revelationId, Date.now()]
+    );
     res.json({ success: true });
   } catch (error) {
-    console.error('Erro ao salvar special picks:', error);
+    console.error('❌ POST /api/special-picks erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
+// =============================================
+// ENDPOINT: BUSCAR PALPITES DE UM USUÁRIO
+// =============================================
+app.get('/api/special-picks/:userId', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { userId } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT champion_team, top_scorer_id, mvp_id, revelation_id FROM special_picks WHERE user_id = $1`,
+      [userId]
+    );
+    if (result.rows.length === 0) {
+      return res.json({ championTeam: null, topScorerId: null, mvpId: null, revelationId: null });
+    }
+    const row = result.rows[0];
+    res.json({
+      championTeam: row.champion_team,
+      topScorerId: row.top_scorer_id,
+      mvpId: row.mvp_id,
+      revelationId: row.revelation_id
+    });
+  } catch (error) {
+    console.error('❌ GET /api/special-picks/:userId erro:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// ENDPOINT: BUSCAR PALPITES DE TODOS OS USUÁRIOS (COM NOMES)
+// =============================================
 app.get('/api/all-special-picks', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   try {
-    const result = await pool.query('SELECT id, profile_name, special_picks FROM users WHERE special_picks IS NOT NULL');
-    const picks = {};
+    const result = await pool.query(`
+      SELECT u.id, u.profile_name, sp.champion_team, sp.top_scorer_id, sp.mvp_id, sp.revelation_id
+      FROM users u
+      LEFT JOIN special_picks sp ON u.id = sp.user_id
+      WHERE u.is_hidden = false OR u.is_hidden IS NULL
+    `);
+    const allPicks = {};
     for (const row of result.rows) {
-      picks[row.id] = {
+      allPicks[row.id] = {
         profileName: row.profile_name,
-        specialPicks: row.special_picks
+        specialPicks: {
+          championTeam: row.champion_team,
+          topScorerId: row.top_scorer_id,
+          mvpId: row.mvp_id,
+          revelationId: row.revelation_id
+        }
       };
     }
-    res.json(picks);
+    res.json(allPicks);
   } catch (error) {
-    console.error('Erro ao buscar todos special picks:', error);
+    console.error('❌ GET /api/all-special-picks erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
