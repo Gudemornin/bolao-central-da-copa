@@ -201,10 +201,11 @@ ${game.result && game.status === 'completed' ? `
                   </span>
                   <button class="remove-player" onclick="clearGamePlayer('${game.id}')">✕</button>
                 </div>
-                <div class="save-bet-area">
-                  <button class="save-bet-btn" onclick="saveBet('${game.id}')">💾 SALVAR PALPITE</button>
-                  <span class="saved-indicator${bet.homeScore !== undefined ? ' show' : ''}" id="bsm_${game.id}">✓ Palpite salvo</span>
-                </div>
+               <div class="save-bet-area" style="display:flex; gap:10px; align-items:center;">
+  <button class="save-bet-btn" onclick="saveBet('${game.id}')">💾 SALVAR PALPITE</button>
+  ${bet.homeScore !== undefined ? `<button class="delete-bet-btn" onclick="deleteBet('${game.id}')" style="background:var(--red); padding:8px 16px; border-radius:8px; border:none; color:white; cursor:pointer;">🗑️ Excluir Palpite</button>` : ''}
+  <span class="saved-indicator${bet.homeScore !== undefined ? ' show' : ''}" id="bsm_${game.id}">✓ Palpite salvo</span>
+</div>
               `
             }
           </div>
@@ -223,6 +224,59 @@ ${game.result && game.status === 'completed' ? `
         if (p) setGamePlayerDisplay(game.id, p);
       }
     }
+  }
+}
+
+export async function deleteBet(gameId) {
+  if (!currentUser) {
+    showToast('Faça login primeiro', 'red');
+    return;
+  }
+  
+  const game = GAMES_STATE.find(g => g.id === gameId);
+  if (!game) return;
+  
+  // Verificar se o jogo já foi finalizado
+  if (isGameLocked(game)) {
+    showToast('❌ Não é possível excluir palpite de um jogo já iniciado ou finalizado.', 'red');
+    return;
+  }
+  
+  if (!confirm('⚠️ Tem certeza que deseja excluir seu palpite para este jogo?')) return;
+  
+  const bets = await loadBets();
+  if (bets[currentUser.id] && bets[currentUser.id][gameId]) {
+    delete bets[currentUser.id][gameId];
+    await saveBets(bets);
+    
+    // Limpar a seleção do jogador na interface
+    clearGamePlayer(gameId);
+    
+    // Limpar os campos de placar
+    const s1 = document.getElementById('s1_' + gameId);
+    const s2 = document.getElementById('s2_' + gameId);
+    if (s1) s1.value = '';
+    if (s2) s2.value = '';
+    
+    // Esconder indicador de salvo
+    const savedIndicator = document.getElementById('bsm_' + gameId);
+    if (savedIndicator) savedIndicator.classList.remove('show');
+    
+    // Esconder o botão de excluir (ele será recriado no próximo render)
+    showToast('✅ Palpite excluído com sucesso!', 'green');
+    
+    // Recarregar a lista de jogos para atualizar a interface
+    await renderGameList();
+    
+    // Atualizar sidebar (pontos podem mudar)
+    if (window.updateSidebar) window.updateSidebar();
+    
+    // Se a aba de palpites ativos estiver aberta, recarregar
+    if (document.getElementById('tabBets')?.classList.contains('active') && window.renderBets) {
+      await window.renderBets();
+    }
+  } else {
+    showToast('Nenhum palpite encontrado para este jogo.', 'red');
   }
 }
 
@@ -514,6 +568,7 @@ export async function cleanOldGames() {
 // cleanOldGames(); // Descomente se quiser ativar a limpeza automática
 
 // Tornar funções globais (para onclick no HTML)
+window.deleteBet = deleteBet;
 window.saveBet = saveBet;
 window.filterGamePlayers = filterGamePlayers;
 window.selectGamePlayer = selectGamePlayer;
