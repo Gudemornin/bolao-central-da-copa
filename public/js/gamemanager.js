@@ -236,112 +236,82 @@ export async function deleteBet(gameId) {
   const game = GAMES_STATE.find(g => g.id === gameId);
   if (!game) return;
   
-  // Verificar se o jogo já foi finalizado
   if (isGameLocked(game)) {
     showToast('❌ Não é possível excluir palpite de um jogo já iniciado ou finalizado.', 'red');
     return;
   }
   
-  if (!confirm('⚠️ Tem certeza que deseja excluir seu palpite para este jogo?\n\nEsta ação não pode ser desfeita.')) return;
+  if (!confirm('⚠️ Tem certeza que deseja excluir seu palpite permanentemente?')) return;
   
   try {
-    // Carregar palpites atuais
-    let bets = await loadBets();
+    // 🔥 FORÇAR EXCLUSÃO DIRETA NO LOCALSTORAGE primeiro
+    let bets = {};
+    try {
+      const localRaw = localStorage.getItem('bc26_bets');
+      if (localRaw) bets = JSON.parse(localRaw);
+    } catch(e) { bets = {}; }
     
-    // Garantir que bets é um objeto
-    bets = bets || {};
-    
-    // Verificar se o palpite existe
-    if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
-      showToast('Nenhum palpite encontrado para este jogo.', 'red');
-      return;
+    // Remover da cópia local
+    if (bets[currentUser.id] && bets[currentUser.id][gameId]) {
+      delete bets[currentUser.id][gameId];
+      if (Object.keys(bets[currentUser.id]).length === 0) {
+        delete bets[currentUser.id];
+      }
+      localStorage.setItem('bc26_bets', JSON.stringify(bets));
+      console.log('✅ Removido do localStorage');
     }
     
-    // Criar uma NOVA cópia do objeto para evitar referências
-    const newBets = JSON.parse(JSON.stringify(bets));
-    
-    // REMOVER o palpite da cópia
-    delete newBets[currentUser.id][gameId];
-    
-    // Se o usuário não tiver mais nenhum palpite, remover a entrada do usuário
-    if (Object.keys(newBets[currentUser.id]).length === 0) {
-      delete newBets[currentUser.id];
-    }
-    
-    // SALVAR a nova cópia
-    console.log('💾 Salvando novos palpites:', newBets);
-    await saveBets(newBets);
-    
-    // Verificar se salvou corretamente recarregando
-    const verifyBets = await loadBets();
-    console.log('🔍 Verificação pós-salvamento:', verifyBets);
-    
-    if (verifyBets[currentUser.id] && verifyBets[currentUser.id][gameId]) {
-      console.error('Falha na exclusão: palpite ainda existe após salvar');
-      
-      // TENTATIVA 2: Usar localStorage diretamente (fallback)
+    // 🔥 TENTAR API também (mas não esperar confirmação)
+    if (USE_API) {
       try {
-        const localBets = JSON.parse(localStorage.getItem('bc26_bets') || '{}');
-        if (localBets[currentUser.id] && localBets[currentUser.id][gameId]) {
-          delete localBets[currentUser.id][gameId];
-          if (Object.keys(localBets[currentUser.id]).length === 0) {
-            delete localBets[currentUser.id];
-          }
-          localStorage.setItem('bc26_bets', JSON.stringify(localBets));
-          console.log('💾 Fallback: salvou no localStorage');
-        }
-      } catch (e) {
-        console.error('Fallback também falhou:', e);
+        await fetch('/api/bets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bets })
+        });
+        console.log('✅ Enviado para API');
+      } catch(e) {
+        console.warn('API falhou, mas localStorage já foi atualizado');
       }
     }
     
-    // LIMPAR COMPLETAMENTE a interface do usuário
-    // 1. Limpar seleção do jogador
+    // 🔥 LIMPAR INTERFACE IMEDIATAMENTE (sem recarregar)
+    // Limpar seleção do jogador
     gamePlayerSelections[gameId] = null;
     
-    // 2. Limpar o badge do jogador selecionado
     const badge = document.getElementById('spb_' + gameId);
-    if (badge) {
-      badge.classList.remove('show');
-      const nameSpan = document.getElementById('spb_name_' + gameId);
-      if (nameSpan) nameSpan.innerHTML = '';
-    }
+    if (badge) badge.classList.remove('show');
     
-    // 3. Limpar os campos de placar
+    const nameSpan = document.getElementById('spb_name_' + gameId);
+    if (nameSpan) nameSpan.innerHTML = '';
+    
     const s1 = document.getElementById('s1_' + gameId);
     const s2 = document.getElementById('s2_' + gameId);
     if (s1) s1.value = '';
     if (s2) s2.value = '';
     
-    // 4. Limpar campo de busca
     const searchInput = document.getElementById('gpinp_' + gameId);
     if (searchInput) searchInput.value = '';
     
-    // 5. Esconder indicador de "salvo"
     const savedIndicator = document.getElementById('bsm_' + gameId);
     if (savedIndicator) savedIndicator.classList.remove('show');
     
-    showToast('✅ Palpite excluído completamente!', 'green');
+    showToast('✅ Palpite excluído!', 'green');
     
-    // RECARREGAR TUDO para garantir consistência
+    // Recarregar apenas a lista localmente sem API
     await renderGameList();
     
-    // Atualizar sidebar
     if (window.updateSidebar) await window.updateSidebar();
-    
-    // Se a aba de palpites ativos estiver aberta, recarregar
     if (document.getElementById('tabBets')?.classList.contains('active') && window.renderBets) {
       await window.renderBets();
     }
-    
-    // Se a aba de ranking estiver aberta, recarregar
     if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
       await window.renderRanking();
     }
     
   } catch (error) {
-    console.error('Erro ao excluir palpite:', error);
-    showToast('Erro ao excluir palpite. Tente novamente.', 'red');
+    console.error('Erro:', error);
+    showToast('Erro ao excluir', 'red');
   }
 }
 
