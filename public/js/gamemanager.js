@@ -244,73 +244,82 @@ export async function deleteBet(gameId) {
   
   if (!confirm('⚠️ Tem certeza que deseja excluir seu palpite para este jogo?\n\nEsta ação não pode ser desfeita.')) return;
   
-  // Carregar palpites atuais
-  const bets = await loadBets();
-  
-  // Verificar se o palpite existe
-  if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
-    showToast('Nenhum palpite encontrado para este jogo.', 'red');
-    return;
-  }
-  
-  // REMOVER COMPLETAMENTE o palpite
-  delete bets[currentUser.id][gameId];
-  
-  // Se o usuário não tiver mais nenhum palpite, remover a entrada do usuário
-  if (Object.keys(bets[currentUser.id]).length === 0) {
-    delete bets[currentUser.id];
-  }
-  
-  // Salvar no backend/localStorage
-  await saveBets(bets);
-  
-  // LIMPAR COMPLETAMENTE a interface do usuário
-  // 1. Limpar seleção do jogador
-  gamePlayerSelections[gameId] = null;
-  
-  // 2. Limpar o badge do jogador selecionado
-  const badge = document.getElementById('spb_' + gameId);
-  if (badge) {
-    badge.classList.remove('show');
-    const nameSpan = document.getElementById('spb_name_' + gameId);
-    if (nameSpan) nameSpan.innerHTML = '';
-  }
-  
-  // 3. Limpar os campos de placar
-  const s1 = document.getElementById('s1_' + gameId);
-  const s2 = document.getElementById('s2_' + gameId);
-  if (s1) s1.value = '';
-  if (s2) s2.value = '';
-  
-  // 4. Limpar campo de busca
-  const searchInput = document.getElementById('gpinp_' + gameId);
-  if (searchInput) searchInput.value = '';
-  
-  // 5. Esconder indicador de "salvo"
-  const savedIndicator = document.getElementById('bsm_' + gameId);
-  if (savedIndicator) savedIndicator.classList.remove('show');
-  
-  // 6. Remover qualquer referência em tempStorage (se houver)
-  if (window.tempBets && window.tempBets[gameId]) {
-    delete window.tempBets[gameId];
-  }
-  
-  showToast('✅ Palpite excluído completamente!', 'green');
-  
-  // Recarregar a lista de jogos para atualizar a interface
-  await renderGameList();
-  
-  // Atualizar sidebar (pontos podem mudar)
-  if (window.updateSidebar) window.updateSidebar();
-  
-  // Se a aba de palpites ativos estiver aberta, recarregar
-  if (document.getElementById('tabBets')?.classList.contains('active') && window.renderBets) {
-    await window.renderBets();
-  }
-  
-  // Se a aba de ranking estiver aberta, recarregar
-  if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
-    await window.renderRanking();
+  try {
+    // Carregar palpites atuais do backend
+    const bets = await loadBets();
+    
+    // Verificar se o palpite existe
+    if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
+      showToast('Nenhum palpite encontrado para este jogo.', 'red');
+      return;
+    }
+    
+    // REMOVER COMPLETAMENTE o palpite
+    delete bets[currentUser.id][gameId];
+    
+    // Se o usuário não tiver mais nenhum palpite, remover a entrada do usuário
+    if (Object.keys(bets[currentUser.id]).length === 0) {
+      delete bets[currentUser.id];
+    }
+    
+    // SALVAR no backend ANTES de qualquer atualização de interface
+    await saveBets(bets);
+    
+    // Verificar se salvou corretamente (opcional: recarregar para confirmar)
+    const confirmBets = await loadBets();
+    if (confirmBets[currentUser.id] && confirmBets[currentUser.id][gameId]) {
+      console.error('Falha na exclusão: palpite ainda existe após salvar');
+      showToast('Erro ao excluir palpite. Tente novamente.', 'red');
+      return;
+    }
+    
+    // LIMPAR COMPLETAMENTE a interface do usuário
+    // 1. Limpar seleção do jogador
+    gamePlayerSelections[gameId] = null;
+    
+    // 2. Limpar o badge do jogador selecionado
+    const badge = document.getElementById('spb_' + gameId);
+    if (badge) {
+      badge.classList.remove('show');
+      const nameSpan = document.getElementById('spb_name_' + gameId);
+      if (nameSpan) nameSpan.innerHTML = '';
+    }
+    
+    // 3. Limpar os campos de placar
+    const s1 = document.getElementById('s1_' + gameId);
+    const s2 = document.getElementById('s2_' + gameId);
+    if (s1) s1.value = '';
+    if (s2) s2.value = '';
+    
+    // 4. Limpar campo de busca
+    const searchInput = document.getElementById('gpinp_' + gameId);
+    if (searchInput) searchInput.value = '';
+    
+    // 5. Esconder indicador de "salvo"
+    const savedIndicator = document.getElementById('bsm_' + gameId);
+    if (savedIndicator) savedIndicator.classList.remove('show');
+    
+    showToast('✅ Palpite excluído completamente!', 'green');
+    
+    // Forçar atualização completa da lista de jogos
+    await renderGameList();
+    
+    // Atualizar sidebar (pontos podem mudar)
+    if (window.updateSidebar) await window.updateSidebar();
+    
+    // Se a aba de palpites ativos estiver aberta, recarregar
+    if (document.getElementById('tabBets')?.classList.contains('active') && window.renderBets) {
+      await window.renderBets();
+    }
+    
+    // Se a aba de ranking estiver aberta, recarregar
+    if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
+      await window.renderRanking();
+    }
+    
+  } catch (error) {
+    console.error('Erro ao excluir palpite:', error);
+    showToast('Erro ao excluir palpite. Tente novamente.', 'red');
   }
 }
 
