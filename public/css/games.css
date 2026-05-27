@@ -723,6 +723,30 @@
   }
 }
 
+.delete-bet-btn {
+  background: var(--red);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Anton', sans-serif;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.delete-bet-btn:hover {
+  background: var(--red-l);
+  transform: translateY(-1px);
+}
+
+.save-bet-area {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .status-inprogress {
   background: rgba(255, 193, 7, 0.15);
   color: #ffc107;
