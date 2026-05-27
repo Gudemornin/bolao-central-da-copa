@@ -105,14 +105,31 @@ export async function loadUsers() {
 // PALPITES (BETS)
 // =============================================
 export async function saveBets(bets) {
-  if (!bets) return false
+  if (!bets) return false;
+  
+  console.log('💾 saveBets chamado, enviando:', bets);
   
   if (USE_API) {
-    const result = await apiRequest('/bets', 'POST', { bets })
-    if (result) return result
+    try {
+      const result = await apiRequest('/bets', 'POST', { bets });
+      console.log('💾 saveBets resposta da API:', result);
+      if (result && result.success) {
+        return true;
+      }
+    } catch (error) {
+      console.error('Erro na API ao salvar bets:', error);
+    }
   }
-  localStorage.setItem('bc26_bets', JSON.stringify(bets))
-  return true
+  
+  // Fallback para localStorage
+  try {
+    localStorage.setItem('bc26_bets', JSON.stringify(bets));
+    console.log('💾 saveBets salvou no localStorage');
+    return true;
+  } catch (error) {
+    console.error('Erro ao salvar no localStorage:', error);
+    return false;
+  }
 }
 
 export async function loadBets() {
