@@ -60,7 +60,7 @@ export const TEAMS = {
   ghana:            { name:'Gana',             flag:'https://flagcdn.com/gh.svg', color:'#006B3F', group:'L' },
   panama:           { name:'Panamá',           flag:'https://flagcdn.com/pa.svg', color:'#DA121A', group:'L' },
 
- // La Liga - 14 de maio
-
-
+// Champions - Teste
+psg: { name: 'Paris Saint-Germain', flag: 'https://placehold.co/30x20/0C4E8F/white?text=PSG', color: '#0C4E8F', group: 'Champions' },
+arsenal: { name: 'Arsenal', flag: 'https://placehold.co/30x20/DB0007/white?text=AFC', color: '#DB0007', group: 'Champions' },
 };
