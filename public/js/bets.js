@@ -1,10 +1,10 @@
 import { TEAMS } from './data/teams.js';
 import { currentUser, GAMES_STATE } from './state.js';
-import { loadBets } from './storage.js';
 import { getPlayer } from './exportplayer.js';          // corrigido
 import { formatDate, playerDisplayName, teamFlagImg } from './utils.js';
 import { calcBetPoints } from './ranking.js';          // precisa exportar calcBetPoints
 import { isGameLocked, getBadge } from './gamemanager.js'; // precisa exportar
+import { loadBets, saveBets } from './storage.js';
 
 export async function renderBets(){
   const bets = await loadBets();
@@ -83,49 +83,51 @@ window.deleteActiveBet = async (gameId) => {
   }
   
   const game = GAMES_STATE.find(g => g.id === gameId);
-  if (game && isGameLocked(game)) {
-    showToast('❌ Não é possível excluir palpite de um jogo já iniciado ou finalizado.', 'red');
+  if (game && game.status === 'completed') {
+    showToast('❌ Não é possível excluir palpite de um jogo já finalizado.', 'red');
     return;
   }
   
-  if (!confirm('⚠️ Excluir permanentemente este palpite?\n\nEsta ação não pode ser desfeita.')) return;
+  if (!confirm('⚠️ Excluir permanentemente este palpite?')) return;
   
-  // Carregar palpites
-  const bets = await loadBets();
-  
-  // Verificar se o palpite existe
-  if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
-    showToast('Palpite não encontrado', 'red');
-    return;
-  }
-  
-  // REMOVER COMPLETAMENTE
-  delete bets[currentUser.id][gameId];
-  
-  // Se não houver mais palpites, remover a entrada do usuário
-  if (Object.keys(bets[currentUser.id]).length === 0) {
-    delete bets[currentUser.id];
-  }
-  
-  // Salvar
-  await saveBets(bets);
-  
-  showToast('✅ Palpite excluído permanentemente!', 'green');
-  
-  // Recarregar a lista de palpites ativos
-  await renderBets();
-  
-  // Atualizar sidebar
-  if (window.updateSidebar) window.updateSidebar();
-  
-  // Se a aba de jogos estiver aberta, recarregar para remover o indicador
-  if (document.getElementById('tabGames')?.classList.contains('active')) {
-    await window.renderGameList();
-  }
-  
-  // Recarregar ranking se estiver visível
-  if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
-    await window.renderRanking();
+  try {
+    // Carregar palpites atuais da API
+    const bets = await loadBets();
+    
+    if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
+      showToast('Palpite não encontrado', 'red');
+      return;
+    }
+    
+    // Remover o palpite
+    delete bets[currentUser.id][gameId];
+    
+    // Se usuário ficou sem palpites, remove a entrada
+    if (Object.keys(bets[currentUser.id]).length === 0) {
+      delete bets[currentUser.id];
+    }
+    
+    // Salvar via API (PostgreSQL)
+    await saveBets(bets);
+    
+    showToast('✅ Palpite excluído permanentemente!', 'green');
+    
+    // Recarregar interfaces
+    await renderBets();
+    
+    if (window.updateSidebar) await window.updateSidebar();
+    
+    if (document.getElementById('tabGames')?.classList.contains('active') && window.renderGameList) {
+      await window.renderGameList();
+    }
+    
+    if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
+      await window.renderRanking();
+    }
+    
+  } catch (error) {
+    console.error('Erro ao excluir palpite:', error);
+    showToast('Erro ao excluir palpite', 'red');
   }
 };
 
