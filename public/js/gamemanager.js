@@ -246,49 +246,26 @@ export async function deleteBet(gameId) {
   if (!confirm('⚠️ Tem certeza que deseja excluir seu palpite permanentemente?')) return;
   
   try {
-    // 🔥 1. CARREGAR palpites atuais
-    let bets = {};
-    try {
-      const localRaw = localStorage.getItem('bc26_bets');
-      if (localRaw) bets = JSON.parse(localRaw);
-    } catch(e) { bets = {}; }
+    // Carregar palpites da API (PostgreSQL)
+    const bets = await loadBets();
     
-    // 🔥 2. REMOVER da cópia local
-    if (bets[currentUser.id] && bets[currentUser.id][gameId]) {
-      delete bets[currentUser.id][gameId];
-      
-      // Se usuário ficou sem palpites, remove a entrada
-      if (Object.keys(bets[currentUser.id]).length === 0) {
-        delete bets[currentUser.id];
-      }
-      
-      // Salvar no localStorage
-      localStorage.setItem('bc26_bets', JSON.stringify(bets));
-      console.log('✅ Removido do localStorage');
-    } else {
-      console.warn('Palpite não encontrado no localStorage');
+    if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
       showToast('Palpite não encontrado', 'red');
       return;
     }
     
-    // 🔥 3. TENTAR sincronizar com API (se disponível)
-    try {
-      const response = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bets })
-      });
-      if (response.ok) {
-        console.log('✅ Sincronizado com API');
-      } else {
-        console.warn('API não sincronizou, mas localStorage está ok');
-      }
-    } catch(e) {
-      console.warn('API indisponível, usando apenas localStorage');
+    // Remover o palpite
+    delete bets[currentUser.id][gameId];
+    
+    // Se usuário ficou sem palpites, remove a entrada
+    if (Object.keys(bets[currentUser.id]).length === 0) {
+      delete bets[currentUser.id];
     }
     
-    // 🔥 4. LIMPAR INTERFACE IMEDIATAMENTE
-    // Limpar seleção do jogador
+    // Salvar via API
+    await saveBets(bets);
+    
+    // LIMPAR INTERFACE
     gamePlayerSelections[gameId] = null;
     
     const badge = document.getElementById('spb_' + gameId);
@@ -297,23 +274,20 @@ export async function deleteBet(gameId) {
     const nameSpan = document.getElementById('spb_name_' + gameId);
     if (nameSpan) nameSpan.innerHTML = '';
     
-    // Limpar campos de placar
     const s1 = document.getElementById('s1_' + gameId);
     const s2 = document.getElementById('s2_' + gameId);
     if (s1) s1.value = '';
     if (s2) s2.value = '';
     
-    // Limpar campo de busca
     const searchInput = document.getElementById('gpinp_' + gameId);
     if (searchInput) searchInput.value = '';
     
-    // Esconder indicador de salvo
     const savedIndicator = document.getElementById('bsm_' + gameId);
     if (savedIndicator) savedIndicator.classList.remove('show');
     
     showToast('✅ Palpite excluído!', 'green');
     
-    // 🔥 5. RECARREGAR interfaces
+    // Recarregar interfaces
     await renderGameList();
     
     if (window.updateSidebar) await window.updateSidebar();
