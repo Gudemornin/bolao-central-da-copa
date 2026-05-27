@@ -19,6 +19,8 @@ import { syncGamesWithAPI } from './sync.js';
 import { GAMES as MANUAL_GAMES } from './data/games.js';
 import { calcBetPoints as calculateBetPoints } from './ranking.js';
 
+const USE_API = true;
+
 const gamePlayerSelections = {};
 
 export function getBadge(bet, game) {
