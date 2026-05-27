@@ -77,7 +77,10 @@ export async function openFinalizedModal(){
 }
 
 window.deleteActiveBet = async (gameId) => {
-  if (!currentUser) return;
+  if (!currentUser) {
+    showToast('Faça login primeiro', 'red');
+    return;
+  }
   
   const game = GAMES_STATE.find(g => g.id === gameId);
   if (game && isGameLocked(game)) {
@@ -85,18 +88,44 @@ window.deleteActiveBet = async (gameId) => {
     return;
   }
   
-  if (!confirm('Excluir este palpite?')) return;
+  if (!confirm('⚠️ Excluir permanentemente este palpite?\n\nEsta ação não pode ser desfeita.')) return;
   
+  // Carregar palpites
   const bets = await loadBets();
-  if (bets[currentUser.id] && bets[currentUser.id][gameId]) {
-    delete bets[currentUser.id][gameId];
-    await saveBets(bets);
-    showToast('Palpite excluído!', 'green');
-    await renderBets();
-    if (window.updateSidebar) window.updateSidebar();
-    if (document.getElementById('tabGames')?.classList.contains('active')) {
-      await renderGameList();
-    }
+  
+  // Verificar se o palpite existe
+  if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
+    showToast('Palpite não encontrado', 'red');
+    return;
+  }
+  
+  // REMOVER COMPLETAMENTE
+  delete bets[currentUser.id][gameId];
+  
+  // Se não houver mais palpites, remover a entrada do usuário
+  if (Object.keys(bets[currentUser.id]).length === 0) {
+    delete bets[currentUser.id];
+  }
+  
+  // Salvar
+  await saveBets(bets);
+  
+  showToast('✅ Palpite excluído permanentemente!', 'green');
+  
+  // Recarregar a lista de palpites ativos
+  await renderBets();
+  
+  // Atualizar sidebar
+  if (window.updateSidebar) window.updateSidebar();
+  
+  // Se a aba de jogos estiver aberta, recarregar para remover o indicador
+  if (document.getElementById('tabGames')?.classList.contains('active')) {
+    await window.renderGameList();
+  }
+  
+  // Recarregar ranking se estiver visível
+  if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
+    await window.renderRanking();
   }
 };
 
