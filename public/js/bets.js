@@ -40,6 +40,7 @@ export async function renderBets(){
         <div class="bet-player-name">${p?p.name:'—'}</div>
       </div>
       <button class="edit-bet-btn" onclick="openEditBet('${gid}')">✏️ Editar</button>
+      <button class="delete-bet-btn" onclick="deleteActiveBet('${gid}')">🗑️ Excluir</button>
     </div>`;
   }).join('');
 }
@@ -74,5 +75,29 @@ export async function openFinalizedModal(){
   }
   openModal('modalFinalized');
 }
+
+window.deleteActiveBet = async (gameId) => {
+  if (!currentUser) return;
+  
+  const game = GAMES_STATE.find(g => g.id === gameId);
+  if (game && isGameLocked(game)) {
+    showToast('❌ Não é possível excluir palpite de um jogo já iniciado ou finalizado.', 'red');
+    return;
+  }
+  
+  if (!confirm('Excluir este palpite?')) return;
+  
+  const bets = await loadBets();
+  if (bets[currentUser.id] && bets[currentUser.id][gameId]) {
+    delete bets[currentUser.id][gameId];
+    await saveBets(bets);
+    showToast('Palpite excluído!', 'green');
+    await renderBets();
+    if (window.updateSidebar) window.updateSidebar();
+    if (document.getElementById('tabGames')?.classList.contains('active')) {
+      await renderGameList();
+    }
+  }
+};
 
 window.openFinalizedModal = openFinalizedModal;
