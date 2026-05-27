@@ -159,7 +159,9 @@ function renderAdminGameCard(game) {
 
       <!-- Botão Salvar -->
       <button class="admin-save-btn" onclick="adminSaveGame('${game.id}')" style="background:var(--blue); padding:8px 20px; border-radius:8px; font-weight:bold;">💾 SALVAR TODAS AS INFORMAÇÕES</button>
+    <button class="admin-reset-btn" onclick="adminResetGame('${game.id}')" style="background:var(--red); padding:8px 20px; border-radius:8px; font-weight:bold; margin-left:10px;">🔄 Resetar Jogo</button>
     </div>
+    
   `;
 }
 
@@ -392,6 +394,36 @@ window.adminSaveGame = async (gameId) => {
   if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) window.renderRanking();
   if (document.getElementById('tabStandings')?.classList.contains('active') && window.renderStandings) window.renderStandings();
   if (document.getElementById('tabTopscorers')?.classList.contains('active') && window.renderTopScorers) window.renderTopScorers();
+};
+
+window.adminResetGame = async (gameId) => {
+  if (!confirm('⚠️ Tem certeza que deseja resetar este jogo?\n\nO resultado será removido e o jogo voltará ao status "Aguardando".\nOs palpites dos usuários serão mantidos, mas a pontuação será recalculada.')) return;
+  
+  const idx = GAMES_STATE.findIndex(g => g.id === gameId);
+  if (idx === -1) {
+    showToast('Jogo não encontrado', 'red');
+    return;
+  }
+  
+  // Resetar o jogo
+  GAMES_STATE[idx].status = 'upcoming';
+  GAMES_STATE[idx].result = null;
+  
+  // Limpar temporários locais
+  if (tempScorers[gameId]) delete tempScorers[gameId];
+  if (tempAssists[gameId]) delete tempAssists[gameId];
+  if (tempRedCards[gameId]) delete tempRedCards[gameId];
+  
+  await saveGames(GAMES_STATE);
+  showToast('✅ Jogo resetado com sucesso!', 'green');
+  
+  // Recarregar a lista de admin
+  renderAdminGames();
+  
+  // Se a aba de ranking estiver ativa, recarregar
+  if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
+    await window.renderRanking();
+  }
 };
 
 // =============================================
