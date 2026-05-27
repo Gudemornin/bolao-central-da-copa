@@ -245,8 +245,11 @@ export async function deleteBet(gameId) {
   if (!confirm('⚠️ Tem certeza que deseja excluir seu palpite para este jogo?\n\nEsta ação não pode ser desfeita.')) return;
   
   try {
-    // Carregar palpites atuais do backend
-    const bets = await loadBets();
+    // Carregar palpites atuais
+    let bets = await loadBets();
+    
+    // Garantir que bets é um objeto
+    bets = bets || {};
     
     // Verificar se o palpite existe
     if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
@@ -254,23 +257,42 @@ export async function deleteBet(gameId) {
       return;
     }
     
-    // REMOVER COMPLETAMENTE o palpite
-    delete bets[currentUser.id][gameId];
+    // Criar uma NOVA cópia do objeto para evitar referências
+    const newBets = JSON.parse(JSON.stringify(bets));
+    
+    // REMOVER o palpite da cópia
+    delete newBets[currentUser.id][gameId];
     
     // Se o usuário não tiver mais nenhum palpite, remover a entrada do usuário
-    if (Object.keys(bets[currentUser.id]).length === 0) {
-      delete bets[currentUser.id];
+    if (Object.keys(newBets[currentUser.id]).length === 0) {
+      delete newBets[currentUser.id];
     }
     
-    // SALVAR no backend ANTES de qualquer atualização de interface
-    await saveBets(bets);
+    // SALVAR a nova cópia
+    console.log('💾 Salvando novos palpites:', newBets);
+    await saveBets(newBets);
     
-    // Verificar se salvou corretamente (opcional: recarregar para confirmar)
-    const confirmBets = await loadBets();
-    if (confirmBets[currentUser.id] && confirmBets[currentUser.id][gameId]) {
+    // Verificar se salvou corretamente recarregando
+    const verifyBets = await loadBets();
+    console.log('🔍 Verificação pós-salvamento:', verifyBets);
+    
+    if (verifyBets[currentUser.id] && verifyBets[currentUser.id][gameId]) {
       console.error('Falha na exclusão: palpite ainda existe após salvar');
-      showToast('Erro ao excluir palpite. Tente novamente.', 'red');
-      return;
+      
+      // TENTATIVA 2: Usar localStorage diretamente (fallback)
+      try {
+        const localBets = JSON.parse(localStorage.getItem('bc26_bets') || '{}');
+        if (localBets[currentUser.id] && localBets[currentUser.id][gameId]) {
+          delete localBets[currentUser.id][gameId];
+          if (Object.keys(localBets[currentUser.id]).length === 0) {
+            delete localBets[currentUser.id];
+          }
+          localStorage.setItem('bc26_bets', JSON.stringify(localBets));
+          console.log('💾 Fallback: salvou no localStorage');
+        }
+      } catch (e) {
+        console.error('Fallback também falhou:', e);
+      }
     }
     
     // LIMPAR COMPLETAMENTE a interface do usuário
@@ -301,10 +323,10 @@ export async function deleteBet(gameId) {
     
     showToast('✅ Palpite excluído completamente!', 'green');
     
-    // Forçar atualização completa da lista de jogos
+    // RECARREGAR TUDO para garantir consistência
     await renderGameList();
     
-    // Atualizar sidebar (pontos podem mudar)
+    // Atualizar sidebar
     if (window.updateSidebar) await window.updateSidebar();
     
     // Se a aba de palpites ativos estiver aberta, recarregar
