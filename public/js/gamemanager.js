@@ -17,7 +17,7 @@ import {
 import { renderBets } from './bets.js';
 import { syncGamesWithAPI } from './sync.js';
 import { GAMES as MANUAL_GAMES } from './data/games.js';
-import { calcBetPoints } from './ranking.js';
+import { calcBetPoints as calculateBetPoints } from './ranking.js';
 
 const gamePlayerSelections = {};
 
