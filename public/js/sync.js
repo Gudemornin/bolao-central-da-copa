@@ -180,7 +180,7 @@ window.forceSync = async () => {
     toast.className = 'show blue';
     setTimeout(() => toast.classList.remove('show'), 2000);
   }
-  await syncGamesWithAPI();
+  // await syncGamesWithAPI();
   location.reload();
 };
 
