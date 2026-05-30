@@ -234,75 +234,61 @@ export async function deleteBet(gameId) {
     showToast('Faça login primeiro', 'red');
     return;
   }
-  
   const game = GAMES_STATE.find(g => g.id === gameId);
   if (!game) return;
-  
   if (isGameLocked(game)) {
-    showToast('❌ Não é possível excluir palpite de um jogo já iniciado ou finalizado.', 'red');
+    showToast('❌ Não é possível excluir palpite de jogo já iniciado/finalizado.', 'red');
     return;
   }
-  
-  if (!confirm('⚠️ Tem certeza que deseja excluir seu palpite permanentemente?')) return;
-  
+  if (!confirm('⚠️ Excluir permanentemente este palpite?')) return;
+
   try {
-    // Carregar palpites da API (PostgreSQL)
-    const bets = await loadBets();
-    
+    // 🔥 1. Busca dados diretamente da API (sem usar loadBets() que pode ter cache)
+    const response = await fetch('/api/bets');
+    const data = await response.json();
+    let bets = data.bets || {};
+
     if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
       showToast('Palpite não encontrado', 'red');
       return;
     }
-    
-    // Remover o palpite
+
+    // 2. Remove
     delete bets[currentUser.id][gameId];
-    
-    // Se usuário ficou sem palpites, remove a entrada
-    if (Object.keys(bets[currentUser.id]).length === 0) {
-      delete bets[currentUser.id];
-    }
-    
-    // Salvar via API
-    await saveBets(bets);
-    
-    // LIMPAR INTERFACE
+    if (Object.keys(bets[currentUser.id]).length === 0) delete bets[currentUser.id];
+
+    // 3. Envia para o servidor (DELETE + INSERT)
+    const saveRes = await fetch('/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bets })
+    });
+    if (!saveRes.ok) throw new Error('Falha ao salvar exclusão');
+
+    // 4. Limpa interface local
     gamePlayerSelections[gameId] = null;
-    
     const badge = document.getElementById('spb_' + gameId);
     if (badge) badge.classList.remove('show');
-    
     const nameSpan = document.getElementById('spb_name_' + gameId);
     if (nameSpan) nameSpan.innerHTML = '';
-    
     const s1 = document.getElementById('s1_' + gameId);
     const s2 = document.getElementById('s2_' + gameId);
     if (s1) s1.value = '';
     if (s2) s2.value = '';
-    
-    const searchInput = document.getElementById('gpinp_' + gameId);
-    if (searchInput) searchInput.value = '';
-    
     const savedIndicator = document.getElementById('bsm_' + gameId);
     if (savedIndicator) savedIndicator.classList.remove('show');
-    
+
     showToast('✅ Palpite excluído!', 'green');
-    
-    // Recarregar interfaces
-    await renderGameList();
-    
+
+    // 5. Recarrega tudo forçando busca nova
+    await renderGameList();  // recarrega jogos e palpites
+    if (window.renderBets) await window.renderBets();
     if (window.updateSidebar) await window.updateSidebar();
-    
-    if (document.getElementById('tabBets')?.classList.contains('active') && window.renderBets) {
-      await window.renderBets();
-    }
-    
-    if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
-      await window.renderRanking();
-    }
-    
+    if (window.renderRanking) await window.renderRanking();
+
   } catch (error) {
-    console.error('Erro ao excluir palpite:', error);
-    showToast('Erro ao excluir palpite. Tente novamente.', 'red');
+    console.error('Erro ao excluir:', error);
+    showToast(error.message, 'red');
   }
 }
 
