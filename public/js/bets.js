@@ -91,40 +91,28 @@ window.deleteActiveBet = async (gameId) => {
   if (!confirm('⚠️ Excluir permanentemente este palpite?')) return;
   
   try {
-    // Carregar palpites atuais da API
     const bets = await loadBets();
-    
     if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
       showToast('Palpite não encontrado', 'red');
       return;
     }
     
-    // Remover o palpite
     delete bets[currentUser.id][gameId];
-    
-    // Se usuário ficou sem palpites, remove a entrada
     if (Object.keys(bets[currentUser.id]).length === 0) {
       delete bets[currentUser.id];
     }
     
-    // Salvar via API (PostgreSQL)
     await saveBets(bets);
-    
     showToast('✅ Palpite excluído permanentemente!', 'green');
     
-    // Recarregar interfaces
     await renderBets();
-    
     if (window.updateSidebar) await window.updateSidebar();
-    
     if (document.getElementById('tabGames')?.classList.contains('active') && window.renderGameList) {
       await window.renderGameList();
     }
-    
     if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
       await window.renderRanking();
     }
-    
   } catch (error) {
     console.error('Erro ao excluir palpite:', error);
     showToast('Erro ao excluir palpite', 'red');
