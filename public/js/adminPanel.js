@@ -114,7 +114,7 @@ if (btn.id === 'adminClearGamesBtn') {
       showToast('Dados removidos!', 'red');
       setTimeout(() => location.reload(), 2000);
     }
-    }
+    
     else if (btn.classList.contains('edit-user-btn')) {
       const userId = btn.getAttribute('data-id');
       await window.adminShowEditUserModal(userId);
