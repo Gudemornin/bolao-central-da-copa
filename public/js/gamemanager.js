@@ -93,11 +93,8 @@ export async function selectDate(d) {
 }
 
 async function renderGameList() {
-  let gamesState = GAMES_STATE;
-  if (!Array.isArray(gamesState) || gamesState.length === 0) {
-    gamesState = await loadGames();
-    setGamesState(gamesState);
-  }
+   let gamesState = await loadGames();  // loadGames já chama a API
+  setGamesState(gamesState);
   
   if (!Array.isArray(gamesState)) {
     console.error('❌ gamesState ainda não é array');
