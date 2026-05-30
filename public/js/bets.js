@@ -40,7 +40,6 @@ export async function renderBets(){
         <div class="bet-player-name">${p?p.name:'—'}</div>
       </div>
       <button class="edit-bet-btn" onclick="openEditBet('${gid}')">✏️ Editar</button>
-      <button class="delete-bet-btn" onclick="deleteActiveBet('${gid}')">🗑️ Excluir</button>
     </div>`;
   }).join('');
 }
