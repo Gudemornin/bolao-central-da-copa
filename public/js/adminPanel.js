@@ -92,26 +92,28 @@ export async function renderAdminPanel() {
     const btn = e.target.closest('.admin-action-btn');
     if (!btn) return;
 
-    if (btn.id === 'adminClearGamesBtn') {
-      if (!confirm('Limpar APENAS os jogos?')) return;
-      localStorage.removeItem('bc26_games');
-      showToast('Jogos limpos!', 'green');
+if (btn.id === 'adminClearGamesBtn') {
+  if (!confirm('Limpar APENAS os jogos do banco de dados?')) return;
+  try {
+    const res = await fetch('/api/clear-games', { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Jogos removidos do banco! Recarregue a página.', 'green');
       setTimeout(() => location.reload(), 1500);
-    } 
+    } else {
+      showToast('Erro ao limpar jogos', 'red');
+    }
+  } catch (err) {
+    showToast('Erro de conexão', 'red');
+  }
+}
+  
     else if (btn.id === 'adminClearAllBtn') {
       if (!confirm('⚠️ APAGAR TUDO?') || !confirm('ÚLTIMA CHANCE!')) return;
       await clearAllData();
       showToast('Dados removidos!', 'red');
       setTimeout(() => location.reload(), 2000);
     }
-    else if (btn.id === 'adminForceSyncBtn') {
-      if (window.syncGamesWithAPI) {
-        await window.syncGamesWithAPI();
-        showToast('Sincronizado!', 'green');
-        location.reload();
-      } else {
-        showToast('Função não disponível', 'red');
-      }
     }
     else if (btn.classList.contains('edit-user-btn')) {
       const userId = btn.getAttribute('data-id');
