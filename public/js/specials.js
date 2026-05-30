@@ -8,6 +8,8 @@ let selectedChampion = null;
 let selectedTopScorer = null;
 let selectedMVP = null;
 let selectedRevelation = null;
+let selectedZebra = null;
+let selectedDisappointment = null;
 
 const DEADLINE = new Date(2026, 5, 11, 0, 0, 0); // 11 de junho de 2026
 
@@ -98,6 +100,36 @@ export async function renderSpecials() {
         </div>
       </div>
 
+      <!-- Zebra -->
+<div class="info-card">
+  <div class="info-card-title">🦓 Zebra (Seleção surpresa)</div>
+  <div class="form-group">
+    <label class="form-label">Selecione o time que vai surpreender</label>
+    <input type="text" class="form-input" id="zebraSearch" placeholder="Digite o nome do time..." autocomplete="off" ${deadlinePassed ? 'disabled' : ''}>
+    <div class="player-search-results" id="zebraResults"></div>
+    <div class="selected-player" id="zebraSelected" style="${userPicks.zebraTeam ? 'display:flex;' : 'display:none;'}">
+      <span id="zebraFlag"></span>
+      <span id="zebraName"></span>
+      <span class="sel-remove" onclick="clearZebra()" ${deadlinePassed ? 'style="display:none;"' : ''}>✕</span>
+    </div>
+  </div>
+</div>
+
+<!-- Decepção -->
+<div class="info-card">
+  <div class="info-card-title">😞 Decepção (Seleção que vai mal)</div>
+  <div class="form-group">
+    <label class="form-label">Selecione o time que vai decepcionar</label>
+    <input type="text" class="form-input" id="disappointmentSearch" placeholder="Digite o nome do time..." autocomplete="off" ${deadlinePassed ? 'disabled' : ''}>
+    <div class="player-search-results" id="disappointmentResults"></div>
+    <div class="selected-player" id="disappointmentSelected" style="${userPicks.disappointmentTeam ? 'display:flex;' : 'display:none;'}">
+      <span id="disappointmentFlag"></span>
+      <span id="disappointmentName"></span>
+      <span class="sel-remove" onclick="clearDisappointment()" ${deadlinePassed ? 'style="display:none;"' : ''}>✕</span>
+    </div>
+  </div>
+</div>
+
       <!-- Revelação -->
       <div class="info-card">
         <div class="info-card-title">🌟 Revelação</div>
@@ -113,6 +145,7 @@ export async function renderSpecials() {
         </div>
       </div>
     </div>
+  
 
     ${!deadlinePassed ? `<div style="text-align:center; margin-bottom:30px;"><button class="btn btn-green" id="saveSpecialsBtn">💾 Salvar Palpites Especiais</button></div>` : ''}
 
@@ -128,12 +161,16 @@ export async function renderSpecials() {
   if (userPicks.topScorerId) setTopScorerDisplay(userPicks.topScorerId);
   if (userPicks.mvpId) setMVPDisplay(userPicks.mvpId);
   if (userPicks.revelationId) setRevelationDisplay(userPicks.revelationId);
+  if (userPicks.zebraTeam) setZebraDisplay(userPicks.zebraTeam);
+  if (userPicks.disappointmentTeam) setDisappointmentDisplay(userPicks.disappointmentTeam);
 
   // Configurar buscas (autocomplete)
   setupTeamSearch('championSearch', 'championResults', (teamId) => setChampionDisplay(teamId));
   setupPlayerSearch('topScorerSearch', 'topScorerResults', (playerId) => setTopScorerDisplay(playerId));
   setupPlayerSearch('mvpSearch', 'mvpResults', (playerId) => setMVPDisplay(playerId));
   setupPlayerSearch('revelationSearch', 'revelationResults', (playerId) => setRevelationDisplay(playerId));
+  setupTeamSearch('zebraSearch', 'zebraResults', (teamId) => setZebraDisplay(teamId));
+  setupTeamSearch('disappointmentSearch', 'disappointmentResults', (teamId) => setDisappointmentDisplay(teamId));
 
   const saveBtn = document.getElementById('saveSpecialsBtn');
   if (saveBtn) saveBtn.onclick = saveSpecialsPicks;
@@ -157,6 +194,8 @@ function renderAllSpecialsList(allPicks) {
     const topScorer = picks.topScorerId ? getPlayer(picks.topScorerId)?.name : '—';
     const mvp = picks.mvpId ? getPlayer(picks.mvpId)?.name : '—';
     const revelation = picks.revelationId ? getPlayer(picks.revelationId)?.name : '—';
+    const zebra = picks.zebraTeam ? TEAMS[picks.zebraTeam]?.name : '—';
+    const disappointment = picks.disappointmentTeam ? TEAMS[picks.disappointmentTeam]?.name : '—';
 
     html += `
       <div class="specials-user-card" style="background:var(--navy-2); border:1px solid var(--border); border-radius:12px; margin-bottom:12px; overflow:hidden;">
@@ -170,6 +209,8 @@ function renderAllSpecialsList(allPicks) {
             <div><strong>⚽ Artilheiro:</strong> ${topScorer}</div>
             <div><strong>⭐ Craque:</strong> ${mvp}</div>
             <div><strong>🌟 Revelação:</strong> ${revelation}</div>
+            <div><strong>🦓 Zebra:</strong> ${zebra}</div>
+            <div><strong>😞 Decepção:</strong> ${disappointment}</div>
           </div>
         </div>
       </div>
@@ -323,23 +364,43 @@ function setRevelationDisplay(playerId) {
   document.getElementById('revelationName').innerHTML = `${p?.name} (${team?.name || ''})`;
   document.getElementById('revelationSelected').style.display = 'flex';
 }
+function setZebraDisplay(teamId) {
+  selectedZebra = teamId;
+  const team = TEAMS[teamId];
+  document.getElementById('zebraFlag').innerHTML = team?.flag ? `<img src="${team.flag}" style="width:24px;">` : '';
+  document.getElementById('zebraName').innerHTML = team?.name || '';
+  document.getElementById('zebraSelected').style.display = 'flex';
+}
+function setDisappointmentDisplay(teamId) {
+  selectedDisappointment = teamId;
+  const team = TEAMS[teamId];
+  document.getElementById('disappointmentFlag').innerHTML = team?.flag ? `<img src="${team.flag}" style="width:24px;">` : '';
+  document.getElementById('disappointmentName').innerHTML = team?.name || '';
+  document.getElementById('disappointmentSelected').style.display = 'flex';
+}
+
 
 // Limpeza
 window.clearChampion = () => { selectedChampion = null; document.getElementById('championSelected').style.display = 'none'; document.getElementById('championSearch').value = ''; };
 window.clearTopScorer = () => { selectedTopScorer = null; document.getElementById('topScorerSelected').style.display = 'none'; document.getElementById('topScorerSearch').value = ''; };
 window.clearMVP = () => { selectedMVP = null; document.getElementById('mvpSelected').style.display = 'none'; document.getElementById('mvpSearch').value = ''; };
 window.clearRevelation = () => { selectedRevelation = null; document.getElementById('revelationSelected').style.display = 'none'; document.getElementById('revelationSearch').value = ''; };
+window.clearZebra = () => { selectedZebra = null; document.getElementById('zebraSelected').style.display = 'none'; document.getElementById('zebraSearch').value = ''; };
+window.clearDisappointment = () => { selectedDisappointment = null; document.getElementById('disappointmentSelected').style.display = 'none'; document.getElementById('disappointmentSearch').value = ''; };
+
 
 async function saveSpecialsPicks() {
   if (!currentUser) { showToast('Faça login primeiro', 'red'); return; }
   if (isDeadlinePassed()) { showToast('Prazo encerrado! Não é mais possível alterar palpites especiais.', 'red'); return; }
   const payload = {
-    userId: currentUser.id,
-    championTeam: selectedChampion || null,
-    topScorerId: selectedTopScorer || null,
-    mvpId: selectedMVP || null,
-    revelationId: selectedRevelation || null
-  };
+  userId: currentUser.id,
+  championTeam: selectedChampion || null,
+  topScorerId: selectedTopScorer || null,
+  mvpId: selectedMVP || null,
+  revelationId: selectedRevelation || null,
+  zebraTeam: selectedZebra || null,
+  disappointmentTeam: selectedDisappointment || null
+};
   try {
     const res = await fetch('/api/special-picks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (res.ok) { showToast('Palpites especiais salvos!', 'green'); renderSpecials(); }
