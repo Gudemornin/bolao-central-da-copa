@@ -202,7 +202,6 @@ ${game.result && game.status === 'completed' ? `
                 </div>
                <div class="save-bet-area" style="display:flex; gap:10px; align-items:center;">
   <button class="save-bet-btn" onclick="saveBet('${game.id}')">💾 SALVAR PALPITE</button>
-  ${bet.homeScore !== undefined ? `<button class="delete-bet-btn" onclick="deleteBet('${game.id}')" style="background:var(--red); padding:8px 16px; border-radius:8px; border:none; color:white; cursor:pointer;">🗑️ Excluir Palpite</button>` : ''}
   <span class="saved-indicator${bet.homeScore !== undefined ? ' show' : ''}" id="bsm_${game.id}">✓ Palpite salvo</span>
 </div>
               `
