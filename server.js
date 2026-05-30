@@ -513,6 +513,17 @@ app.get('/api/all-special-picks', async (req, res) => {
   }
 });
 
+app.delete('/api/clear-games', async (req, res) => {
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  try {
+    await pool.query('DELETE FROM games');
+    res.json({ success: true, message: 'Todos os jogos foram removidos' });
+  } catch (error) {
+    console.error('Erro ao limpar jogos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // =============================================
 // FALLBACK
 // =============================================
