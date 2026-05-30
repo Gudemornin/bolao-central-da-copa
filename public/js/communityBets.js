@@ -37,7 +37,7 @@ export async function renderCommunityBets() {
   const allGames = (games.length ? games : GAMES_STATE);
   const relevantGames = allGames.filter(g => {
     // Jogos da Copa (datas junho/2026) OU jogos da La Liga (group 'La Liga')
-    return (g.date && g.date.startsWith('2026-06')) || g.group === 'La Liga';
+    return (g.date && g.date.startsWith('2026-06')) || g.group === 'Champions League Final';
   });
 
   if (relevantGames.length === 0) {
