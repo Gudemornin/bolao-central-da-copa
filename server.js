@@ -246,37 +246,35 @@ app.get('/api/bets', async (req, res) => {
 // ENDPOINT: PALPITES (POST)
 // =============================================
 app.post('/api/bets', async (req, res) => {
-    if (!pool) {
-        return res.status(500).json({ error: 'Banco de dados não conectado' });
-    }
-    const { bets } = req.body;
-    if (!bets) {
-        return res.json({ success: true });
-    }
-    try {
-        await pool.query('BEGIN'); // Inicia uma transação
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { bets } = req.body;
+  if (!bets) return res.json({ success: true });
 
-        for (const [userId, userBets] of Object.entries(bets)) {
-            // 1. Remove TODAS as apostas antigas do usuário
-            await pool.query('DELETE FROM bets WHERE user_id = $1', [userId]);
+  try {
+    await pool.query('BEGIN');
 
-            // 2. Insere as novas apostas (vindas do front-end)
-            for (const [gameId, bet] of Object.entries(userBets)) {
-                await pool.query(
-                    `INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at)
-                     VALUES ($1, $2, $3, $4, $5, $6)`,
-                    [userId, gameId, bet.homeScore, bet.awayScore, bet.playerId, bet.savedAt || Date.now()]
-                );
-            }
-        }
+    // Para cada usuário que tem apostas no objeto enviado
+    for (const [userId, userBets] of Object.entries(bets)) {
+      // 1. Remove TODAS as apostas antigas desse usuário
+      await pool.query('DELETE FROM bets WHERE user_id = $1', [userId]);
 
-        await pool.query('COMMIT');
-        res.json({ success: true });
-    } catch (error) {
-        await pool.query('ROLLBACK');
-        console.error('❌ POST /api/bets erro:', error);
-        res.status(500).json({ error: error.message });
+      // 2. Insere as apostas novas (as que restaram)
+      for (const [gameId, bet] of Object.entries(userBets)) {
+        await pool.query(
+          `INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [userId, gameId, bet.homeScore, bet.awayScore, bet.playerId, bet.savedAt || Date.now()]
+        );
+      }
     }
+
+    await pool.query('COMMIT');
+    res.json({ success: true });
+  } catch (error) {
+    await pool.query('ROLLBACK');
+    console.error('❌ POST /api/bets erro:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // =============================================
