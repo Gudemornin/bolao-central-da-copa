@@ -136,7 +136,7 @@ async function init() {
         switchTab('games');
         
         // ✅ INICIAR ATUALIZAÇÃO AUTOMÁTICA APÓS LOGIN
-        startAutoResultUpdater();
+      //  startAutoResultUpdater();
         return;
       }
     } catch (error) {
