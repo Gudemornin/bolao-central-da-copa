@@ -252,13 +252,10 @@ app.post('/api/bets', async (req, res) => {
 
   try {
     await pool.query('BEGIN');
-
-    // Para cada usuário que tem apostas no objeto enviado
     for (const [userId, userBets] of Object.entries(bets)) {
-      // 1. Remove TODAS as apostas antigas desse usuário
+      // 🔥 Remove tudo do usuário
       await pool.query('DELETE FROM bets WHERE user_id = $1', [userId]);
-
-      // 2. Insere as apostas novas (as que restaram)
+      // Insere o que veio do front (pode ser vazio)
       for (const [gameId, bet] of Object.entries(userBets)) {
         await pool.query(
           `INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at)
@@ -267,7 +264,6 @@ app.post('/api/bets', async (req, res) => {
         );
       }
     }
-
     await pool.query('COMMIT');
     res.json({ success: true });
   } catch (error) {
