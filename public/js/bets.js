@@ -77,45 +77,37 @@ export async function openFinalizedModal(){
 }
 
 window.deleteActiveBet = async (gameId) => {
-  if (!currentUser) {
-    showToast('Faça login primeiro', 'red');
-    return;
-  }
-  
+  if (!currentUser) return;
   const game = GAMES_STATE.find(g => g.id === gameId);
   if (game && game.status === 'completed') {
-    showToast('❌ Não é possível excluir palpite de um jogo já finalizado.', 'red');
+    showToast('❌ Jogo finalizado, não pode excluir', 'red');
     return;
   }
-  
-  if (!confirm('⚠️ Excluir permanentemente este palpite?')) return;
-  
+  if (!confirm('Excluir permanentemente?')) return;
+
   try {
-    const bets = await loadBets();
+    const response = await fetch('/api/bets');
+    const data = await response.json();
+    let bets = data.bets || {};
     if (!bets[currentUser.id] || !bets[currentUser.id][gameId]) {
       showToast('Palpite não encontrado', 'red');
       return;
     }
-    
     delete bets[currentUser.id][gameId];
-    if (Object.keys(bets[currentUser.id]).length === 0) {
-      delete bets[currentUser.id];
-    }
-    
-    await saveBets(bets);
-    showToast('✅ Palpite excluído permanentemente!', 'green');
-    
+    if (Object.keys(bets[currentUser.id]).length === 0) delete bets[currentUser.id];
+
+    await fetch('/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bets })
+    });
+
+    showToast('✅ Excluído', 'green');
     await renderBets();
+    if (window.renderGameList) await window.renderGameList();
     if (window.updateSidebar) await window.updateSidebar();
-    if (document.getElementById('tabGames')?.classList.contains('active') && window.renderGameList) {
-      await window.renderGameList();
-    }
-    if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) {
-      await window.renderRanking();
-    }
-  } catch (error) {
-    console.error('Erro ao excluir palpite:', error);
-    showToast('Erro ao excluir palpite', 'red');
+  } catch (err) {
+    showToast('Erro', 'red');
   }
 };
 
