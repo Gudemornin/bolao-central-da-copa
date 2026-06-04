@@ -245,14 +245,33 @@ export const PLAYERS = [
 { id: 'ger25', name: 'Florian Wirtz', team: 'germany', pos: 'MEI' },
 { id: 'ger26', name: 'Nick Woltemade', team: 'germany', pos: 'ATA' },
 
-  // MEXICO - 01
-  {id:'mx01',name:'Ochoa',           team:'mexico', pos:'GOL'},
-  {id:'mx02',name:'E. Álvarez',      team:'mexico', pos:'DEF'},
-  {id:'mx03',name:'Héctor Moreno',   team:'mexico', pos:'DEF'},
-  {id:'mx04',name:'Héctor Herrera',  team:'mexico', pos:'MEI'},
-  {id:'mx06',name:'Alexis Vega',     team:'mexico', pos:'ATA'},
-  {id:'mx07',name:'Hirving Lozano',  team:'mexico', pos:'ATA'},
-  {id:'mx08',name:'Raúl Jiménez',    team:'mexico', pos:'ATA'},
+// México
+{ id: 'mx01', name: 'Guillermo Ochoa', team: 'mexico', pos: 'GOL' },
+{ id: 'mx02', name: 'Edson Álvarez', team: 'mexico', pos: 'DEF' },
+{ id: 'mx06', name: 'Alexis Vega', team: 'mexico', pos: 'ATA' },
+{ id: 'mx08', name: 'Raúl Jiménez', team: 'mexico', pos: 'ATA' },
+{ id: 'mx09', name: 'Raúl Rangel', team: 'mexico', pos: 'GOL' },
+{ id: 'mx10', name: 'Carlos Acevedo', team: 'mexico', pos: 'GOL' },
+{ id: 'mx11', name: 'Jorge Sánchez', team: 'mexico', pos: 'DEF' },
+{ id: 'mx12', name: 'César Montes', team: 'mexico', pos: 'DEF' },
+{ id: 'mx13', name: 'Joah Vásquez', team: 'mexico', pos: 'DEF' },
+{ id: 'mx14', name: 'Erik Lira', team: 'mexico', pos: 'DEF' },
+{ id: 'mx15', name: 'Luis Romo', team: 'mexico', pos: 'DEF' },
+{ id: 'mx16', name: 'Israel Reyes', team: 'mexico', pos: 'DEF' },
+{ id: 'mx17', name: 'Mateo Chávez', team: 'mexico', pos: 'DEF' },
+{ id: 'mx18', name: 'Jesús Gallardo', team: 'mexico', pos: 'DEF' },
+{ id: 'mx19', name: 'Álvaro Fidalgo', team: 'mexico', pos: 'MEI' },
+{ id: 'mx20', name: 'Orbelín Pineda', team: 'mexico', pos: 'MEI' },
+{ id: 'mx21', name: 'Obed Vargas', team: 'mexico', pos: 'MEI' },
+{ id: 'mx22', name: 'Gilberto Mora', team: 'mexico', pos: 'MEI' },
+{ id: 'mx23', name: 'César Huerta', team: 'mexico', pos: 'MEI' },
+{ id: 'mx24', name: 'Luis Chávez', team: 'mexico', pos: 'MEI' },
+{ id: 'mx25', name: 'Roberto Alvarado', team: 'mexico', pos: 'MEI' },
+{ id: 'mx26', name: 'Brian Gutiérrez', team: 'mexico', pos: 'MEI' },
+{ id: 'mx07', name: 'Santiago Giménez', team: 'mexico', pos: 'ATA' },
+{ id: 'mx05', name: 'Armando González', team: 'mexico', pos: 'ATA' },
+{ id: 'mx04', name: 'Julián Quiñones', team: 'mexico', pos: 'ATA' },
+{ id: 'mx03', name: 'Guillermo Martínez', team: 'mexico', pos: 'ATA' },
 
   // HOLANDA (Netherlands) - convocação Copa 2026
 { id: 'nl01', name: 'Mark Flekken', team: 'netherlands', pos: 'GOL' },
@@ -336,18 +355,6 @@ export const PLAYERS = [
 { id: 'ma24', name: 'Brahim Díaz', team: 'morocco', pos: 'ATA' },
 { id: 'ma25', name: 'Gessime Yassine', team: 'morocco', pos: 'ATA' },
 { id: 'ma26', name: 'Ayoube Echghouyabe', team: 'morocco', pos: 'ATA' },
-
-  // NIGERIA
-  {id:'ng01',name:'Francis Uzoho',   team:'nigeria', pos:'GOL'},
-  {id:'ng02',name:'Wilfried Ndidi',  team:'nigeria', pos:'MEI'},
-  {id:'ng03',name:'A. Lookman',      team:'nigeria', pos:'ATA'},
-  {id:'ng04',name:'V. Osimhen',      team:'nigeria', pos:'ATA'},
-
-  // SERBIA
-  {id:'rs01',name:'Rajković',        team:'serbia', pos:'GOL'},
-  {id:'rs02',name:'S. Milinković-Savić',team:'serbia',pos:'MEI'},
-  {id:'rs03',name:'Dušan Tadić',     team:'serbia', pos:'MEI'},
-  {id:'rs04',name:'Dušan Vlahović',  team:'serbia', pos:'ATA'},
 
 // CANADÁ (Canada) - 26 convocados (IDs ca02, ca03, ca04 preservados)
 { id: 'ca02', name: 'Alphonso Davies', team: 'canada', pos: 'DEF' },
@@ -479,7 +486,7 @@ export const PLAYERS = [
 { id: 'swe06', name: 'Carl Starfelt', team: 'sweden', pos: 'DEF' },
 { id: 'swe07', name: 'Gabriel Gudmundsson', team: 'sweden', pos: 'DEF' },
 { id: 'swe08', name: 'Daniel Svensson', team: 'sweden', pos: 'DEF' },
-{ id: 'swe09', name: 'Emil Holm', team: 'sweden', pos: 'DEF' },
+{ id: 'swe09', name: 'Herman Johansson', team: 'sweden', pos: 'DEF' },
 { id: 'swe10', name: 'Hjalmar Ekdal', team: 'sweden', pos: 'DEF' },
 { id: 'swe11', name: 'Gustaf Lagerbielke', team: 'sweden', pos: 'DEF' },
 { id: 'swe12', name: 'Eric Smith', team: 'sweden', pos: 'DEF' },
