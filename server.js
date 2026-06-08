@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS special_picks (
   top_scorer_id TEXT,
   mvp_player_id TEXT,
   revelation_player_id TEXT,
+  zebra_team TEXT,
+  disappointment_team TEXT,
   updated_at BIGINT
 );
 `);
