@@ -421,28 +421,25 @@ app.get('/api/football', async (req, res) => {
 
 // Buscar palpites de um usuário
 app.get('/api/special-picks/:userId', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { userId } = req.params;
   try {
-  const result = await pool.query(
-  'SELECT champion_team, top_scorer_id, mvp_player_id, revelation_player_id, zebra_team, disappointment_team FROM special_picks WHERE user_id = $1',
-  [userId]
-);
+    const result = await pool.query(
+      'SELECT champion_team, top_scorer_id, mvp_player_id, revelation_player_id, zebra_team, disappointment_team FROM special_picks WHERE user_id = $1',
+      [userId]
+    );
     if (result.rows.length === 0) {
-      // Retorna objeto vazio (sem palpites)
-      return res.json({ championTeam: null, topScorerId: null, mvpId: null, revelationId: null });
+      return res.json({ championTeam: null, topScorerId: null, mvpId: null, revelationId: null, zebraTeam: null, disappointmentTeam: null });
     }
     const row = result.rows[0];
-res.json({
-  championTeam: row.champion_team,
-  topScorerId: row.top_scorer_id,
-  mvpId: row.mvp_player_id,
-  revelationId: row.revelation_player_id,
-  zebraTeam: row.zebra_team,
-  disappointmentTeam: row.disappointment_team
-});
+    res.json({
+      championTeam: row.champion_team,
+      topScorerId: row.top_scorer_id,
+      mvpId: row.mvp_player_id,
+      revelationId: row.revelation_player_id,
+      zebraTeam: row.zebra_team,
+      disappointmentTeam: row.disappointment_team
+    });
   } catch (err) {
     console.error('❌ Erro em GET /special-picks:', err);
     res.status(500).json({ error: err.message });
@@ -451,27 +448,23 @@ res.json({
 
 // Salvar palpites especiais
 app.post('/api/special-picks', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
-const { userId, championTeam, topScorerId, mvpId, revelationId, zebraTeam, disappointmentTeam } = req.body;
-  if (!userId) {
-    return res.status(400).json({ error: 'userId é obrigatório' });
-  }
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
+  const { userId, championTeam, topScorerId, mvpId, revelationId, zebraTeam, disappointmentTeam } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId é obrigatório' });
   try {
-  await pool.query(
-  `INSERT INTO special_picks (user_id, champion_team, top_scorer_id, mvp_player_id, revelation_player_id, zebra_team, disappointment_team, updated_at)
-   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-   ON CONFLICT (user_id) DO UPDATE SET
-     champion_team = EXCLUDED.champion_team,
-     top_scorer_id = EXCLUDED.top_scorer_id,
-     mvp_player_id = EXCLUDED.mvp_player_id,
-     revelation_player_id = EXCLUDED.revelation_player_id,
-     zebra_team = EXCLUDED.zebra_team,
-     disappointment_team = EXCLUDED.disappointment_team,
-     updated_at = EXCLUDED.updated_at`,
-  [userId, championTeam || null, topScorerId || null, mvpId || null, revelationId || null, zebraTeam || null, disappointmentTeam || null, Date.now()]
-);
+    await pool.query(
+      `INSERT INTO special_picks (user_id, champion_team, top_scorer_id, mvp_player_id, revelation_player_id, zebra_team, disappointment_team, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (user_id) DO UPDATE SET
+         champion_team = EXCLUDED.champion_team,
+         top_scorer_id = EXCLUDED.top_scorer_id,
+         mvp_player_id = EXCLUDED.mvp_player_id,
+         revelation_player_id = EXCLUDED.revelation_player_id,
+         zebra_team = EXCLUDED.zebra_team,
+         disappointment_team = EXCLUDED.disappointment_team,
+         updated_at = EXCLUDED.updated_at`,
+      [userId, championTeam || null, topScorerId || null, mvpId || null, revelationId || null, zebraTeam || null, disappointmentTeam || null, Date.now()]
+    );
     res.json({ success: true });
   } catch (err) {
     console.error('❌ Erro em POST /special-picks:', err);
@@ -481,14 +474,12 @@ const { userId, championTeam, topScorerId, mvpId, revelationId, zebraTeam, disap
 
 // Buscar palpites de todos os usuários (para listagem)
 app.get('/api/all-special-picks', async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ error: 'Banco de dados não conectado' });
-  }
+  if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   try {
     const result = await pool.query(`
       SELECT u.id, u.profile_name, 
-       sp.champion_team, sp.top_scorer_id, sp.mvp_player_id, sp.revelation_player_id,
-       sp.zebra_team, sp.disappointment_team
+             sp.champion_team, sp.top_scorer_id, sp.mvp_player_id, sp.revelation_player_id,
+             sp.zebra_team, sp.disappointment_team
       FROM users u
       LEFT JOIN special_picks sp ON u.id = sp.user_id
       WHERE (u.is_hidden = false OR u.is_hidden IS NULL)
@@ -498,14 +489,14 @@ app.get('/api/all-special-picks', async (req, res) => {
     for (const row of result.rows) {
       allPicks[row.id] = {
         profileName: row.profile_name,
-       specialPicks: {
-  championTeam: row.champion_team,
-  topScorerId: row.top_scorer_id,
-  mvpId: row.mvp_player_id,
-  revelationId: row.revelation_player_id,
-  zebraTeam: row.zebra_team,
-  disappointmentTeam: row.disappointment_team
-}
+        specialPicks: {
+          championTeam: row.champion_team,
+          topScorerId: row.top_scorer_id,
+          mvpId: row.mvp_player_id,
+          revelationId: row.revelation_player_id,
+          zebraTeam: row.zebra_team,
+          disappointmentTeam: row.disappointment_team
+        }
       };
     }
     res.json(allPicks);
