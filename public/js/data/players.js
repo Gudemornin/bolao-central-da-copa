@@ -1328,4 +1328,32 @@ export const PLAYERS = [
 { id: 'gha25', name: 'Iñaki Williams', team: 'ghana', pos: 'ATA' },
 { id: 'gha26', name: 'Jordan Ayew', team: 'ghana', pos: 'ATA' },
 
+// Turquia (Turkey) - 26 convocados
+{ id: 'tur01', name: 'Altay Bayındır', team: 'turkey', pos: 'GOL' },
+{ id: 'tur02', name: 'Mert Günok', team: 'turkey', pos: 'GOL' },
+{ id: 'tur03', name: 'Uğurcan Çakır', team: 'turkey', pos: 'GOL' },
+{ id: 'tur04', name: 'Abdülkerim Bardakcı', team: 'turkey', pos: 'DEF' },
+{ id: 'tur05', name: 'Çağlar Söyüncü', team: 'turkey', pos: 'DEF' },
+{ id: 'tur06', name: 'Eren Elmalı', team: 'turkey', pos: 'DEF' },
+{ id: 'tur07', name: 'Ferdi Kadıoğlu', team: 'turkey', pos: 'DEF' },
+{ id: 'tur08', name: 'Merih Demiral', team: 'turkey', pos: 'DEF' },
+{ id: 'tur09', name: 'Mert Müldür', team: 'turkey', pos: 'DEF' },
+{ id: 'tur10', name: 'Ozan Kabak', team: 'turkey', pos: 'DEF' },
+{ id: 'tur11', name: 'Samet Akaydın', team: 'turkey', pos: 'DEF' },
+{ id: 'tur12', name: 'Zeki Çelik', team: 'turkey', pos: 'DEF' },
+{ id: 'tur13', name: 'Hakan Çalhanoğlu', team: 'turkey', pos: 'MEI' },
+{ id: 'tur14', name: 'İsmail Yüksek', team: 'turkey', pos: 'MEI' },
+{ id: 'tur15', name: 'Kaan Ayhan', team: 'turkey', pos: 'MEI' },
+{ id: 'tur16', name: 'Orkun Kökçü', team: 'turkey', pos: 'MEI' },
+{ id: 'tur17', name: 'Salih Özcan', team: 'turkey', pos: 'MEI' },
+{ id: 'tur18', name: 'Arda Güler', team: 'turkey', pos: 'ATA' },
+{ id: 'tur19', name: 'Barış Alper Yılmaz', team: 'turkey', pos: 'ATA' },
+{ id: 'tur20', name: 'Can Uzun', team: 'turkey', pos: 'ATA' },
+{ id: 'tur21', name: 'Deniz Gül', team: 'turkey', pos: 'ATA' },
+{ id: 'tur22', name: 'İrfan Can Kahveci', team: 'turkey', pos: 'ATA' },
+{ id: 'tur23', name: 'Kenan Yıldız', team: 'turkey', pos: 'ATA' },
+{ id: 'tur24', name: 'Kerem Aktürkoğlu', team: 'turkey', pos: 'ATA' },
+{ id: 'tur25', name: 'Oğuz Aydın', team: 'turkey', pos: 'ATA' },
+{ id: 'tur26', name: 'Yunus Akgün', team: 'turkey', pos: 'ATA' }
+ 
 ]; 
