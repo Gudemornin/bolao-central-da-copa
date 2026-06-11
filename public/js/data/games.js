@@ -1,7 +1,7 @@
 export const GAMES = [
   // ═══════════════ MATCHDAY 1 - 11 Jun ═══════════════
-  {id:'g01',date:'2026-06-11',time:'13:00',timezone:'UTC-6',home:'mexico',away:'south_africa',group:'A',venue:'Estadio Azteca, Cidade do México',status:'upcoming',result:null},
-  {id:'g02',date:'2026-06-11',time:'20:00',timezone:'UTC-6',home:'south_korea',away:'czech_republic',group:'A',venue:'Estadio Akron, Zapopan',status:'upcoming',result:null},
+  {id:'g01',date:'2026-06-11',time:'16:00',timezone:'UTC-6',home:'mexico',away:'south_africa',group:'A',venue:'Estadio Azteca, Cidade do México',status:'upcoming',result:null},
+  {id:'g02',date:'2026-06-11',time:'23:00',timezone:'UTC-6',home:'south_korea',away:'czech_republic',group:'A',venue:'Estadio Akron, Zapopan',status:'upcoming',result:null},
   
   // ═══════════════ MATCHDAY 2 - 12 Jun ═══════════════
   {id:'g03',date:'2026-06-12',time:'15:00',timezone:'UTC-4',home:'canada',away:'bosnia',group:'B',venue:'BMO Field, Toronto',status:'upcoming',result:null},
