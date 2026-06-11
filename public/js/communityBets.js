@@ -321,23 +321,21 @@ function calculateBetPoints(bet, game) {
   const r = game.result;
   let pts = 0;
 
-  // 1. Pontos por resultado da partida
+  // 1. Resultado da partida (6 pontos para vitória/empate, +4 se placar exato = 10)
   const betWinner = Math.sign(bet.homeScore - bet.awayScore);
   const realWinner = Math.sign(r.homeScore - r.awayScore);
   const exact = (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore);
 
   if (exact) {
-    pts += 10;               // placar exato
+    pts += 10;
   } else if (betWinner === realWinner) {
-    pts += 6;                // apenas resultado correto (vitória/empate)
+    pts += 6;
   }
 
-  // Se não há jogador representante, retorna apenas os pontos do resultado
-  if (!bet.playerId) {
-    return pts;
-  }
+  // Se não escolheu jogador, retorna apenas pontos de resultado
+  if (!bet.playerId) return pts;
 
-  // 2. Gols do jogador (2 pts por gol)
+  // 2. Gols (2 pontos por gol)
   if (r.scorers && Array.isArray(r.scorers)) {
     const playerGoals = r.scorers
       .filter(s => s.playerId === bet.playerId)
@@ -345,7 +343,7 @@ function calculateBetPoints(bet, game) {
     pts += playerGoals * 2;
   }
 
-  // 3. Assistências (1 pt cada)
+  // 3. Assistências (1 ponto cada)
   if (r.assists && Array.isArray(r.assists)) {
     const playerAssists = r.assists
       .filter(a => a.playerId === bet.playerId)
@@ -353,16 +351,14 @@ function calculateBetPoints(bet, game) {
     pts += playerAssists;
   }
 
-  // 4. Cartão vermelho (-3 pts)
+  // 4. Cartão vermelho (-3 pontos)
   if (r.redCards && Array.isArray(r.redCards)) {
     const hasRed = r.redCards.some(card => card.playerId === bet.playerId);
     if (hasRed) pts -= 3;
   }
 
-  // 5. Craque do jogo (+3 pts)
-  if (r.craqueId === bet.playerId) {
-    pts += 3;
-  }
+  // 5. Craque do jogo (+3 pontos)
+  if (r.craqueId === bet.playerId) pts += 3;
 
   return pts;
 }
