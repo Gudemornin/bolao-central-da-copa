@@ -384,4 +384,4 @@ window.toggleCommunityGame = (gameId) => {
   }
 };
 
-}
+
