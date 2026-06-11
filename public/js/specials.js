@@ -11,7 +11,7 @@ let selectedRevelation = null;
 let selectedZebra = null;
 let selectedDisappointment = null;
 
-const DEADLINE = new Date(2026, 5, 11, 0, 0, 0); // 11 de junho de 2026
+const DEADLINE = new Date(2026, 5, 13, 0, 0, 0); // 11 de junho de 2026
 
 function isDeadlinePassed() {
   return new Date() > DEADLINE;
