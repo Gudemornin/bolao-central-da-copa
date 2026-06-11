@@ -317,54 +317,53 @@ function renderBetsList(gameBets, game) {
 // CALCULA PONTOS (mesma lógica do ranking)
 // =============================================
 function calculateBetPoints(bet, game) {
-  if (!game.result) return 0;
+  if (!game || !game.result) return 0;
   const r = game.result;
   let pts = 0;
-  
-  // 1. RESULTADO DA PARTIDA
+
+  // 1. Pontos por resultado da partida
   const betWinner = Math.sign(bet.homeScore - bet.awayScore);
   const realWinner = Math.sign(r.homeScore - r.awayScore);
-  if (betWinner === realWinner) pts += 6;
-  
-  // 2. PLACAR EXATO
-  if (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore) pts += 4;
-  
-  // 3. EVENTOS (gols, assistências, cartões, etc.)
-  const events = r.events || [];
-  
-  // Jogadores do palpite (suporta até 2)
-  const players = [
-    { id: bet.playerId, role: bet.playerRole || 'field' },
-  ].filter(p => p.id);
-  
-  for (const player of players) {
-    const p = getPlayer(player.id);
-    if (!p) continue;
-    
-    const playerEvents = events.filter(e => e.playerId === player.id);
-    const isGoalkeeper = player.role === 'goleiro' || p.pos === 'GOL';
-    const isDefender = player.role === 'zagueiro' || p.pos === 'DEF';
-    
-    // GOLS
-    const goals = playerEvents.filter(e => e.type === 'goal').length;
-    if (goals > 0) {
-      pts += goals * 2;                       // base
-    }
-    
-    // ASSISTÊNCIAS
-    const assists = playerEvents.filter(e => e.type === 'assist').length;
-    pts += assists * 1;               // 1 ponto por assistência
-    
-    // CARTÕES
-    const yellowCards = playerEvents.filter(e => e.type === 'yellow_card').length;
-    const redCards = playerEvents.filter(e => e.type === 'red_card').length;
-    pts -= redCards * 3;
-    
+  const exact = (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore);
 
-  
-  // 4. CRAQUE DO JOGO
-  if (bet.playerId === r.craqueId || bet.player2Id === r.craqueId) pts += 3;
-  
+  if (exact) {
+    pts += 10;               // placar exato
+  } else if (betWinner === realWinner) {
+    pts += 6;                // apenas resultado correto (vitória/empate)
+  }
+
+  // Se não há jogador representante, retorna apenas os pontos do resultado
+  if (!bet.playerId) {
+    return pts;
+  }
+
+  // 2. Gols do jogador (2 pts por gol)
+  if (r.scorers && Array.isArray(r.scorers)) {
+    const playerGoals = r.scorers
+      .filter(s => s.playerId === bet.playerId)
+      .reduce((sum, s) => sum + (s.goals || 1), 0);
+    pts += playerGoals * 2;
+  }
+
+  // 3. Assistências (1 pt cada)
+  if (r.assists && Array.isArray(r.assists)) {
+    const playerAssists = r.assists
+      .filter(a => a.playerId === bet.playerId)
+      .reduce((sum, a) => sum + (a.assists || 1), 0);
+    pts += playerAssists;
+  }
+
+  // 4. Cartão vermelho (-3 pts)
+  if (r.redCards && Array.isArray(r.redCards)) {
+    const hasRed = r.redCards.some(card => card.playerId === bet.playerId);
+    if (hasRed) pts -= 3;
+  }
+
+  // 5. Craque do jogo (+3 pts)
+  if (r.craqueId === bet.playerId) {
+    pts += 3;
+  }
+
   return pts;
 }
 
