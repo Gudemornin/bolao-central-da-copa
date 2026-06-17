@@ -11,7 +11,7 @@ let selectedRevelation = null;
 let selectedZebra = null;
 let selectedDisappointment = null;
 
-const DEADLINE = new Date(2026, 5, 13, 0, 0, 0); // 13 de junho de 2026
+const DEADLINE = new Date(2026, 5, 18, 0, 0, 0); // 13 de junho de 2026
 
 function isDeadlinePassed() {
   return new Date() > DEADLINE;
@@ -50,7 +50,7 @@ export async function renderSpecials() {
       <div>
         <div class="page-title">🌟 Palpites Especiais</div>
         <div class="page-subtitle">Campeão, Artilheiro, Craque e Revelação da Copa 2026</div>
-        ${deadlinePassed ? '<div class="deadline-warning" style="color:var(--red-l); margin-top:8px;">⛔ Prazo encerrado em 13/06/2026. Palpites não podem mais ser alterados.</div>' : '<div class="deadline-info" style="color:var(--gold); margin-top:8px;">📅 Você pode alterar seus palpites até 13/06/2026.</div>'}
+        ${deadlinePassed ? '<div class="deadline-warning" style="color:var(--red-l); margin-top:8px;">⛔ Prazo encerrado em 18/06/2026. Palpites não podem mais ser alterados.</div>' : '<div class="deadline-info" style="color:var(--gold); margin-top:8px;">📅 Você pode alterar seus palpites até 18/06/2026.</div>'}
       </div>
     </div>
 
