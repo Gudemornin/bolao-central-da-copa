@@ -254,26 +254,31 @@ app.post('/api/bets', async (req, res) => {
   const { bets } = req.body;
   if (!bets) return res.json({ success: true });
 
+  const client = await pool.connect();
   try {
-    await pool.query('BEGIN');
+    await client.query('BEGIN');
     for (const [userId, userBets] of Object.entries(bets)) {
-      // 🔥 Remove tudo do usuário
-      await pool.query('DELETE FROM bets WHERE user_id = $1', [userId]);
-      // Insere o que veio do front (pode ser vazio)
       for (const [gameId, bet] of Object.entries(userBets)) {
-        await pool.query(
+        await client.query(
           `INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (user_id, game_id) DO UPDATE SET
+             home_score = EXCLUDED.home_score,
+             away_score = EXCLUDED.away_score,
+             player_id  = EXCLUDED.player_id,
+             saved_at   = EXCLUDED.saved_at`,
           [userId, gameId, bet.homeScore, bet.awayScore, bet.playerId, bet.savedAt || Date.now()]
         );
       }
     }
-    await pool.query('COMMIT');
+    await client.query('COMMIT');
     res.json({ success: true });
   } catch (error) {
-    await pool.query('ROLLBACK');
+    await client.query('ROLLBACK');
     console.error('❌ POST /api/bets erro:', error);
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
