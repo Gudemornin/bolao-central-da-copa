@@ -176,6 +176,9 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+
+export { getUserStats };
+
 window.refreshRanking = async () => {
   console.log('🔄 Forçando recarga do ranking...');
   await renderRanking();
