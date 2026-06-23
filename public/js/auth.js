@@ -536,25 +536,25 @@ async function adminEditUserPoints(userId, newPoints) {
     return false;
   }
   
-  // Calcular os pontos atuais do usuário (sem overrides)
+  // Obter os pontos atuais do usuário (considerando overrides existentes)
   const currentStats = await getUserStats(userId);
-  const currentPoints = currentStats?.pts || 0;
+  let basePoints = currentStats?.pts || 0;
   
-  // Se já existe um override de pontos, somar a ele
-  let basePoints = currentPoints;
+  // Se já existe um override de pontos, usamos ele como base
   if (user.adminOverrides?.manualPoints !== undefined) {
-    // Se já tem override, usamos ele como base
     basePoints = user.adminOverrides.manualPoints;
   }
   
-  // Somar os novos pontos
+  // Somar os novos pontos (pode ser negativo para subtrair)
   const totalPoints = basePoints + newPoints;
   
   if (!user.adminOverrides) user.adminOverrides = {};
-  user.adminOverrides.manualPoints = totalPoints;
+  user.adminOverrides.manualPoints = Math.max(0, totalPoints); // não permite ficar negativo
   
   await saveUsers(users);
-  showToast(`${newPoints} pontos adicionados a ${user.profileName}! Total: ${totalPoints} pts`, 'green');
+  
+  const signal = newPoints >= 0 ? '+' : '';
+  showToast(`${signal}${newPoints} pontos aplicados a ${user.profileName}! Total: ${user.adminOverrides.manualPoints} pts`, 'green');
   
   if (window.renderRanking) window.renderRanking();
   if (window.renderAdminPanel) window.renderAdminPanel();
@@ -576,24 +576,25 @@ async function adminEditUserCraques(userId, newCraques) {
     return false;
   }
   
-  // Calcular os craques atuais do usuário (sem overrides)
+  // Obter os craques atuais do usuário (considerando overrides existentes)
   const currentStats = await getUserStats(userId);
-  const currentCraques = currentStats?.motm || 0;
+  let baseCraques = currentStats?.motm || 0;
   
-  // Se já existe um override de craques, somar a ele
-  let baseCraques = currentCraques;
+  // Se já existe um override de craques, usamos ele como base
   if (user.adminOverrides?.manualCraques !== undefined) {
     baseCraques = user.adminOverrides.manualCraques;
   }
   
-  // Somar os novos craques
+  // Somar os novos craques (pode ser negativo para subtrair)
   const totalCraques = baseCraques + newCraques;
   
   if (!user.adminOverrides) user.adminOverrides = {};
-  user.adminOverrides.manualCraques = totalCraques;
+  user.adminOverrides.manualCraques = Math.max(0, totalCraques); // não permite ficar negativo
   
   await saveUsers(users);
-  showToast(`${newCraques} craques adicionados a ${user.profileName}! Total: ${totalCraques}`, 'green');
+  
+  const signal = newCraques >= 0 ? '+' : '';
+  showToast(`${signal}${newCraques} craques aplicados a ${user.profileName}! Total: ${user.adminOverrides.manualCraques}`, 'green');
   
   if (window.renderRanking) window.renderRanking();
   if (window.renderAdminPanel) window.renderAdminPanel();
