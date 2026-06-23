@@ -7,6 +7,7 @@ import { loadUsers, saveUsers } from './storage.js';
 import { currentUser, setCurrentUser } from './state.js';
 import { send2FACodeByEmail, sendPasswordResetEmail, sendAdminResetNotification } from './emailService.js';
 import { stopAutoResultUpdater } from './app.js'; 
+import { getUserStats } from './ranking.js';
 
 // =============================================
 // VARIÁVEIS DE ESTADO DA AUTENTICAÇÃO
@@ -535,11 +536,25 @@ async function adminEditUserPoints(userId, newPoints) {
     return false;
   }
   
+  // Calcular os pontos atuais do usuário (sem overrides)
+  const currentStats = await getUserStats(userId);
+  const currentPoints = currentStats?.pts || 0;
+  
+  // Se já existe um override de pontos, somar a ele
+  let basePoints = currentPoints;
+  if (user.adminOverrides?.manualPoints !== undefined) {
+    // Se já tem override, usamos ele como base
+    basePoints = user.adminOverrides.manualPoints;
+  }
+  
+  // Somar os novos pontos
+  const totalPoints = basePoints + newPoints;
+  
   if (!user.adminOverrides) user.adminOverrides = {};
-  user.adminOverrides.manualPoints = newPoints;
+  user.adminOverrides.manualPoints = totalPoints;
   
   await saveUsers(users);
-  showToast(`Pontos de ${user.profileName} alterados para ${newPoints}!`, 'green');
+  showToast(`${newPoints} pontos adicionados a ${user.profileName}! Total: ${totalPoints} pts`, 'green');
   
   if (window.renderRanking) window.renderRanking();
   if (window.renderAdminPanel) window.renderAdminPanel();
@@ -561,11 +576,24 @@ async function adminEditUserCraques(userId, newCraques) {
     return false;
   }
   
+  // Calcular os craques atuais do usuário (sem overrides)
+  const currentStats = await getUserStats(userId);
+  const currentCraques = currentStats?.motm || 0;
+  
+  // Se já existe um override de craques, somar a ele
+  let baseCraques = currentCraques;
+  if (user.adminOverrides?.manualCraques !== undefined) {
+    baseCraques = user.adminOverrides.manualCraques;
+  }
+  
+  // Somar os novos craques
+  const totalCraques = baseCraques + newCraques;
+  
   if (!user.adminOverrides) user.adminOverrides = {};
-  user.adminOverrides.manualCraques = newCraques;
+  user.adminOverrides.manualCraques = totalCraques;
   
   await saveUsers(users);
-  showToast(`Craques de ${user.profileName} alterados para ${newCraques}!`, 'green');
+  showToast(`${newCraques} craques adicionados a ${user.profileName}! Total: ${totalCraques}`, 'green');
   
   if (window.renderRanking) window.renderRanking();
   if (window.renderAdminPanel) window.renderAdminPanel();
