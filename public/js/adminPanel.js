@@ -186,21 +186,37 @@ window.adminShowEditUserModal = async (userId) => {
 
 window.adminSaveUserEdits = async (userId) => {
   if (!isAdmin()) return;
+  
   const newProfileName = document.getElementById('editProfileName')?.value;
   const newEmail = document.getElementById('editEmail')?.value;
-  const points = document.getElementById('editPoints')?.value;
-  const craques = document.getElementById('editCraques')?.value;
+  const pointsInput = document.getElementById('editPoints')?.value;
+  const craquesInput = document.getElementById('editCraques')?.value;
   const isAdminValue = document.getElementById('editIsAdmin')?.value === 'true';
   
   const users = await loadUsers();
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) { showToast('Usuário não encontrado', 'red'); return; }
+  
   if (newProfileName) users[idx].profileName = newProfileName;
   if (newEmail !== undefined) users[idx].email = newEmail || null;
   users[idx].isAdmin = isAdminValue;
-  if (!users[idx].adminOverrides) users[idx].adminOverrides = {};
-  if (points && points !== '') users[idx].adminOverrides.manualPoints = parseInt(points);
-  if (craques && craques !== '') users[idx].adminOverrides.manualCraques = parseInt(craques);
+  
+  // Processar pontos (somar)
+  if (pointsInput && pointsInput !== '' && pointsInput !== '0') {
+    const pointsToAdd = parseInt(pointsInput);
+    if (!isNaN(pointsToAdd)) {
+      await adminEditUserPoints(userId, pointsToAdd);
+    }
+  }
+  
+  // Processar craques (somar)
+  if (craquesInput && craquesInput !== '' && craquesInput !== '0') {
+    const craquesToAdd = parseInt(craquesInput);
+    if (!isNaN(craquesToAdd)) {
+      await adminEditUserCraques(userId, craquesToAdd);
+    }
+  }
+  
   await saveUsers(users);
   showToast('Usuário atualizado!', 'green');
   closeModal('modalEditUser');
