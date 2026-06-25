@@ -216,8 +216,14 @@ window.adminSaveUserEdits = async (userId) => {
       await adminEditUserCraques(userId, craquesToAdd);
     }
   }
+
+if (pointsInput && pointsInput !== '' && pointsInput !== '0') {
+    const pointsToAdd = parseInt(pointsInput);
+    if (!isNaN(pointsToAdd)) {
+        await window.adminEditUserPoints(userId, pointsToAdd);
+    }
+}
   
-  await saveUsers(users);
   showToast('Usuário atualizado!', 'green');
   closeModal('modalEditUser');
   await renderAdminPanel();
