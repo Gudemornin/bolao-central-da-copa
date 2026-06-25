@@ -78,9 +78,9 @@ async function getUserStats(userId) {
 
   const avg = jp > 0 ? pts / jp : 0;
   if (user && user.adminOverrides) {
-    if (user.adminOverrides.manualPoints !== undefined) pts = user.adminOverrides.manualPoints;
-    if (user.adminOverrides.manualCraques !== undefined) motm = user.adminOverrides.manualCraques;
-  }
+    if (user.adminOverrides.manualPoints !== undefined) pts += user.adminOverrides.manualPoints;
+    if (user.adminOverrides.manualCraques !== undefined) motm += user.adminOverrides.manualCraques;
+}
   return { pts, jp, victories, exactScores, motm, avg };
 }
 
