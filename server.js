@@ -541,9 +541,6 @@ setInterval(() => {
   // Mantém o processo vivo
 }, 30000);
 
-// =============================================
-// TRATAMENTO DE ERROS (não deixa cair)
-// =============================================
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception:', err);
 });
@@ -551,7 +548,6 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
 });
-
 // =============================================
 // INICIAR SERVIDOR
 // =============================================
