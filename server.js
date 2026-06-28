@@ -236,7 +236,9 @@ app.get('/api/bets', async (req, res) => {
         homeScore: row.home_score,
         awayScore: row.away_score,
         playerId: row.player_id,
-        savedAt: row.saved_at
+        savedAt: row.saved_at,
+        overtime: row.overtime,
+        penaltyWinner: row.penalty_winner
       };
     }
     res.json({ bets });
@@ -274,40 +276,25 @@ if (isLocked) {
 }
   
   const client = await pool.connect();
-  try {
+try {
     await client.query('BEGIN');
     for (const [userId, userBets] of Object.entries(bets)) {
       for (const [gameId, bet] of Object.entries(userBets)) {
         await client.query(
-          `INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO bets (user_id, game_id, home_score, away_score, player_id, saved_at, overtime, penalty_winner)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (user_id, game_id) DO UPDATE SET
-             home_score = EXCLUDED.home_score,
-             away_score = EXCLUDED.away_score,
-             player_id  = EXCLUDED.player_id,
-             saved_at   = EXCLUDED.saved_at`,
-          [userId, gameId, bet.homeScore, bet.awayScore, bet.playerId, bet.savedAt || Date.now()]
+             home_score    = EXCLUDED.home_score,
+             away_score    = EXCLUDED.away_score,
+             player_id     = EXCLUDED.player_id,
+             saved_at      = EXCLUDED.saved_at,
+             overtime      = EXCLUDED.overtime,
+             penalty_winner = EXCLUDED.penalty_winner`,
+          [userId, gameId, bet.homeScore, bet.awayScore, bet.playerId, bet.savedAt || Date.now(),
+           bet.overtime || false, bet.penaltyWinner || null]
         );
       }
     }
-
-const gameResult = await pool.query('SELECT data FROM games WHERE id = $1', [gameId]);
-if (!gameResult.rows.length) {
-  // jogo não existe
-  return res.status(404).json({ error: 'Jogo não encontrado' });
-}
-const game = gameResult.rows[0].data.games.find(g => g.id === gameId);
-if (!game) {
-  return res.status(404).json({ error: 'Jogo não encontrado' });
-}
-
-// Verificar se o jogo está bloqueado
-const now = new Date();
-const gameStart = new Date(game.date + 'T' + game.time + ':00');
-const isLocked = now >= gameStart || game.status === 'completed';
-if (isLocked) {
-  return res.status(403).json({ error: 'Não é possível alterar palpite para jogo já iniciado/finalizado.' });
-}
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (error) {
