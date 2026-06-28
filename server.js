@@ -24,21 +24,29 @@ let pool = null;
 if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: false, // DESATIVA SSL (resolve o erro)
-    max: 10
+    ssl: { rejectUnauthorized: false }
   });
-  console.log('✅ PostgreSQL conectado (SSL desativado)');
+  console.log('✅ PostgreSQL conectado');
 } else {
-  console.error('❌ DATABASE_URL não encontrada!');
+  console.error('❌ DATABASE_URL não encontrada! Banco de dados não disponível.');
 }
+
 // =============================================
 // CRIAÇÃO DAS TABELAS
 // =============================================
-
-  
- async function initDatabase() {
+async function initDatabase() {
   if (!pool) return;
+  
   try {
+    // Primeiro, drop da constraint UNIQUE se existir (para evitar conflitos)
+    try {
+      await pool.query(`ALTER TABLE users DROP CONSTRAINT users_profile_name_key;`);
+      console.log('✅ Constraint UNIQUE removida (se existia)');
+    } catch (e) {
+      // Constraint não existia, ignorar erro
+    }
+    
+    // Recriar tabela users sem UNIQUE
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -58,11 +66,13 @@ if (process.env.DATABASE_URL) {
       )
     `);
 
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_backup TEXT;`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_pending BOOLEAN DEFAULT FALSE;`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_password JSONB;`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_by_admin BOOLEAN DEFAULT FALSE;`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_overrides JSONB;`);
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_backup TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_pending BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_password JSONB;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_by_admin BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_overrides JSONB;
+    `);
     
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bets (
@@ -76,8 +86,10 @@ if (process.env.DATABASE_URL) {
       )
     `);
 
+    // 🔥 ADICIONAR COLUNAS overtime e penalty_winner
     await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS overtime BOOLEAN DEFAULT FALSE;`);
     await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS penalty_winner TEXT;`);
+    console.log('✅ Colunas overtime e penalty_winner adicionadas/verificadas');
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS special_picks (
@@ -102,7 +114,7 @@ if (process.env.DATABASE_URL) {
     console.log('✅ Tabelas verificadas/criadas com sucesso');
   } catch (error) {
     console.error('❌ Erro ao criar tabelas:', error);
-    // NÃO JOGUE O ERRO - apenas log
+    // Não joga erro para não derrubar o servidor
   }
 }
 
@@ -112,6 +124,7 @@ await initDatabase();
 // MIDDLEWARE
 // =============================================
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // =============================================
 // ENDPOINT: USUÁRIOS (GET)
@@ -247,32 +260,6 @@ app.post('/api/bets', async (req, res) => {
   const { bets } = req.body;
   if (!bets) return res.json({ success: true });
 
-  // Extrair gameIds do payload
-  const gameIds = new Set();
-  for (const userId in bets) {
-    for (const gameId in bets[userId]) {
-      gameIds.add(gameId);
-    }
-  }
-
-  // Validar cada jogo (existe? bloqueado?)
-  for (const gameId of gameIds) {
-    const gameResult = await pool.query('SELECT data FROM games WHERE id = $1', [gameId]);
-    if (!gameResult.rows.length) {
-      return res.status(404).json({ error: `Jogo ${gameId} não encontrado` });
-    }
-    const game = gameResult.rows[0].data.games.find(g => g.id === gameId);
-    if (!game) {
-      return res.status(404).json({ error: `Jogo ${gameId} não encontrado nos dados` });
-    }
-
-    const now = new Date();
-    const gameStart = new Date(game.date + 'T' + game.time + ':00');
-    if (now >= gameStart || game.status === 'completed') {
-      return res.status(403).json({ error: `Jogo ${gameId} já iniciou ou foi finalizado.` });
-    }
-  }
-
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -400,57 +387,9 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
-
-/* =============================================
- ENDPOINT: FOOTBALL API ANTIGA
- =============================================
-app.get('/api/football', async (req, res) => {
-  const { endpoint, team } = req.query;
-  
-  if (!endpoint) {
-    return res.status(400).json({ error: 'Endpoint obrigatório' });
-  }
-  
-  let url = '';
-  switch (endpoint) {
-    case 'standings':
-      url = 'https://api.football-data.org/v4/competitions/WC/standings';
-      break;
-    case 'fixtures':
-      url = 'https://api.football-data.org/v4/competitions/WC/matches';
-      if (team) url += `?team=${team}`;
-      break;
-      case 'laliga_fixtures':
-  url = 'https://api.football-data.org/v4/competitions/PD/matches'; // PD = Primera Division
-  break;
-    case 'topscorers':
-      url = 'https://api.football-data.org/v4/competitions/WC/scorers';
-      break;
-    default:
-      return res.status(400).json({ error: 'Endpoint não suportado' });
-  }
-  
-  try {
-    const response = await fetch(url, {
-      headers: { 'X-Auth-Token': process.env.API_KEY }
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error('❌ Erro no proxy football:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-*/
-
-
-
 // =============================================
-// PALPITES ESPECIAIS (Campeão, Artilheiro, Craque, Revelação)
+// PALPITES ESPECIAIS
 // =============================================
-
-// Buscar palpites de um usuário
 app.get('/api/special-picks/:userId', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { userId } = req.params;
@@ -467,7 +406,6 @@ app.get('/api/special-picks/:userId', async (req, res) => {
   }
 });
 
-// Salvar palpites especiais
 app.post('/api/special-picks', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   const { userId, ...picks } = req.body;
@@ -488,7 +426,6 @@ app.post('/api/special-picks', async (req, res) => {
   }
 });
 
-// Buscar palpites de todos os usuários
 app.get('/api/all-special-picks', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'Banco não conectado' });
   try {
@@ -524,48 +461,20 @@ app.delete('/api/clear-games', async (req, res) => {
   }
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-
 // =============================================
-// HEALTH CHECK (obrigatório para Railway)
+// FALLBACK
 // =============================================
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+app.get('*', (req, res) => {
+  if (req.path.match(/\.\w+$/)) {
+    return res.status(404).send('Arquivo não encontrado');
+  }
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// =============================================
-// KEEP ALIVE (evita que o Railway mate)
-// =============================================
-setInterval(() => {
-  // Mantém o processo vivo
-}, 30000);
-
-process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection:', reason);
-});
 // =============================================
 // INICIAR SERVIDOR
 // =============================================
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`📂 Servindo arquivos de: ${path.join(__dirname, 'public')}`);
-  console.log('✅ Rota /api/bets registrada');
-});
-
-// Tratamento de erros para não cair
-server.on('error', (err) => {
-  console.error('❌ Erro no servidor:', err);
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection:', reason);
 });
