@@ -104,6 +104,9 @@ export const GAMES = [
   {id:'g70',date:'2026-06-27',time:'19:30',timezone:'UTC-4',home:'dr_congo',away:'uzbekistan',group:'K',venue:'Mercedes-Benz Stadium, Atlanta',status:'upcoming',result:null},
   {id:'g71',date:'2026-06-27',time:'21:00',timezone:'UTC-5',home:'algeria',away:'austria',group:'J',venue:'Arrowhead Stadium, Kansas City',status:'upcoming',result:null},
   {id:'g72',date:'2026-06-27',time:'21:00',timezone:'UTC-5',home:'jordan',away:'argentina',group:'J',venue:'AT&T Stadium, Dallas',status:'upcoming',result:null},
+
+  // ═══════════════ MATCHDAY 18 - 28 Jun ═══════════════
+  {id:'g73',date:'2026-06-28',time:'16:00',timezone:'UTC-5',home:'south_africa',away:'canada',group:'knockout',venue:'SoFi Stadium, Los Angeles',status:'upcoming',result:null},
 ];
 
 export async function syncGamesFromAPI() {
