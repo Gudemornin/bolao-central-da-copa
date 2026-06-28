@@ -200,6 +200,20 @@ ${game.result && game.status === 'completed' ? `
                   </span>
                   <button class="remove-player" onclick="clearGamePlayer('${game.id}')">✕</button>
                 </div>
+                <div class="knockout-extra" style="margin-top:12px; border-top:1px solid var(--border); padding-top:12px;">
+  <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+    <input type="checkbox" id="ot_${game.id}" ${bet.overtime ? 'checked' : ''} ${locked ? 'disabled' : ''}>
+    ⏱️ Prorrogação
+  </label>
+  <div id="penalty_area_${game.id}" style="display:none; margin-top:8px;">
+    <label style="font-size:13px; color:var(--text-d);">🏆 Quem avança nos pênaltis?</label>
+    <select id="pw_${game.id}" class="form-input" style="width:auto; margin-left:8px;" ${locked ? 'disabled' : ''}>
+      <option value="">--</option>
+      <option value="home" ${bet.penaltyWinner === 'home' ? 'selected' : ''}>${t1?.name || game.home}</option>
+      <option value="away" ${bet.penaltyWinner === 'away' ? 'selected' : ''}>${t2?.name || game.away}</option>
+    </select>
+  </div>
+</div>
                <div class="save-bet-area" style="display:flex; gap:10px; align-items:center;">
   <button class="save-bet-btn" onclick="saveBet('${game.id}')">💾 SALVAR PALPITE</button>
   <span class="saved-indicator${bet.homeScore !== undefined ? ' show' : ''}" id="bsm_${game.id}">✓ Palpite salvo</span>
@@ -212,7 +226,23 @@ ${game.result && game.status === 'completed' ? `
     `;
   }).join('');
 
-  // Restaurar seleções anteriores (para jogos não bloqueados)
+document.querySelectorAll('.game-card').forEach(card => {
+  const gameId = card.id.replace('gc_', '');
+  const s1 = document.getElementById(`s1_${gameId}`);
+  const s2 = document.getElementById(`s2_${gameId}`);
+  const penaltyArea = document.getElementById(`penalty_area_${gameId}`);
+  if (penaltyArea) {
+    const updatePenaltyVisibility = () => {
+      const h = parseInt(s1?.value) || 0;
+      const a = parseInt(s2?.value) || 0;
+      penaltyArea.style.display = (h === a) ? 'block' : 'none';
+    };
+    s1?.addEventListener('input', updatePenaltyVisibility);
+    s2?.addEventListener('input', updatePenaltyVisibility);
+    updatePenaltyVisibility();
+  }
+});
+
   for (const game of games) {
     if (!isGameLocked(game)) {
       const bets = await loadBets();
@@ -388,22 +418,34 @@ export function clearGamePlayer(gameId) {
 
 
 export async function saveBet(gameId) {
-  const s1 = document.getElementById('s1_' + gameId)?.value;
-  const s2 = document.getElementById('s2_' + gameId)?.value;
+  const s1 = document.getElementById(`s1_${gameId}`)?.value;
+  const s2 = document.getElementById(`s2_${gameId}`)?.value;
   if (s1 === '' || s2 === '') { showToast('Informe o placar antes de salvar.', 'red'); return; }
   
+  const game = GAMES_STATE.find(g => g.id === gameId);
+  const isKnockout = game?.group === 'knockout';
+  const overtime = isKnockout ? (document.getElementById(`ot_${gameId}`)?.checked || false) : false;
+  const penaltyWinner = isKnockout ? (document.getElementById(`pw_${gameId}`)?.value || null) : null;
+
+  // Validação: se placar empatado e não selecionou vencedor, alertar
+  if (isKnockout && parseInt(s1) === parseInt(s2) && !penaltyWinner) {
+    showToast('Para empate, selecione o time que avança nos pênaltis.', 'red');
+    return;
+  }
+
   const bets = await loadBets();
   if (!bets[currentUser.id]) bets[currentUser.id] = {};
-  const selP = gamePlayerSelections[gameId] || (bets[currentUser.id][gameId]?.playerId ? getPlayer(bets[currentUser.id][gameId].playerId) : null);
+  const selP = gamePlayerSelections[gameId] || null;
   bets[currentUser.id][gameId] = {
-    homeScore: parseInt(s1), 
+    homeScore: parseInt(s1),
     awayScore: parseInt(s2),
     playerId: selP?.id || null,
-    savedAt: Date.now()
+    savedAt: Date.now(),
+    overtime: overtime,
+    penaltyWinner: penaltyWinner
   };
   await saveBets(bets);
-  
-  document.getElementById('bsm_' + gameId)?.classList.add('show');
+  document.getElementById(`bsm_${gameId}`)?.classList.add('show');
   window.updateSidebar?.();
   showToast('Palpite salvo com sucesso! ⚽', 'green');
 }
