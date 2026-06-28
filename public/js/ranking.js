@@ -9,63 +9,79 @@ export function calcBetPoints(bet, game) {
   const r = game.result;
   let pts = 0;
 
-  // --- RESULTADO E PLACAR ---
   const betWinner = sign(bet.homeScore - bet.awayScore);
   const realWinner = sign(r.homeScore - r.awayScore);
   const exact = (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore);
 
-  // Para jogos knockout, verificar coerência da prorrogação
   const isKnockout = game.group === 'knockout';
-  let overtimeOk = true; // por padrão, se não for knockout
-  if (isKnockout && r.overtime !== undefined) {
-    // r.overtime: true se houve prorrogação
-    // bet.overtime: true se o usuário marcou que haveria
-    overtimeOk = (bet.overtime === r.overtime);
-  }
 
-  // Pontos de resultado (6 pts) se acertar o vencedor/empate
-  // Para knockout, só conta se a previsão de prorrogação estiver correta
   if (isKnockout) {
-        if (betWinner === realWinner) {
+    // =============================================
+    // LÓGICA EXCLUSIVA PARA MATA‑MATA (KNOCKOUT)
+    // =============================================
+
+    // 1. Pontos por resultado (vitória/empate) – base 5
+    if (betWinner === realWinner) {
       pts += 5;
     }
-    if (betWinner === realWinner && overtimeOk) {
+
+    // 2. Bônus por acertar a ocorrência de prorrogação
+    //    (se houve prorrogação e o usuário marcou, ou não houve e ele não marcou)
+    if (r.overtime !== undefined && bet.overtime === r.overtime) {
       pts += 3;
     }
-    // Bônus de pênaltis: se o placar for empate e o usuário acertou o vencedor nos pênaltis
+
+    // 3. Bônus por acertar o vencedor nos pênaltis
+    //    (somente se o placar final foi empate)
     if (betWinner === 0 && r.penaltyWinner && bet.penaltyWinner === r.penaltyWinner) {
       pts += 4;
     }
-  } else {
-    // Lógica antiga para não-knockout
-    if (exact) pts += 10;
-    else if (betWinner === realWinner) pts += 6;
-  }
 
-  // Placar exato (10 pts) com regras de prorrogação
-  if (isKnockout) {
-    // Só ganha placar exato se a previsão de prorrogação estiver correta E o placar bater
-    if (exact && overtimeOk) {
+    // 4. Placar exato – só vale se a previsão de prorrogação estiver correta
+    if (exact && bet.overtime === r.overtime) {
       pts += 14;
     }
+
   } else {
-    // Já foi adicionado acima para não-knockout
-    if (exact) pts += 10; // (já incluso)
+    // =============================================
+    // LÓGICA ORIGINAL PARA FASE DE GRUPOS (e outros)
+    // =============================================
+
+    if (exact) {
+      pts += 10;          // Placar exato
+    } else if (betWinner === realWinner) {
+      pts += 6;           // Resultado certo (vencedor/empate)
+    }
+    // Campos knockout (overtime, penaltyWinner) são ignorados
   }
 
-  // ---- PONTOS DE JOGADOR (mantidos iguais) ----
+  // =============================================
+  // PONTOS DE JOGADOR (comuns a ambos os formatos)
+  // =============================================
+
+  // Gols do jogador representante (2 pts cada)
   if (bet.playerId && r.scorers) {
-    const playerGoals = r.scorers.filter(s => s.playerId === bet.playerId).reduce((sum, s) => sum + (s.goals || 1), 0);
+    const playerGoals = r.scorers
+      .filter(s => s.playerId === bet.playerId)
+      .reduce((sum, s) => sum + (s.goals || 1), 0);
     pts += playerGoals * 2;
   }
+
+  // Assistências (1 pt cada)
   if (bet.playerId && r.assists) {
-    const playerAssists = r.assists.filter(a => a.playerId === bet.playerId).reduce((sum, a) => sum + (a.assists || 1), 0);
+    const playerAssists = r.assists
+      .filter(a => a.playerId === bet.playerId)
+      .reduce((sum, a) => sum + (a.assists || 1), 0);
     pts += playerAssists;
   }
+
+  // Cartão vermelho (-3 pts)
   if (bet.playerId && r.redCards) {
     const hasRed = r.redCards.some(card => card.playerId === bet.playerId);
     if (hasRed) pts -= 3;
   }
+
+  // Craque do jogo (+3 pts)
   if (bet.playerId && r.craqueId === bet.playerId) {
     pts += 3;
   }
