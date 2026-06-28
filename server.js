@@ -37,16 +37,8 @@ if (process.env.DATABASE_URL) {
 async function initDatabase() {
   if (!pool) return;
   
-  try {
-    // Primeiro, drop da constraint UNIQUE se existir (para evitar conflitos)
-    try {
-      await pool.query(`ALTER TABLE users DROP CONSTRAINT users_profile_name_key;`);
-      console.log('✅ Constraint UNIQUE removida (se existia)');
-    } catch (e) {
-      // Constraint não existia, ignorar erro
-    }
-    
-    // Recriar tabela users sem UNIQUE
+   try {
+    // Recriar tabela users (se não existir)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -66,16 +58,14 @@ async function initDatabase() {
       )
     `);
 
+    // Adicionar colunas extras (se não existirem)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_backup TEXT;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_pending BOOLEAN DEFAULT FALSE;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_password JSONB;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_by_admin BOOLEAN DEFAULT FALSE;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_overrides JSONB;`);
     
-    
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_backup TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_pending BOOLEAN DEFAULT FALSE;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_password JSONB;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_by_admin BOOLEAN DEFAULT FALSE;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_overrides JSONB;
-    `);
-    
+    // Tabela bets
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bets (
         user_id TEXT,
@@ -88,36 +78,38 @@ async function initDatabase() {
       )
     `);
 
-await pool.query(`
-CREATE TABLE IF NOT EXISTS special_picks (
-  user_id TEXT PRIMARY KEY,
-  champion_team TEXT,
-  top_scorer_id TEXT,
-  mvp_player_id TEXT,
-  revelation_player_id TEXT,
-  zebra_team TEXT,
-  disappointment_team TEXT,
-  updated_at BIGINT
-);
-`);
+    // 🔥 NOVO: adicionar colunas overtime e penalty_winner
+    await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS overtime BOOLEAN DEFAULT FALSE;`);
+    await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS penalty_winner TEXT;`);
+    console.log('✅ Colunas overtime e penalty_winner adicionadas/verificadas');
 
+    // special_picks
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS special_picks (
+        user_id TEXT PRIMARY KEY,
+        champion_team TEXT,
+        top_scorer_id TEXT,
+        mvp_player_id TEXT,
+        revelation_player_id TEXT,
+        zebra_team TEXT,
+        disappointment_team TEXT,
+        updated_at BIGINT
+      );
+    `);
+
+    // games
     await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
         data JSONB
       )
     `);
-
-    await pool.query(`
-  ALTER TABLE bets ADD COLUMN IF NOT EXISTS overtime BOOLEAN DEFAULT FALSE;
-`);
-await pool.query(`
-  ALTER TABLE bets ADD COLUMN IF NOT EXISTS penalty_winner TEXT;
-`);
     
     console.log('✅ Tabelas verificadas/criadas com sucesso');
   } catch (error) {
     console.error('❌ Erro ao criar tabelas:', error);
+    // Se houver erro, lançar para que o servidor não inicie com tabelas inconsistentes
+    throw error;
   }
 }
 
