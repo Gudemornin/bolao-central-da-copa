@@ -426,12 +426,13 @@ export async function saveBet(gameId) {
   const awayScore = parseInt(document.getElementById(`s2_${gameId}`)?.value);
   const overtime = isKnockout ? (document.getElementById(`ot_${gameId}`)?.checked || false) : false;
   const penaltyWinner = isKnockout ? (document.getElementById(`pw_${gameId}`)?.value || null) : null;
+  const playerId = gamePlayerSelections[gameId]?.id || null;
   
   // Montar objeto
   const betData = {
     homeScore,
     awayScore,
-    playerId: selectedPlayerId,
+    playerId: playerId,
     savedAt: Date.now(),
     overtime,
     penaltyWinner
