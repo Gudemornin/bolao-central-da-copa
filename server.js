@@ -256,7 +256,7 @@ app.post('/api/bets', async (req, res) => {
   const { bets } = req.body;
   if (!bets) return res.json({ success: true });
 
-  // 1. Extrair todos os IDs de jogos do payload
+  // Extrair gameIds do payload
   const gameIds = new Set();
   for (const userId in bets) {
     for (const gameId in bets[userId]) {
@@ -264,7 +264,7 @@ app.post('/api/bets', async (req, res) => {
     }
   }
 
-  // 2. Validar cada jogo (existe? está bloqueado?)
+  // Validar cada jogo (existe? bloqueado?)
   for (const gameId of gameIds) {
     const gameResult = await pool.query('SELECT data FROM games WHERE id = $1', [gameId]);
     if (!gameResult.rows.length) {
@@ -278,11 +278,10 @@ app.post('/api/bets', async (req, res) => {
     const now = new Date();
     const gameStart = new Date(game.date + 'T' + game.time + ':00');
     if (now >= gameStart || game.status === 'completed') {
-      return res.status(403).json({ error: `Jogo ${gameId} já iniciou ou foi finalizado. Não é possível alterar o palpite.` });
+      return res.status(403).json({ error: `Jogo ${gameId} já iniciou ou foi finalizado.` });
     }
   }
 
-  // 3. Inserir/atualizar palpites
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
