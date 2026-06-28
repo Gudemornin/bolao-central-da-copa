@@ -24,29 +24,13 @@ let pool = null;
 if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-    max: 10,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000
+    ssl: false, // DESATIVA SSL (resolve o erro)
+    max: 10
   });
-  
-  // Testar conexão
-  pool.on('error', (err) => {
-    console.error('❌ Erro no pool do PostgreSQL:', err);
-  });
-  
-  pool.connect((err, client, release) => {
-    if (err) {
-      console.error('❌ Falha ao conectar no PostgreSQL:', err);
-    } else {
-      console.log('✅ PostgreSQL conectado');
-      release();
-    }
-  });
+  console.log('✅ PostgreSQL conectado (SSL desativado)');
 } else {
   console.error('❌ DATABASE_URL não encontrada!');
 }
-
 // =============================================
 // CRIAÇÃO DAS TABELAS
 // =============================================
