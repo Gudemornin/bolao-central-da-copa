@@ -418,30 +418,60 @@ export function clearGamePlayer(gameId) {
 
 
 export async function saveBet(gameId) {
+  const s1 = document.getElementById(`s1_${gameId}`)?.value;
+  const s2 = document.getElementById(`s2_${gameId}`)?.value;
+  if (s1 === '' || s2 === '') {
+    showToast('Informe o placar.', 'red');
+    return;
+  }
+
   const game = GAMES_STATE.find(g => g.id === gameId);
   const isKnockout = game?.group === 'knockout';
-  
-  // Coletar dados
-  const homeScore = parseInt(document.getElementById(`s1_${gameId}`)?.value);
-  const awayScore = parseInt(document.getElementById(`s2_${gameId}`)?.value);
   const overtime = isKnockout ? (document.getElementById(`ot_${gameId}`)?.checked || false) : false;
   const penaltyWinner = isKnockout ? (document.getElementById(`pw_${gameId}`)?.value || null) : null;
+
+  if (isKnockout && parseInt(s1) === parseInt(s2) && !penaltyWinner) {
+    showToast('Para empate, selecione o time que avança nos pênaltis.', 'red');
+    return;
+  }
+
   const playerId = gamePlayerSelections[gameId]?.id || null;
-  
-  // Montar objeto
+
+  // 🔥 ENVIA APENAS O PALPITE DO USUÁRIO ATUAL
   const betData = {
-    homeScore,
-    awayScore,
-    playerId: playerId,
-    savedAt: Date.now(),
-    overtime,
-    penaltyWinner
+    [currentUser.id]: {
+      [gameId]: {
+        homeScore: parseInt(s1),
+        awayScore: parseInt(s2),
+        playerId: playerId,
+        savedAt: Date.now(),
+        overtime: overtime,
+        penaltyWinner: penaltyWinner
+      }
+    }
   };
-  
-  // Salvar
-  const bets = await loadBets();
-  bets[currentUser.id][gameId] = betData;
-  await saveBets(bets);
+
+  console.log('📤 Enviando apenas:', betData);
+
+  try {
+    const response = await fetch('/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bets: betData })
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+    if (result.success) {
+      document.getElementById(`bsm_${gameId}`)?.classList.add('show');
+      window.updateSidebar?.();
+      showToast('Palpite salvo! ⚽', 'green');
+    } else {
+      showToast('Erro ao salvar', 'red');
+    }
+  } catch (error) {
+    console.error('❌ Erro ao salvar:', error);
+    showToast('Erro de conexão', 'red');
+  }
 }
 export function openEditBet(gameId) {
   setEditingGameId(gameId);
