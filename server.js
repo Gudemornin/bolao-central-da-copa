@@ -540,29 +540,38 @@ app.delete('/api/clear-games', async (req, res) => {
   }
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
-
+// =============================================
+// HEALTH CHECK (obrigatório para Railway)
+// =============================================
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
 // =============================================
-// FALLBACK
+// KEEP ALIVE (evita que o Railway mate)
 // =============================================
-app.get('*', (req, res) => {
-  if (req.path.match(/\.\w+$/)) {
-    return res.status(404).send('Arquivo não encontrado');
-  }
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+setInterval(() => {
+  // Mantém o processo vivo
+}, 30000);
+
+// =============================================
+// TRATAMENTO DE ERROS (não deixa cair)
+// =============================================
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection:', reason);
 });
 
 // =============================================
 // INICIAR SERVIDOR
 // =============================================
-const server = app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`📂 Servindo arquivos de: ${path.join(__dirname, 'public')}`);
-  console.log(`✅ Rota /api/bets registrada`);
+  console.log('✅ Rota /api/bets registrada');
 });
 
 // Tratamento de erros para não cair
