@@ -526,6 +526,9 @@ app.delete('/api/clear-games', async (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 // =============================================
 // FALLBACK
@@ -540,7 +543,21 @@ app.get('*', (req, res) => {
 // =============================================
 // INICIAR SERVIDOR
 // =============================================
-app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`📂 Servindo arquivos de: ${path.join(__dirname, 'public')}`);
+  console.log(`✅ Rota /api/bets registrada`);
+});
+
+// Tratamento de erros para não cair
+server.on('error', (err) => {
+  console.error('❌ Erro no servidor:', err);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection:', reason);
 });
