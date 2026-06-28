@@ -9,40 +9,63 @@ export function calcBetPoints(bet, game) {
   const r = game.result;
   let pts = 0;
 
-  // 1. Pontos por resultado da partida
+  // --- RESULTADO E PLACAR ---
   const betWinner = sign(bet.homeScore - bet.awayScore);
   const realWinner = sign(r.homeScore - r.awayScore);
   const exact = (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore);
 
-  if (exact) {
-    pts += 10;               // placar exato
-  } else if (betWinner === realWinner) {
-    pts += 6;                // apenas resultado correto (vitória/empate)
+  // Para jogos knockout, verificar coerência da prorrogação
+  const isKnockout = game.group === 'knockout';
+  let overtimeOk = true; // por padrão, se não for knockout
+  if (isKnockout && r.overtime !== undefined) {
+    // r.overtime: true se houve prorrogação
+    // bet.overtime: true se o usuário marcou que haveria
+    overtimeOk = (bet.overtime === r.overtime);
   }
 
-  // 2. Pontos por gols do jogador representante (2 pts por gol)
-  if (bet.playerId && r.scorers && Array.isArray(r.scorers)) {
-    const playerGoals = r.scorers
-      .filter(s => s.playerId === bet.playerId)
-      .reduce((sum, s) => sum + (s.goals || 1), 0);
+  // Pontos de resultado (6 pts) se acertar o vencedor/empate
+  // Para knockout, só conta se a previsão de prorrogação estiver correta
+  if (isKnockout) {
+        if (betWinner === realWinner) {
+      pts += 5;
+    }
+    if (betWinner === realWinner && overtimeOk) {
+      pts += 3;
+    }
+    // Bônus de pênaltis: se o placar for empate e o usuário acertou o vencedor nos pênaltis
+    if (betWinner === 0 && r.penaltyWinner && bet.penaltyWinner === r.penaltyWinner) {
+      pts += 4;
+    }
+  } else {
+    // Lógica antiga para não-knockout
+    if (exact) pts += 10;
+    else if (betWinner === realWinner) pts += 6;
+  }
+
+  // Placar exato (10 pts) com regras de prorrogação
+  if (isKnockout) {
+    // Só ganha placar exato se a previsão de prorrogação estiver correta E o placar bater
+    if (exact && overtimeOk) {
+      pts += 14;
+    }
+  } else {
+    // Já foi adicionado acima para não-knockout
+    if (exact) pts += 10; // (já incluso)
+  }
+
+  // ---- PONTOS DE JOGADOR (mantidos iguais) ----
+  if (bet.playerId && r.scorers) {
+    const playerGoals = r.scorers.filter(s => s.playerId === bet.playerId).reduce((sum, s) => sum + (s.goals || 1), 0);
     pts += playerGoals * 2;
   }
-
-  // 3. Pontos por assistências do jogador representante (1 pt cada)
-  if (bet.playerId && r.assists && Array.isArray(r.assists)) {
-    const playerAssists = r.assists
-      .filter(a => a.playerId === bet.playerId)
-      .reduce((sum, a) => sum + (a.assists || 1), 0);
-    pts += playerAssists * 1;
+  if (bet.playerId && r.assists) {
+    const playerAssists = r.assists.filter(a => a.playerId === bet.playerId).reduce((sum, a) => sum + (a.assists || 1), 0);
+    pts += playerAssists;
   }
-
-  // 4. Cartão vermelho: -3 pontos
-  if (bet.playerId && r.redCards && Array.isArray(r.redCards)) {
+  if (bet.playerId && r.redCards) {
     const hasRed = r.redCards.some(card => card.playerId === bet.playerId);
     if (hasRed) pts -= 3;
   }
-
-  // 5. Craque do Jogo: +3 pontos
   if (bet.playerId && r.craqueId === bet.playerId) {
     pts += 3;
   }
