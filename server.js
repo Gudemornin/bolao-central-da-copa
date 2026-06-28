@@ -120,7 +120,6 @@ await initDatabase();
 // MIDDLEWARE
 // =============================================
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
 // =============================================
 // ENDPOINT: USUÁRIOS (GET)
@@ -532,6 +531,9 @@ app.delete('/api/clear-games', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+app.use(express.static(path.join(__dirname, 'public')));
+
 
 // =============================================
 // FALLBACK
