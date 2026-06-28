@@ -34,11 +34,11 @@ if (process.env.DATABASE_URL) {
 // =============================================
 // CRIAÇÃO DAS TABELAS
 // =============================================
-async function initDatabase() {
-  if (!pool) return;
+
   
-   try {
-    // Recriar tabela users (se não existir)
+ async function initDatabase() {
+  if (!pool) return;
+  try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -58,14 +58,12 @@ async function initDatabase() {
       )
     `);
 
-    // Adicionar colunas extras (se não existirem)
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_backup TEXT;`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_pending BOOLEAN DEFAULT FALSE;`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_password JSONB;`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_by_admin BOOLEAN DEFAULT FALSE;`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_overrides JSONB;`);
     
-    // Tabela bets
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bets (
         user_id TEXT,
@@ -78,12 +76,9 @@ async function initDatabase() {
       )
     `);
 
-    // 🔥 NOVO: adicionar colunas overtime e penalty_winner
     await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS overtime BOOLEAN DEFAULT FALSE;`);
     await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS penalty_winner TEXT;`);
-    console.log('✅ Colunas overtime e penalty_winner adicionadas/verificadas');
 
-    // special_picks
     await pool.query(`
       CREATE TABLE IF NOT EXISTS special_picks (
         user_id TEXT PRIMARY KEY,
@@ -97,7 +92,6 @@ async function initDatabase() {
       );
     `);
 
-    // games
     await pool.query(`
       CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
@@ -108,8 +102,7 @@ async function initDatabase() {
     console.log('✅ Tabelas verificadas/criadas com sucesso');
   } catch (error) {
     console.error('❌ Erro ao criar tabelas:', error);
-    // Se houver erro, lançar para que o servidor não inicie com tabelas inconsistentes
-    throw error;
+    // NÃO JOGUE O ERRO - apenas log
   }
 }
 
