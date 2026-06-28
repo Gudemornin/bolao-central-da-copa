@@ -418,38 +418,30 @@ export function clearGamePlayer(gameId) {
 
 
 export async function saveBet(gameId) {
-  const s1 = document.getElementById(`s1_${gameId}`)?.value;
-  const s2 = document.getElementById(`s2_${gameId}`)?.value;
-  if (s1 === '' || s2 === '') { showToast('Informe o placar.', 'red'); return; }
-
   const game = GAMES_STATE.find(g => g.id === gameId);
   const isKnockout = game?.group === 'knockout';
+  
+  // Coletar dados
+  const homeScore = parseInt(document.getElementById(`s1_${gameId}`)?.value);
+  const awayScore = parseInt(document.getElementById(`s2_${gameId}`)?.value);
   const overtime = isKnockout ? (document.getElementById(`ot_${gameId}`)?.checked || false) : false;
   const penaltyWinner = isKnockout ? (document.getElementById(`pw_${gameId}`)?.value || null) : null;
-
-  // VALIDAÇÃO: se placar empatado e não escolheu vencedor
-  if (isKnockout && parseInt(s1) === parseInt(s2) && !penaltyWinner) {
-    showToast('Para empate, selecione o time que avança nos pênaltis.', 'red');
-    return;
-  }
-
-  const bets = await loadBets();
-  if (!bets[currentUser.id]) bets[currentUser.id] = {};
-  const selP = gamePlayerSelections[gameId] || null;
-  bets[currentUser.id][gameId] = {
-    homeScore: parseInt(s1),
-    awayScore: parseInt(s2),
-    playerId: selP?.id || null,
+  
+  // Montar objeto
+  const betData = {
+    homeScore,
+    awayScore,
+    playerId: selectedPlayerId,
     savedAt: Date.now(),
-    overtime: overtime,
-    penaltyWinner: penaltyWinner
+    overtime,
+    penaltyWinner
   };
+  
+  // Salvar
+  const bets = await loadBets();
+  bets[currentUser.id][gameId] = betData;
   await saveBets(bets);
-  document.getElementById(`bsm_${gameId}`)?.classList.add('show');
-  window.updateSidebar?.();
-  showToast('Palpite salvo com sucesso! ⚽', 'green');
 }
-
 export function openEditBet(gameId) {
   setEditingGameId(gameId);
   const g = GAMES_STATE.find(x => x.id === gameId);
