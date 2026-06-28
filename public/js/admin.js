@@ -74,6 +74,28 @@ export async function renderAdminGames() {
 
     container.innerHTML = gamesToShow.map(game => renderAdminGameCard(game)).join('');
 
+    document.querySelectorAll('.admin-game-row').forEach(row => {
+      const gameId = row.id.replace('admin-game-', '');
+      const homeInput = document.getElementById(`homeScore_${gameId}`);
+      const awayInput = document.getElementById(`awayScore_${gameId}`);
+      const penaltyArea = document.getElementById(`admin_penalty_area_${gameId}`);
+      const overtimeCheck = document.getElementById(`overtime_${gameId}`);
+
+      if (homeInput && awayInput && penaltyArea) {
+        const updatePenaltyVisibility = () => {
+          const h = parseInt(homeInput.value) || 0;
+          const a = parseInt(awayInput.value) || 0;
+          // Mostra apenas se houver valor em ambos os campos e forem iguais
+          const show = homeInput.value !== '' && awayInput.value !== '' && h === a;
+          penaltyArea.style.display = show ? 'inline-block' : 'none';
+        };
+        homeInput.addEventListener('input', updatePenaltyVisibility);
+        awayInput.addEventListener('input', updatePenaltyVisibility);
+        // Executa uma vez para sincronizar o estado inicial (caso o placar já esteja preenchido)
+        updatePenaltyVisibility();
+      }
+    });
+
     // Reatribui eventos dos botões dinâmicos (necessário porque o innerHTML os remove)
     document.querySelectorAll('.admin-remove-btn, .admin-add-btn, .admin-save-btn').forEach(btn => {
       const onclickAttr = btn.getAttribute('onclick');
@@ -126,7 +148,7 @@ function renderAdminGameCard(game) {
               <input type="checkbox" id="overtime_${game.id}" ${overtime ? 'checked' : ''}>
               ⏱️ Prorrogação
             </label>
-            <div id="admin_penalty_area_${game.id}" style="display:${(homeScore !== '' && homeScore === awayScore) ? 'inline-block' : 'none'}; margin-left:12px;">
+           <div id="admin_penalty_area_${game.id}" style="display:none; margin-left:12px;">
               <label style="font-size:13px;">🏆 Vencedor nos pênaltis:</label>
               <select id="penalty_winner_${game.id}" class="admin-input" style="width:auto;">
                 <option value="">--</option>
