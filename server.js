@@ -256,7 +256,7 @@ app.post('/api/bets', async (req, res) => {
   const { bets } = req.body;
   if (!bets) return res.json({ success: true });
 
-  // 1. Extrair todos os gameIds únicos do payload
+  // 1. Extrair todos os IDs de jogos do payload
   const gameIds = new Set();
   for (const userId in bets) {
     for (const gameId in bets[userId]) {
