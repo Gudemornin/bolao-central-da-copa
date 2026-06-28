@@ -540,6 +540,9 @@ app.delete('/api/clear-games', async (req, res) => {
   }
 });
 
+app.use(express.static(path.join(__dirname, 'public')));
+
+
 // =============================================
 // HEALTH CHECK (obrigatório para Railway)
 // =============================================
