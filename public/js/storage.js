@@ -6,18 +6,20 @@ const USE_API = true
 const API_URL = '/api'
 
 async function apiRequest(endpoint, method = 'GET', data = null) {
+  const url = `${API_URL}${endpoint}`;
+  console.log('🔍 Chamando API:', url, method, data); // <-- ADICIONE
   try {
-    const options = { method, headers: { 'Content-Type': 'application/json' } }
-    if (data) options.body = JSON.stringify(data)
-    const response = await fetch(`${API_URL}${endpoint}`, options)
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return await response.json()
+    const options = { method, headers: { 'Content-Type': 'application/json' } };
+    if (data) options.body = JSON.stringify(data);
+    const response = await fetch(url, options);
+    console.log('📡 Resposta:', response.status, response.statusText); // <-- ADICIONE
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
   } catch (error) {
-    console.error(`Erro na API ${endpoint}:`, error)
-    return null
+    console.error(`Erro na API ${endpoint}:`, error);
+    return null;
   }
 }
-
 // =============================================
 // USUÁRIOS
 // =============================================
