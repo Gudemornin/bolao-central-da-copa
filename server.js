@@ -107,6 +107,13 @@ CREATE TABLE IF NOT EXISTS special_picks (
         data JSONB
       )
     `);
+
+    await pool.query(`
+  ALTER TABLE bets ADD COLUMN IF NOT EXISTS overtime BOOLEAN DEFAULT FALSE;
+`);
+await pool.query(`
+  ALTER TABLE bets ADD COLUMN IF NOT EXISTS penalty_winner TEXT;
+`);
     
     console.log('✅ Tabelas verificadas/criadas com sucesso');
   } catch (error) {
