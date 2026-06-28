@@ -92,26 +92,49 @@ export async function renderAdminGames() {
 // =============================================
 // CARD DE CADA JOGO (HTML)
 // =============================================
+
 function renderAdminGameCard(game) {
   const t1 = TEAMS[game.home];
   const t2 = TEAMS[game.away];
+  const isKnockout = game.group === 'knockout';
   const result = game.result || {};
   const gamePlayers = getPlayersByTeams(game.home, game.away);
   const scorers = tempScorers[game.id] || [];
   const assists = tempAssists[game.id] || [];
   const redCards = tempRedCards[game.id] || [];
 
+  // Valores existentes no resultado
+  const homeScore = result.homeScore ?? '';
+  const awayScore = result.awayScore ?? '';
+  const overtime = result.overtime || false;
+  const penaltyWinner = result.penaltyWinner || '';
+
   return `
     <div class="admin-game-row" id="admin-game-${game.id}" style="margin-bottom:24px; background:var(--navy-2); border-radius:16px; padding:16px;">
       <h4 style="margin-bottom:16px;">${teamFlagImg(t1, 24)} ${t1?.name} ✖️ ${teamFlagImg(t2, 24)} ${t2?.name} — ${game.date} ${game.time}</h4>
 
-      <!-- Placar -->
+      <!-- Placar + Knockout extras -->
       <div class="admin-section" style="margin-bottom:16px;">
         <div class="admin-label">RESULTADO</div>
-        <div style="display:flex; gap:12px; align-items:center;">
-          <input class="admin-input" type="number" id="homeScore_${game.id}" value="${result.homeScore ?? ''}" placeholder="0" style="width:70px;">
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <input class="admin-input" type="number" id="homeScore_${game.id}" value="${homeScore}" placeholder="0" style="width:70px;">
           <span style="font-size:20px;">:</span>
-          <input class="admin-input" type="number" id="awayScore_${game.id}" value="${result.awayScore ?? ''}" placeholder="0" style="width:70px;">
+          <input class="admin-input" type="number" id="awayScore_${game.id}" value="${awayScore}" placeholder="0" style="width:70px;">
+
+          ${isKnockout ? `
+            <label style="display:flex; align-items:center; gap:6px; margin-left:12px; font-size:13px;">
+              <input type="checkbox" id="overtime_${game.id}" ${overtime ? 'checked' : ''}>
+              ⏱️ Prorrogação
+            </label>
+            <div id="admin_penalty_area_${game.id}" style="display:${(homeScore !== '' && homeScore === awayScore) ? 'inline-block' : 'none'}; margin-left:12px;">
+              <label style="font-size:13px;">🏆 Vencedor nos pênaltis:</label>
+              <select id="penalty_winner_${game.id}" class="admin-input" style="width:auto;">
+                <option value="">--</option>
+                <option value="home" ${penaltyWinner === 'home' ? 'selected' : ''}>${t1?.name || 'Casa'}</option>
+                <option value="away" ${penaltyWinner === 'away' ? 'selected' : ''}>${t2?.name || 'Visitante'}</option>
+              </select>
+            </div>
+          ` : ''}
         </div>
       </div>
 
@@ -157,11 +180,10 @@ function renderAdminGameCard(game) {
         </select>
       </div>
 
-      <!-- Botão Salvar -->
+      <!-- Botões Salvar / Resetar -->
       <button class="admin-save-btn" onclick="adminSaveGame('${game.id}')" style="background:var(--blue); padding:8px 20px; border-radius:8px; font-weight:bold;">💾 SALVAR TODAS AS INFORMAÇÕES</button>
-    <button class="admin-reset-btn" onclick="adminResetGame('${game.id}')" style="background:var(--red); padding:8px 20px; border-radius:8px; font-weight:bold; margin-left:10px;">🔄 Resetar Jogo</button>
+      <button class="admin-reset-btn" onclick="adminResetGame('${game.id}')" style="background:var(--red); padding:8px 20px; border-radius:8px; font-weight:bold; margin-left:10px;">🔄 Resetar Jogo</button>
     </div>
-    
   `;
 }
 
@@ -230,7 +252,6 @@ function playerSearchControl(gameId, type, idx, selectedPlayerId, gamePlayers, o
   `;
 }
 
-// Funções globais de busca (já existentes, mas garantimos que estarão disponíveis)
 export function filterAdminPlayers(gameId, type, idx, onlyGoalkeepers) {
   const game = GAMES_STATE.find(g => g.id === gameId);
   if (!game) return;
@@ -346,13 +367,34 @@ window.adminSaveGame = async (gameId) => {
     showToast('Jogo não encontrado', 'red');
     return;
   }
-  const homeScore = parseInt(document.getElementById(`homeScore_${gameId}`)?.value);
-  const awayScore = parseInt(document.getElementById(`awayScore_${gameId}`)?.value);
+
+  const game = GAMES_STATE[idx];
+  const isKnockout = game.group === 'knockout';
+
+  // Captura placar
+  const homeScore = parseInt(document.getElementById(`homeScore_${game.id}`)?.value);
+  const awayScore = parseInt(document.getElementById(`awayScore_${game.id}`)?.value);
   if (isNaN(homeScore) || isNaN(awayScore)) {
     showToast('Informe o placar do resultado.', 'red');
     return;
   }
-  const craqueId = document.getElementById(`craque_${gameId}`)?.value || null;
+
+  // Captura campos knockout
+  let overtime = false;
+  let penaltyWinner = null;
+  if (isKnockout) {
+    overtime = document.getElementById(`overtime_${game.id}`)?.checked || false;
+    penaltyWinner = document.getElementById(`penalty_winner_${game.id}`)?.value || null;
+    // Se placar empatado e não selecionou vencedor, alertar
+    if (homeScore === awayScore && !penaltyWinner) {
+      showToast('Para empate, selecione o time que avança nos pênaltis.', 'red');
+      return;
+    }
+    // Se placar não empatado, ignorar penaltyWinner (não deve ser usado)
+    if (homeScore !== awayScore) penaltyWinner = null;
+  }
+
+  const craqueId = document.getElementById(`craque_${game.id}`)?.value || null;
 
   // Coletar goleadores
   const scorers = [];
@@ -361,20 +403,23 @@ window.adminSaveGame = async (gameId) => {
     const goals = parseInt(document.getElementById(`scorer_goals_${gameId}_${i}`)?.value || 1);
     if (playerId && goals > 0) scorers.push({ playerId, goals });
   }
-  // Assistências
+
+  // Coletar assistências
   const assists = [];
   for (let i = 0; i < (tempAssists[gameId] || []).length; i++) {
     const playerId = document.getElementById(`player_selected_${gameId}_assist_${i}`)?.value;
     const count = parseInt(document.getElementById(`assist_count_${gameId}_${i}`)?.value || 1);
     if (playerId && count > 0) assists.push({ playerId, assists: count });
   }
-  // Cartões vermelhos
+
+  // Coletar cartões vermelhos
   const redCards = [];
   for (let i = 0; i < (tempRedCards[gameId] || []).length; i++) {
     const playerId = document.getElementById(`player_selected_${gameId}_redcard_${i}`)?.value;
     if (playerId) redCards.push({ playerId });
   }
 
+  // Montar objeto result
   GAMES_STATE[idx].status = 'completed';
   GAMES_STATE[idx].result = {
     homeScore,
@@ -382,15 +427,16 @@ window.adminSaveGame = async (gameId) => {
     scorers,
     assists,
     redCards,
-    craqueId
+    craqueId,
+    ...(isKnockout && { overtime, penaltyWinner })
   };
 
+  // Salvar no banco
   await saveGames(GAMES_STATE);
   showToast('Resultado salvo com sucesso! ✅', 'green');
 
-  // Recarregar a lista para mostrar os dados atualizados
+  // Recarregar lista admin e ranking
   renderAdminGames();
-  // Se a aba de ranking ou classificação estiver ativa, recarregar
   if (document.getElementById('tabRanking')?.classList.contains('active') && window.renderRanking) window.renderRanking();
   if (document.getElementById('tabStandings')?.classList.contains('active') && window.renderStandings) window.renderStandings();
   if (document.getElementById('tabTopscorers')?.classList.contains('active') && window.renderTopScorers) window.renderTopScorers();
