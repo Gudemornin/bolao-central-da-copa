@@ -254,6 +254,25 @@ app.post('/api/bets', async (req, res) => {
   const { bets } = req.body;
   if (!bets) return res.json({ success: true });
 
+  // server.js – dentro de app.post('/api/bets', ...)
+const gameResult = await pool.query('SELECT data FROM games WHERE id = $1', [gameId]);
+if (!gameResult.rows.length) {
+  // jogo não existe
+  return res.status(404).json({ error: 'Jogo não encontrado' });
+}
+const game = gameResult.rows[0].data.games.find(g => g.id === gameId);
+if (!game) {
+  return res.status(404).json({ error: 'Jogo não encontrado' });
+}
+
+// Verificar se o jogo está bloqueado
+const now = new Date();
+const gameStart = new Date(game.date + 'T' + game.time + ':00');
+const isLocked = now >= gameStart || game.status === 'completed';
+if (isLocked) {
+  return res.status(403).json({ error: 'Não é possível alterar palpite para jogo já iniciado/finalizado.' });
+}
+  
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -271,6 +290,24 @@ app.post('/api/bets', async (req, res) => {
         );
       }
     }
+
+const gameResult = await pool.query('SELECT data FROM games WHERE id = $1', [gameId]);
+if (!gameResult.rows.length) {
+  // jogo não existe
+  return res.status(404).json({ error: 'Jogo não encontrado' });
+}
+const game = gameResult.rows[0].data.games.find(g => g.id === gameId);
+if (!game) {
+  return res.status(404).json({ error: 'Jogo não encontrado' });
+}
+
+// Verificar se o jogo está bloqueado
+const now = new Date();
+const gameStart = new Date(game.date + 'T' + game.time + ':00');
+const isLocked = now >= gameStart || game.status === 'completed';
+if (isLocked) {
+  return res.status(403).json({ error: 'Não é possível alterar palpite para jogo já iniciado/finalizado.' });
+}
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (error) {
