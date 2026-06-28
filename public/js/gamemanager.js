@@ -420,14 +420,14 @@ export function clearGamePlayer(gameId) {
 export async function saveBet(gameId) {
   const s1 = document.getElementById(`s1_${gameId}`)?.value;
   const s2 = document.getElementById(`s2_${gameId}`)?.value;
-  if (s1 === '' || s2 === '') { showToast('Informe o placar antes de salvar.', 'red'); return; }
-  
+  if (s1 === '' || s2 === '') { showToast('Informe o placar.', 'red'); return; }
+
   const game = GAMES_STATE.find(g => g.id === gameId);
   const isKnockout = game?.group === 'knockout';
   const overtime = isKnockout ? (document.getElementById(`ot_${gameId}`)?.checked || false) : false;
   const penaltyWinner = isKnockout ? (document.getElementById(`pw_${gameId}`)?.value || null) : null;
 
-  // Validação: se placar empatado e não selecionou vencedor, alertar
+  // VALIDAÇÃO: se placar empatado e não escolheu vencedor
   if (isKnockout && parseInt(s1) === parseInt(s2) && !penaltyWinner) {
     showToast('Para empate, selecione o time que avança nos pênaltis.', 'red');
     return;
