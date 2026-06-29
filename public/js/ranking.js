@@ -27,7 +27,7 @@ export function calcBetPoints(bet, game) {
 
     // 2. Bônus por acertar a ocorrência de prorrogação
     //    (se houve prorrogação e o usuário marcou, ou não houve e ele não marcou)
-    if (r.overtime !== undefined && bet.overtime === r.overtime) {
+    if (betWinner === realWinner && r.overtime !== undefined && bet.overtime === r.overtime) {
       pts += 3;
     }
 
@@ -39,7 +39,7 @@ export function calcBetPoints(bet, game) {
 
     // 4. Placar exato – só vale se a previsão de prorrogação estiver correta
     if (exact && bet.overtime === r.overtime) {
-      pts += 14;
+      pts += 15;
     }
 
   } else {
