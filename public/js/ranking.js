@@ -34,7 +34,7 @@ export function calcBetPoints(bet, game) {
     // 3. Bônus por acertar o vencedor nos pênaltis
     //    (somente se o placar final foi empate)
     if (betWinner === 0 && r.penaltyWinner && bet.penaltyWinner === r.penaltyWinner) {
-      pts += 4;
+      pts += 3;
     }
 
     // 4. Placar exato – só vale se a previsão de prorrogação estiver correta
