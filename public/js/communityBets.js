@@ -5,6 +5,7 @@ import { GAMES_STATE, currentUser } from './state.js';
 import { formatDate, teamFlagImg } from './utils.js';
 import { getPlayer } from './exportplayer.js';
 import { sign } from './utils.js';
+import { calcBetPoints } from './ranking.js'; // 🔥 usa a mesma lógica do ranking
 
 let currentCommunityDate = null;
 
@@ -15,7 +16,6 @@ export async function renderCommunityBets() {
   const container = document.getElementById('communityBetsContainer');
   if (!container) return;
 
-  // Carregar dados
   const [bets, users, games] = await Promise.all([
     loadBets(),
     loadUsers(),
@@ -33,11 +33,9 @@ export async function renderCommunityBets() {
     return;
   }
 
-  // 🔥 ALTERAÇÃO: Incluir jogos da La Liga também (não apenas Copa)
   const allGames = (games.length ? games : GAMES_STATE);
   const relevantGames = allGames.filter(g => {
-    // Jogos da Copa (datas junho/2026) OU jogos da La Liga (group 'La Liga')
-    return (g.date && g.date.startsWith('2026-06')) || g.group === 'Champions League Final';
+    return (g.date && g.date.startsWith('2026-06')) || g.group === 'La Liga' || g.group === 'knockout';
   });
 
   if (relevantGames.length === 0) {
@@ -45,33 +43,27 @@ export async function renderCommunityBets() {
       <div class="empty-state">
         <div class="es-icon">🏆</div>
         <h3>Aguardando jogos</h3>
-        <p>Os jogos da Copa e da La Liga aparecerão aqui.</p>
+        <p>Os jogos da Copa, La Liga e mata‑mata aparecerão aqui.</p>
       </div>
     `;
     return;
   }
 
-  // Agrupar jogos por data
   const gamesByDate = {};
   relevantGames.forEach(game => {
     if (!gamesByDate[game.date]) gamesByDate[game.date] = [];
     gamesByDate[game.date].push(game);
   });
 
-  // Ordenar datas
   const sortedDates = Object.keys(gamesByDate).sort();
   if (!currentCommunityDate && sortedDates.length) {
     currentCommunityDate = sortedDates[0];
   }
 
-  // Mapear usuários por ID
   const usersMap = {};
   users.forEach(u => { usersMap[u.id] = u; });
 
-  // Renderizar seletor de datas
   const dateSelectorHtml = renderDateSelector(sortedDates);
-
-  // Renderizar jogos da data selecionada
   const gamesHtml = await renderGamesForDate(
     currentCommunityDate,
     gamesByDate,
@@ -96,7 +88,6 @@ export async function renderCommunityBets() {
     </div>
   `;
 
-  // Adicionar evento de scroll nas datas
   const dateSelector = document.getElementById('communityDateSelector');
   if (dateSelector) {
     dateSelector.addEventListener('wheel', (e) => {
@@ -139,12 +130,11 @@ async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
     const t1 = TEAMS[game.home];
     const t2 = TEAMS[game.away];
     const gameId = game.id;
+    const isKnockout = game.group === 'knockout';
 
-    // Verificar se a partida já começou ou já foi finalizada
     const gameStart = new Date(`${game.date}T${game.time}:00`);
     const hasStarted = gameStart <= new Date() || game.status !== 'upcoming';
 
-    // Coletar todos os palpites para este jogo
     const gameBets = [];
     for (const [userId, userBets] of Object.entries(bets)) {
       if (userBets[gameId]) {
@@ -158,7 +148,6 @@ async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
       }
     }
 
-    // Ordenar palpites (primeiro os do usuário logado, depois por nome)
     gameBets.sort((a, b) => {
       if (a.user.id === currentUser?.id) return -1;
       if (b.user.id === currentUser?.id) return 1;
@@ -169,9 +158,7 @@ async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
     const hasResult = game.status === 'completed' && game.result;
     const resultText = hasResult ? `${game.result.homeScore} : ${game.result.awayScore}` : 'Aguardando';
 
-    // =============================================
-    // CALCULAR ESTATÍSTICAS DOS PALPITES (opcional)
-    // =============================================
+    // Estatísticas
     let homeWins = 0, draws = 0, awayWins = 0;
     const scoreCount = new Map();
     const playerCount = new Map();
@@ -183,7 +170,6 @@ async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
       const scoreKey = `${bet.homeScore}-${bet.awayScore}`;
       scoreCount.set(scoreKey, (scoreCount.get(scoreKey) || 0) + 1);
       if (bet.playerId) playerCount.set(bet.playerId, (playerCount.get(bet.playerId) || 0) + 1);
-      if (bet.player2Id) playerCount.set(bet.player2Id, (playerCount.get(bet.player2Id) || 0) + 1);
     }
 
     const total = gameBets.length;
@@ -211,7 +197,6 @@ async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
       }
     }
 
-    // Corpo do card (expansível) – mostra palpites APENAS se a partida já começou
     const showBets = hasStarted;
     const betsBody = showBets
       ? renderBetsList(gameBets, game)
@@ -233,7 +218,7 @@ async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
               </div>
             </div>
             <div class="community-game-meta">
-              <span class="game-badge">${game.group === 'La Liga' ? '🏆 La Liga' : `🌍 Copa - Grupo ${game.group}`}</span>
+              <span class="game-badge">${isKnockout ? '🏆 Mata‑Mata' : game.group === 'La Liga' ? '🏆 La Liga' : `🌍 Copa - Grupo ${game.group}`}</span>
               <span>⏰ ${game.time}</span>
               <span class="result-badge ${hasResult ? 'rb-exact' : 'rb-loss'}">${resultText}</span>
             </div>
@@ -256,6 +241,7 @@ async function renderGamesForDate(date, gamesByDate, bets, usersMap) {
   }
   return html;
 }
+
 // =============================================
 // RENDERIZA LISTA DE PALPITES DE UM JOGO
 // =============================================
@@ -264,12 +250,15 @@ function renderBetsList(gameBets, game) {
     return '<div class="no-bets-msg">Nenhum palpite para este jogo ainda.</div>';
   }
 
+  const isKnockout = game.group === 'knockout';
+
   return `
     <table class="community-bets-table">
       <thead>
         <tr>
           <th>Participante</th>
           <th>Palpite</th>
+          ${isKnockout ? '<th>Detalhes</th>' : ''}
           <th>Jogador</th>
           <th class="pts-col">Pontos</th>
         </tr>
@@ -277,17 +266,19 @@ function renderBetsList(gameBets, game) {
       <tbody>
         ${gameBets.map(({ user, bet }) => {
           const player = bet.playerId ? getPlayer(bet.playerId) : null;
-          const player2 = bet.player2Id ? getPlayer(bet.player2Id) : null;
           const isCurrentUser = user.id === currentUser?.id;
-          const pts = game.result ? calculateBetPoints(bet, game) : '-';
+          const pts = game.result ? calcBetPoints(bet, game) : '-'; // usa a função do ranking
 
-          let playersDisplay = '';
-          if (player && player2) {
-            playersDisplay = `${player.name} / ${player2.name}`;
-          } else if (player) {
-            playersDisplay = player.name;
-          } else {
-            playersDisplay = '—';
+          let playersDisplay = player ? player.name : '—';
+
+          // Monta detalhes extras para knockout
+          let detailsHtml = '';
+          if (isKnockout) {
+            const overtimeText = bet.overtime ? '⏱️ Sim' : '⏱️ Não';
+            const penaltyText = bet.penaltyWinner
+              ? `🏆 ${bet.penaltyWinner === 'home' ? TEAMS[game.home]?.name || 'Casa' : TEAMS[game.away]?.name || 'Visitante'}`
+              : '—';
+            detailsHtml = `<div style="font-size:11px; color:var(--text-d);">Prorrogação: ${overtimeText}<br>Pênaltis: ${penaltyText}</div>`;
           }
 
           return `
@@ -295,72 +286,21 @@ function renderBetsList(gameBets, game) {
               <td class="user-cell">
                 <div class="user-avatar-small">${user.profileName.charAt(0).toUpperCase()}</div>
                 <span class="user-name">${user.profileName}${isCurrentUser ? ' (você)' : ''}</span>
-               </td>
+              </td>
               <td class="score-cell">
                 <strong>${bet.homeScore} : ${bet.awayScore}</strong>
-               </td>
-              <td class="player-cell">
-                ${playersDisplay}
-               </td>
+              </td>
+              ${isKnockout ? `<td class="details-cell">${detailsHtml}</td>` : ''}
+              <td class="player-cell">${playersDisplay}</td>
               <td class="pts-cell">
                 <span class="pts-value">${pts}</span>
-               </td>
-             </tr>
+              </td>
+            </tr>
           `;
         }).join('')}
       </tbody>
     </table>
   `;
-}
-
-// =============================================
-// CALCULA PONTOS (mesma lógica do ranking)
-// =============================================
-function calculateBetPoints(bet, game) {
-  if (!game || !game.result) return 0;
-  const r = game.result;
-  let pts = 0;
-
-  // 1. Resultado da partida (6 pontos para vitória/empate, +4 se placar exato = 10)
-  const betWinner = Math.sign(bet.homeScore - bet.awayScore);
-  const realWinner = Math.sign(r.homeScore - r.awayScore);
-  const exact = (bet.homeScore === r.homeScore && bet.awayScore === r.awayScore);
-
-  if (exact) {
-    pts += 10;
-  } else if (betWinner === realWinner) {
-    pts += 6;
-  }
-
-  // Se não escolheu jogador, retorna apenas pontos de resultado
-  if (!bet.playerId) return pts;
-
-  // 2. Gols (2 pontos por gol)
-  if (r.scorers && Array.isArray(r.scorers)) {
-    const playerGoals = r.scorers
-      .filter(s => s.playerId === bet.playerId)
-      .reduce((sum, s) => sum + (s.goals || 1), 0);
-    pts += playerGoals * 2;
-  }
-
-  // 3. Assistências (1 ponto cada)
-  if (r.assists && Array.isArray(r.assists)) {
-    const playerAssists = r.assists
-      .filter(a => a.playerId === bet.playerId)
-      .reduce((sum, a) => sum + (a.assists || 1), 0);
-    pts += playerAssists;
-  }
-
-  // 4. Cartão vermelho (-3 pontos)
-  if (r.redCards && Array.isArray(r.redCards)) {
-    const hasRed = r.redCards.some(card => card.playerId === bet.playerId);
-    if (hasRed) pts -= 3;
-  }
-
-  // 5. Craque do jogo (+3 pontos)
-  if (r.craqueId === bet.playerId) pts += 3;
-
-  return pts;
 }
 
 // =============================================
@@ -383,5 +323,3 @@ window.toggleCommunityGame = (gameId) => {
     }
   }
 };
-
-
